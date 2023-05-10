@@ -21,10 +21,10 @@ USB-adapters and development-boards based on nRF52840 SoC flashed with the ZBOSS
   - https://developer.nordicsemi.com/nRF_Connect_SDK/doc/zboss/3.6.0.0/zboss_ncp_host_intro.html
     - https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/protocols/zigbee/architectures.html#ug-zigbee-platform-design-ncp-details
     - https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/samples/zigbee/ncp/README.html#zigbee-ncp-sample
+    - https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/protocols/zigbee/tools.html#ug-zigbee-tools-ncp-host
     - https://developer.nordicsemi.com/nRF_Connect_SDK/doc/zboss/3.6.0.0/zboss_ncp_host.html
     - https://developer.nordicsemi.com/nRF_Connect_SDK/doc/zboss/3.11.2.1/zboss_ncp_host_intro.html
     - https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/protocols/zigbee/tools.html#id9
-    - 
 - https://github.com/zigpy/zigpy/issues/394 - Previous development discussion about ZBOSS radio library for zigpy.
 - https://github.com/zigpy/zigpy/discussions/595 - Reference collections for Zigbee Stack and related dev docks
 - https://github.com/MeisterBob/zigpy_nrf52 - Other attemt at making a zigpy library for nFR52
