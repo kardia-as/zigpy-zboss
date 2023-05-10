@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+safe = true
+quiet = true
+
+[tool.pytest.ini_options]
+addopts = "--showlocals --verbose"
+testpaths = ["tests"]
+timeout = 20
+log_format = "%(asctime)s.%(msecs)03d %(levelname)s %(message)s"
+log_date_format = "%Y-%m-%d %H:%M:%S"
+
+[tool.flake8]
+exclude = ".venv,.git,.tox,docs,venv,bin,lib,deps,build"
+# To work with Black
+max-line-length = 88
+# W503: Line break occurred before a binary operator
+# E203: Whitespace before ':'
+# D202 No blank lines allowed after function docstring
+ignore = "W503,E203,D202"
+
+[tool.coverage.run]
+source = ["zigpy_zboss"]
