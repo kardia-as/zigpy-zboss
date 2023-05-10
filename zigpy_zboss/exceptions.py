@@ -1,28 +1,21 @@
 """Zigpy nrf exceptions."""
-from zigpy.exceptions import DeliveryError
 
 
 class InvalidFrame(ValueError):
-    pass
+    """Invalid frame."""
 
 
 class SecurityError(Exception):
-    pass
+    """Security error."""
 
 
 class CommandNotRecognized(Exception):
-    pass
+    """Command not recognized."""
 
 
 class ModuleHardwareResetError(Exception):
-    pass
+    """Module hardware reset error."""
 
 
 class NrfResponseError(Exception):
-    pass
-
-
-class InvalidCommandResponse(DeliveryError):
-    def __init__(self, message, response):
-        super().__init__(message)
-        self.response = response
+    """nRF response error."""

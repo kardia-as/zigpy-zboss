@@ -46,17 +46,8 @@ SCHEMA_DEVICE = SCHEMA_DEVICE.extend(
 )
 
 
-def EnumValue(enum, transformer=str):
-    def validator(v):
-        if isinstance(v, enum):
-            return v
-
-        return enum[transformer(v)]
-
-    return validator
-
-
 def keys_have_same_length(*keys):
+    """Raise an error if values don't have the same length."""
     def validator(config):
         lengths = [len(config[k]) for k in keys]
 
@@ -68,20 +59,6 @@ def keys_have_same_length(*keys):
         return config
 
     return validator
-
-
-def bool_to_upper_str(value: typing.Any) -> str:
-    """Convert bool to str.
-
-    Converts the value into an uppercase string,
-    including unquoted YAML booleans.
-    """
-    if value is True:
-        return "ON"
-    elif value is False:
-        return "OFF"
-    else:
-        return str(value).upper()
 
 
 CONF_NRF_CONFIG = "nrf_config"

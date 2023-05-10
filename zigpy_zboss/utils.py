@@ -46,9 +46,12 @@ def deduplicate_commands(
 
 @dataclasses.dataclass(frozen=True)
 class BaseResponseListener:
+    """Class representing the base of a response listener."""
+
     matching_commands: tuple[t.CommandBase]
 
     def __post_init__(self):
+        """Set matching_commands parameter when used as parent."""
         commands = deduplicate_commands(self.matching_commands)
 
         if not commands:
@@ -115,6 +118,7 @@ class OneShotResponseListener(BaseResponseListener):
         return True
 
     def cancel(self):
+        """Cancel a one shot callback."""
         if not self.future.done():
             self.future.cancel()
 
@@ -146,6 +150,7 @@ class IndicationListener(BaseResponseListener):
         return True
 
     def cancel(self):
+        """Return false when trying to cancel an indication callback."""
         # You can't cancel a callback
         return False
 
@@ -156,4 +161,5 @@ class CatchAllResponse:
     header = object()  # sentinel
 
     def matches(self, other) -> bool:
+        """Return true if object are matching."""
         return True

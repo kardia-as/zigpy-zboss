@@ -31,7 +31,10 @@ DEBUG_LOGGER.addHandler(debug_logger_file_handler)
 
 
 class NcpDebugLogger(asyncio.Protocol):
+    """Class responsible for a serial debug connection."""
+
     def __init__(self, api, dev_path):
+        """Class initializer."""
         self._api = api
         self._transport = None
         self._dev_path = dev_path

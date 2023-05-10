@@ -13,9 +13,15 @@ class LLHeader(t.uint56_t):
     """Low Level Header class."""
 
     def __new__(
-        cls, value: int = 0x00000000000000, *, sign=None, size=None,
-        frame_type=None, flags=None, crc8=None
-    ) -> "LLHeader":
+            cls,
+            value: int = 0x00000000000000,
+            *,
+            sign=None,
+            size=None,
+            frame_type=None,
+            flags=None,
+            crc8=None) -> "LLHeader":
+        """Create a new low level header object."""
         instance = super().__new__(cls, value)
 
         if sign is not None:
