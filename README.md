@@ -23,6 +23,7 @@ Tagged versions will also be released via PyPI
 
 # External links, documentation, and other development references
 
+- [ZBOSS NCP Serial Protocol (v1.5) prepared by DSR Corporation for ZOI](https://cloud.dsr-corporation.com/index.php/s/BAn4LtRWbJjFiAm)
 - https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/index.html - Specifically see the ZBOSS NCP sample, Zigbee CLI examples, and the ZBOSS NCP Host user guide.
   - https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/samples/zigbee/ncp/README.html
   - https://infocenter.nordicsemi.com/index.jsp?topic=%2Fsdk_tz_v4.1.0%2Fzigbee_only_examples.html
@@ -32,7 +33,9 @@ Tagged versions will also be released via PyPI
     - https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/protocols/zigbee/tools.html#ug-zigbee-tools-ncp-host
     - https://developer.nordicsemi.com/nRF_Connect_SDK/doc/zboss/3.6.0.0/zboss_ncp_host.html
     - https://developer.nordicsemi.com/nRF_Connect_SDK/doc/zboss/3.11.2.1/zboss_ncp_host_intro.html
-    - https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/protocols/zigbee/tools.html#id9
+    - https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/protocols/zigbee/tools.html
+      - https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/protocols/zigbee/tools.html#ug-zigbee-tools-ncp-host
+        - [ZBOSS NCP Host (v2.2.1) source code](https://developer.nordicsemi.com/Zigbee/ncp_sdk_for_host/ncp_host_v2.2.1.zip)
 - https://github.com/zigpy/zigpy/issues/394 - Previous development discussion about ZBOSS radio library for zigpy.
 - https://github.com/zigpy/zigpy/discussions/595 - Reference collections for Zigbee Stack and related dev docks
 - https://github.com/MeisterBob/zigpy_nrf52 - Other attemt at making a zigpy library for nFR52
