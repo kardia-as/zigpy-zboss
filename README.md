@@ -13,6 +13,14 @@ USB-adapters and development-boards based on nRF52840 SoC flashed with the ZBOSS
 # Firmware
 **[nrf-zboss-ncp](https://github.com/kardia-as/nrf-zboss-ncp)** contains required firmware to flash on the device.
 
+# Releases via PyPI
+
+Tagged versions will also be released via PyPI
+
+ - https://pypi.org/project/zigpy-zboss/
+ - https://pypi.org/project/zigpy-zboss/#history
+ - https://pypi.org/project/zigpy-zboss/#files
+
 # External links, documentation, and other development references
 
 - https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/index.html - Specifically see the ZBOSS NCP sample, Zigbee CLI examples, and the ZBOSS NCP Host user guide.
