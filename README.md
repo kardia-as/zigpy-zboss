@@ -41,11 +41,21 @@ Tagged versions will also be released via PyPI
 - https://github.com/MeisterBob/zigpy_nrf52 - Other attemt at making a zigpy library for nFR52
 - https://gist.github.com/tomchy/04ac4ff78d6e117d33ab92d9cc1de779 - Another attemt at making a zigpy controller for nFR
 
-### zigpy-znp (reference project)
-The development of the zigpy-zboss repository stems from the work done in the **[zigpy-znp](https://github.com/zigpy/zigpy-znp)** project. zigpy-znp is a zigpy radio library for Texas Instruments Z-Stack ZNP interface.
+## Other radio libraries for zigpy to use as reference projects
 
-### bellows (another reference project)
-The **[bellows](https://github.com/zigpy/bellows)** is made for the Silicon Labs EmberZNet Zigbee Stack's EZSP interface and is another mature zigpy radio library project worth taking a look at as a reference, (as both it and other zigpy radio libraires have some unique features and functions that others do not).
+Note! The initial development of the zigpy-zboss radio library for zigpy stems from information learned from the work in the **[zigpy-znp](https://github.com/zigpy/zigpy-znp)** project.
+
+### zigpy-znp
+The **[zigpy-znp](https://github.com/zigpy/zigpy-znp)** zigpy radio library for Texas Instruments Z-Stack ZNP interface and has been the primary reference to base the zigpy-zboss radio library on. zigpy-znp is very stable with TI Z-Stack 3.x.x, ([zigpy-znp also offers some stand-alone CLI tools](https://github.com/zigpy/zigpy-znp/blob/dev/TOOLS.md) that are unique for Texas Instruments hardware and Zigbee stack).
+
+### bellows
+The **[bellows](https://github.com/zigpy/bellows)** is made Silicon Labgs EZSP (EmberZNet Serieal Protocol) interface and is another mature zigpy radio library project worth taking a look at as a reference, (as both it and other zigpy radio libraires have some unique features and functions that others do not).
+
+### zigpy-deconz
+The **[zigpy-deconz](https://github.com/zigpy/zigpy-deconz)** is another mature radio library for Dresden Elektronik's deCONZ Serial Protocol interface that is used by the deconz firmware for their ConBee and RaspBee seriies of Zigbee Coordinator adapters.
+
+#### zigpy deconz parser
+[zigpy-deconz-parser](https://github.com/zha-ng/zigpy-deconz-parser) allow developers to parse Home Assistant's ZHA component debug logs using the zigpy-deconz radio library if you are using a deCONZ based adapter like ConBee or RaspBee.
 
 # How to contribute
 
@@ -62,3 +72,24 @@ Also see:
 
 ### zigpy
 **[zigpy](https://github.com/zigpy/zigpy)** is a **[Zigbee protocol stack](https://en.wikipedia.org/wiki/Zigbee)** integration project to implement the **[Zigbee Home Automation](https://www.zigbee.org/)** standard as a Python library. Zigbee Home Automation integration with zigpy allows you to connect one of many off-the-shelf Zigbee adapters using one of the available Zigbee radio library modules compatible with zigpy to control Zigbee devices. There is currently support for controlling Zigbee device types such as binary sensors (e.g. motion and door sensors), analog sensors (e.g. temperature sensors), lightbulbs, switches, and fans. Zigpy is tightly integrated with **[Home Assistant](https://www.home-assistant.io)**'s **[ZHA component](https://www.home-assistant.io/components/zha/)** and provides a user-friendly interface for working with a Zigbee network.
+
+### zigpy-cli (zigpy command line interface)
+[zigpy-cli](https://github.com/zigpy/zigpy-cli) is a unified command line interface for zigpy radios. The goal of this project is to allow low-level network management from an intuitive command line interface and to group useful Zigbee tools into a single binary.
+
+### ZHA Device Handlers
+ZHA deviation handling in Home Assistant relies on the third-party [ZHA Device Handlers](https://github.com/zigpy/zha-device-handlers) project (also known unders zha-quirks package name on PyPI). Zigbee devices that deviate from or do not fully conform to the standard specifications set by the [Zigbee Alliance](https://www.zigbee.org) may require the development of custom [ZHA Device Handlers](https://github.com/zigpy/zha-device-handlers) (ZHA custom quirks handler implementation) to for all their functions to work properly with the ZHA component in Home Assistant. These ZHA Device Handlers for Home Assistant can thus be used to parse custom messages to and from non-compliant Zigbee devices. The custom quirks implementations for zigpy implemented as ZHA Device Handlers for Home Assistant are a similar concept to that of [Hub-connected Device Handlers for the SmartThings platform](https://docs.smartthings.com/en/latest/device-type-developers-guide/) as well as that of [zigbee-herdsman converters as used by Zigbee2mqtt](https://www.zigbee2mqtt.io/how_tos/how_to_support_new_devices.html), meaning they are each virtual representations of a physical device that expose additional functionality that is not provided out-of-the-box by the existing integration between these platforms.
+
+### ZHA integration component for Home Assistant
+[ZHA integration component for Home Assistant](https://www.home-assistant.io/integrations/zha/) is a reference implementation of the zigpy library as integrated into the core of **[Home Assistant](https://www.home-assistant.io)** (a Python based open source home automation software). There are also other GUI and non-GUI projects for Home Assistant's ZHA components which builds on or depends on its features and functions to enhance or improve its user-experience, some of those are listed and linked below.
+
+#### ZHA Toolkit
+[ZHA Toolkit](https://github.com/mdeweerd/zha-toolkit) is a custom service for "rare" Zigbee operations using the [ZHA integration component](https://www.home-assistant.io/integrations/zha) in [Home Assistant](https://www.home-assistant.io/). The purpose of ZHA Toolkit and its Home Assistant 'Services' feature, is to provide direct control over low level zigbee commands provided in ZHA or zigpy that are not otherwise available or too limited for some use cases. ZHA Toolkit can also; serve as a framework to do local low level coding (the modules are reloaded on each call), provide access to some higher level commands such as ZNP backup (and restore), make it easier to perform one-time operations where (some) Zigbee knowledge is sufficient and avoiding the need to understand the inner workings of ZHA or Zigpy (methods, quirks, etc).
+
+#### ZHA Device Exporter
+[zha-device-exporter](https://github.com/dmulcahey/zha-device-exporter) is a custom component for Home Assistant to allow the ZHA component to export lists of Zigbee devices.
+
+#### ZHA Network Visualization Card
+[zha-network-visualization-card](https://github.com/dmulcahey/zha-network-visualization-card) was a custom Lovelace element for Home Assistant which visualize the Zigbee network for the ZHA component.
+
+#### ZHA Network Card
+[zha-network-card](https://github.com/dmulcahey/zha-network-card) was a custom Lovelace card for Home Assistant that displays ZHA component Zigbee network and device information in Home Assistant
