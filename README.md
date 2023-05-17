@@ -48,14 +48,14 @@ Note! The initial development of the zigpy-zboss radio library for zigpy stems f
 ### zigpy-znp
 The **[zigpy-znp](https://github.com/zigpy/zigpy-znp)** zigpy radio library for Texas Instruments Z-Stack ZNP interface and has been the primary reference to base the zigpy-zboss radio library on. zigpy-znp is very stable with TI Z-Stack 3.x.x, ([zigpy-znp also offers some stand-alone CLI tools](https://github.com/zigpy/zigpy-znp/blob/dev/TOOLS.md) that are unique for Texas Instruments hardware and Zigbee stack).
 
-### bellows
-The **[bellows](https://github.com/zigpy/bellows)** is made Silicon Labgs EZSP (EmberZNet Serieal Protocol) interface and is another mature zigpy radio library project worth taking a look at as a reference, (as both it and other zigpy radio libraires have some unique features and functions that others do not).
-
 ### zigpy-deconz
-The **[zigpy-deconz](https://github.com/zigpy/zigpy-deconz)** is another mature radio library for Dresden Elektronik's deCONZ Serial Protocol interface that is used by the deconz firmware for their ConBee and RaspBee seriies of Zigbee Coordinator adapters.
+The **[zigpy-deconz](https://github.com/zigpy/zigpy-deconz)** is another mature radio library for Dresden Elektronik's [deCONZ Serial Protocol interface](https://github.com/dresden-elektronik/deconz-serial-protocol) that is used by the deconz firmware for their ConBee and RaspBee seriies of Zigbee Coordinator adapters. Existing zigpy developers previous advice has been to also look at zigpy-deconz since it is somewhat similar to the ZBOSS serial protocol implementation.
 
-#### zigpy deconz parser
+##### zigpy deconz parser
 [zigpy-deconz-parser](https://github.com/zha-ng/zigpy-deconz-parser) allow developers to parse Home Assistant's ZHA component debug logs using the zigpy-deconz radio library if you are using a deCONZ based adapter like ConBee or RaspBee.
+
+### bellows
+The **[bellows](https://github.com/zigpy/bellows)** is made Silicon Labs [EZSP (EmberZNet Serial Protocol)](https://www.silabs.com/documents/public/user-guides/ug100-ezsp-reference-guide.pdf) interface and is another mature zigpy radio library project worth taking a look at as a reference, (as both it and some other zigpy radio libraires have some unique features and functions that others do not).
 
 # How to contribute
 
