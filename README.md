@@ -1,17 +1,21 @@
 # zigpy-zboss
 
-**zigpy-zboss** is a Python library that adds support for common Nordic Semiconductor **[Zigbee](https://www.zigbee.org)** radio modules to **[zigpy](https://github.com/zigpy/)**, a Python Zigbee stack project.
+**zigpy-zboss** is a Python library project that adds support for common Nordic Semiconductor nRF modules to **[zigpy (a open source Python Zigbee stack project)](https://github.com/zigpy/)** and other Network Co-Processor radios that uses firmware based on **[ZOI (ZBOSS Open Initiative) by DSR](https://dsr-zoi.com/)**.
 
-Together with zigpy and compatible home automation software (namely Home Assistant's **[ZHA (Zigbee Home Automation) integration component](https://www.home-assistant.io/integrations/zha/)**), you can directly control Zigbee devices such as Philips Hue, GE, OSRAM LIGHTIFY, Xiaomi/Aqara, IKEA Tradfri, Samsung SmartThings, and many more.
+Together with the zigpy library and a home automation software application with compatible Zigbee gateway implementation, (such as for example the **[Home Assistant's ZHA integration component](https://www.home-assistant.io/integrations/zha/)**), you can directly control Zigbee devices from most product manufacturers, like; IKEA, Philips Hue, Inovelli, LEDVANCE/OSRAM, SmartThings/Samsung, SALUS/Computime, SONOFF/ITEAD, Xiaomi/Aqara, and many more.
 
 # Hardware requirements
-USB-adapters and development-boards based on nRF52840 SoC flashed with the ZBOSS NCP sample.
+
+Nordic Semi USB adapters and development kits/boards based on nRF52840 SoC are used as reference hardware in the zigpy-zboss project:
 
 - **[nRF52840 dongle](https://www.nordicsemi.com/Products/Development-hardware/nrf52840-dongle)**
 - **[nRF52840 development kit](https://www.nordicsemi.com/Products/Development-hardware/nrf52840-dk)**
 
 # Firmware
-**[nrf-zboss-ncp](https://github.com/kardia-as/nrf-zboss-ncp)** contains required firmware to flash on the device.
+
+Development and testing in zigpy-zboss project is done with a firmware image built using the [ZBOSS NCP Host sample](https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/samples/zigbee/ncp/README.html) from Nordic Semi:
+
+-  **[nrf-zboss-ncp](https://github.com/kardia-as/nrf-zboss-ncp)** - Compiled ZBOSS NCP Host firmware image required to be flash on the nRF52840 device.
 
 # Releases via PyPI
 
