@@ -33,23 +33,14 @@ class NrfZDO(ZigpyZDO):
     @zigpy.util.retryable_request
     async def Bind_req(self, eui64, ep, cluster, dst_address):
         """Binding request."""
-        if dst_address.addrmode == t.Addressing.AddrMode.IEEE:
-            addr_mode = t_nrf.AddressingMode.Eui64
+        if dst_address.addrmode == t.AddrMode.IEEE:
+            addr_mode = t_nrf.BindAddrMode.IEEE
             dst_eui64 = dst_address.ieee
-        elif dst_address.addrmode == t.Addressing.AddrMode.NWK:
-            addr_mode = t_nrf.AddressingMode.Nwk
-            dst_eui64 = [
-                dst_address.nwk % 0x100,
-                dst_address.nwk >> 8,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-            ]
-        elif dst_address.addrmode == t.Addressing.AddrMode.Group:
-            addr_mode = t_nrf.AddressingMode.Group
+        # ZBOSS does not support the NWK mode
+        # elif dst_address.addrmode == t.AddrMode.NWK:
+        #     addr_mode = t_nrf.BindAddrMode.IEEE
+        elif dst_address.addrmode == t.AddrMode.Group:
+            addr_mode = t_nrf.BindAddrMode.Group
             dst_eui64 = [
                 dst_address.nwk % 0x100,
                 dst_address.nwk >> 8,
@@ -81,23 +72,14 @@ class NrfZDO(ZigpyZDO):
     @zigpy.util.retryable_request
     async def Unbind_req(self, eui64, ep, cluster, dst_address):
         """Unbinding request."""
-        if dst_address.addrmode == t.Addressing.AddrMode.IEEE:
-            addr_mode = t_nrf.AddressingMode.Eui64
+        if dst_address.addrmode == t.AddrMode.IEEE:
+            addr_mode = t_nrf.BindAddrMode.IEEE
             dst_eui64 = t.Addressing.IEEE
-        elif dst_address.addrmode == t.Addressing.AddrMode.NWK:
-            addr_mode = t_nrf.AddressingMode.Nwk
-            dst_eui64 = [
-                dst_address.nwk % 0x100,
-                dst_address.nwk >> 8,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-            ]
-        elif dst_address.addrmode == t.Addressing.AddrMode.Group:
-            addr_mode = t_nrf.AddressingMode.Group
+        # ZBOSS does not support the NWK mode
+        # elif dst_address.addrmode == t.AddrMode.NWK:
+        #     addr_mode = t_nrf.BindAddrMode.IEEE
+        elif dst_address.addrmode == t.AddrMode.Group:
+            addr_mode = t_nrf.BindAddrMode.Group
             dst_eui64 = [
                 dst_address.nwk % 0x100,
                 dst_address.nwk >> 8,
