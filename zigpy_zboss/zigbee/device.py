@@ -1,4 +1,5 @@
 """Zigbee device object."""
+import logging
 import zigpy.util
 import zigpy.device
 import zigpy.endpoint
@@ -36,9 +37,12 @@ class NrfZDO(ZigpyZDO):
         if dst_address.addrmode == t.AddrMode.IEEE:
             addr_mode = t_nrf.BindAddrMode.IEEE
             dst_eui64 = dst_address.ieee
-        # ZBOSS does not support the NWK mode
-        # elif dst_address.addrmode == t.AddrMode.NWK:
-        #     addr_mode = t_nrf.BindAddrMode.IEEE
+        # ZBOSS does not support the NWK mode for binding
+        elif dst_address.addrmode == t.AddrMode.NWK:
+            self.log(
+                logging.WARNING,
+                "Nwk address mode is not supported for the Bind request."
+            )
         elif dst_address.addrmode == t.AddrMode.Group:
             addr_mode = t_nrf.BindAddrMode.Group
             dst_eui64 = [
@@ -75,9 +79,12 @@ class NrfZDO(ZigpyZDO):
         if dst_address.addrmode == t.AddrMode.IEEE:
             addr_mode = t_nrf.BindAddrMode.IEEE
             dst_eui64 = t.Addressing.IEEE
-        # ZBOSS does not support the NWK mode
-        # elif dst_address.addrmode == t.AddrMode.NWK:
-        #     addr_mode = t_nrf.BindAddrMode.IEEE
+        # ZBOSS does not support the NWK mode for binding
+        elif dst_address.addrmode == t.AddrMode.NWK:
+            self.log(
+                logging.WARNING,
+                "Nwk address mode is not supported for the Unbind request."
+            )
         elif dst_address.addrmode == t.AddrMode.Group:
             addr_mode = t_nrf.BindAddrMode.Group
             dst_eui64 = [
