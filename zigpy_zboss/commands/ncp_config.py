@@ -99,13 +99,8 @@ class NcpConfig(t.CommandsBase):
         ),
         rsp_schema=t.STATUS_SCHEMA + (
             t.Param(
-                "ChannelListLen",
-                t.uint8_t,
-                "Number of entries in the following Channel List array"
-            ),
-            t.Param(
                 "ChannelList",
-                t.EUI64,             # CREATE A TYPE FOR CHANNEL LIST ENTRY
+                t.ChannelEntryList,
                 "Array of ChannelListEntry structures"
             ),
         ),

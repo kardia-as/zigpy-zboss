@@ -306,15 +306,14 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
         self.state.network_info.nwk_update_id = self.config[
             conf.CONF_NWK][conf.CONF_NWK_UPDATE_ID]
-        self.state.network_info.nwk_manager_id = 0x0000
 
         res = await self._api.request(
             c.NcpConfig.GetCurrentChannel.Req(TSN=self.get_sequence()))
         self.state.network_info.channel = res.Channel
 
-        # res = await self._api.request(
-        #     c.NcpConfig.GetChannelMask.Req(TSN=self.get_sequence()))
-        # self.state.network_info.channel_mask = res.ChannelList[0]
+        res = await self._api.request(
+            c.NcpConfig.GetChannelMask.Req(TSN=self.get_sequence()))
+        self.state.network_info.channel_mask = res.ChannelList[0].channel_mask
 
         self.state.network_info.security_level = 0x05
 
