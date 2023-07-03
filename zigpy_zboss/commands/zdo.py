@@ -301,6 +301,44 @@ class ZDO(t.CommandsBase):
             t.Param("NwkAddr", t.NWK, "Network address of source device"),
         ),
     )
+    MatchDescReq = t.CommandDef(
+        t.ControlType.REQ,
+        ZdoCommandCode.ZDO_MATCH_DESC_REQ,
+        blocking=False,
+        req_schema=(
+            t.Param("TSN", t.uint8_t, "Transmission Sequence Number"),
+            t.Param("NwkAddr", t.NWK, "Network address of interest"),
+            t.Param("ProfileId", t.uint16_t, "ID of the profile of interest"),
+            t.Param(
+                "InClusterCnt",
+                t.uint8_t,
+                "Count of Input cluster IDs in the following list"
+            ),
+            t.Param(
+                "OutClusterCnt",
+                t.uint8_t,
+                "Count of Output cluster IDs in the following list"
+            ),
+            t.Param(
+                "InClusterList",
+                t.List[t.uint16_t],
+                "Network address of interest"
+            ),
+            t.Param(
+                "OutClusterList",
+                t.List[t.uint16_t],
+                "Network address of interest"
+            ),
+        ),
+        rsp_schema=t.STATUS_SCHEMA + (
+            t.Param(
+                "ActiveEpList",
+                zigpy.types.LVBytes,
+                "Active enpoints list"
+            ),
+            t.Param("NwkAddr", t.NWK, "Network address of source device"),
+        ),
+    )
     SimpleDescriptorReq = t.CommandDef(
         t.ControlType.REQ,
         ZdoCommandCode.ZDO_SIMPLE_DESC_REQ,
