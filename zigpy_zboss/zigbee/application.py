@@ -11,7 +11,7 @@ import zigpy.endpoint
 import zigpy.exceptions
 import zigpy.types as t
 import zigpy.application
-import zigpy_zboss.types as t_nrf
+import zigpy_zboss.types as t_zboss
 import zigpy.zdo.types as zdo_t
 import zigpy_zboss.config as conf
 
@@ -86,7 +86,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
     async def add_endpoint(self, descriptor: zdo_t.SimpleDescriptor) -> None:
         """Register a new endpoint on the device."""
-        simple_desc = t_nrf.SimpleDescriptor(
+        simple_desc = t_zboss.SimpleDescriptor(
             endpoint=descriptor.endpoint,
             profile=descriptor.profile,
             device_type=descriptor.device_type,
@@ -109,7 +109,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         """Populate stack specific config dictionary with default values."""
         return {
             "rx_on_when_idle": t.Bool.true,
-            "end_device_timeout": t_nrf.TimeoutIndex.Minutes_256,
+            "end_device_timeout": t_zboss.TimeoutIndex.Minutes_256,
             "max_children": t.uint8_t(100),
             "joined": t.Bool.false,
             "authenticated": t.Bool.false,
@@ -144,7 +144,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         await self._api.request(
             request=c.NcpConfig.SetZigbeeRole.Req(
                 TSN=self.get_sequence(),
-                DeviceRole=t_nrf.DeviceRole.ZC
+                DeviceRole=t_zboss.DeviceRole.ZC
             )
         )
 
@@ -204,7 +204,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         await self._api.request(
             request=c.NcpConfig.SetTCPolicy.Req(
                 TSN=self.get_sequence(),
-                PolicyType=t_nrf.PolicyType.TC_Link_Keys_Required,
+                PolicyType=t_zboss.PolicyType.TC_Link_Keys_Required,
                 PolicyValue=network_info.stack_specific[
                     "tc_policy"]["unique_tclk_required"]
             )
@@ -213,7 +213,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         await self._api.request(
             request=c.NcpConfig.SetTCPolicy.Req(
                 TSN=self.get_sequence(),
-                PolicyType=t_nrf.PolicyType.IC_Required,
+                PolicyType=t_zboss.PolicyType.IC_Required,
                 PolicyValue=network_info.stack_specific[
                     "tc_policy"]["ic_required"]
             )
@@ -222,7 +222,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         await self._api.request(
             request=c.NcpConfig.SetTCPolicy.Req(
                 TSN=self.get_sequence(),
-                PolicyType=t_nrf.PolicyType.TC_Rejoin_Enabled,
+                PolicyType=t_zboss.PolicyType.TC_Rejoin_Enabled,
                 PolicyValue=network_info.stack_specific[
                     "tc_policy"]["tc_rejoin_enabled"]
             )
@@ -231,7 +231,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         await self._api.request(
             request=c.NcpConfig.SetTCPolicy.Req(
                 TSN=self.get_sequence(),
-                PolicyType=t_nrf.PolicyType.Ignore_TC_Rejoin,
+                PolicyType=t_zboss.PolicyType.Ignore_TC_Rejoin,
                 PolicyValue=network_info.stack_specific[
                     "tc_policy"]["tc_rejoin_ignored"]
             )
@@ -240,7 +240,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         await self._api.request(
             request=c.NcpConfig.SetTCPolicy.Req(
                 TSN=self.get_sequence(),
-                PolicyType=t_nrf.PolicyType.APS_Insecure_Join,
+                PolicyType=t_zboss.PolicyType.APS_Insecure_Join,
                 PolicyValue=network_info.stack_specific[
                     "tc_policy"]["aps_insecure_join_enabled"]
             )
@@ -249,7 +249,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         await self._api.request(
             request=c.NcpConfig.SetTCPolicy.Req(
                 TSN=self.get_sequence(),
-                PolicyType=t_nrf.PolicyType.Disable_NWK_MGMT_Channel_Update,
+                PolicyType=t_zboss.PolicyType.Disable_NWK_MGMT_Channel_Update,
                 PolicyValue=network_info.stack_specific[
                     "tc_policy"]["mgmt_channel_update_disabled"]
             )
@@ -262,8 +262,8 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         await self._api.request(
             request=c.NWK.Formation.Req(
                 TSN=self.get_sequence(),
-                ChannelList=t_nrf.ChannelEntryList([
-                    t_nrf.ChannelEntry(
+                ChannelList=t_zboss.ChannelEntryList([
+                    t_zboss.ChannelEntry(
                         page=0, channel_mask=network_info.channel_mask)
                 ]),
                 ScanDuration=0x05,
@@ -349,10 +349,6 @@ class ControllerApplication(zigpy.application.ControllerApplication):
                 ),
             )
 
-        self.state.network_info.key_table = []
-        self.state.network_info.children = []
-        self.state.network_info.nwk_address = {}
-
         res = await self._api.request(
             c.NcpConfig.GetRxOnWhenIdle.Req(TSN=self.get_sequence()))
         self.state.network_info.stack_specific[
@@ -397,6 +393,28 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
         if not load_devices:
             return
+
+        map = await self._get_addr_map()
+
+        for rec in map:
+            if rec.nwk_addr == 0x0000:
+                continue
+            self.state.network_info.children.append(rec.ieee_addr)
+            self.state.network_info.nwk_addresses[rec.ieee_addr] = rec.nwk_addr
+
+        await self._get_aps_secure_data()
+
+    async def _get_addr_map(self):
+        """Read NVRAM dataset ZB_NVRAM_ADDR_MAP."""
+        res = await self._api.request(
+            c.NcpConfig.ReadNVRAM.Req(
+                TSN=self.get_sequence(),
+                DatasetType=t_zboss.DatasetType.ZB_NVRAM_ADDR_MAP,
+            )
+        )
+        nwk_addr_map, _ = t_zboss.NwkAddrMap.deserialize(
+            res.Dataset.serialize()[2:])
+        return nwk_addr_map
 
     async def reset_network_info(self) -> None:
         """Reset node network information and leaves the current network."""
@@ -493,26 +511,26 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
     def on_dev_update(self, msg: c.ZDO.DevUpdateInd.Ind):
         """Device update indication."""
-        if msg.Status == t_nrf.DeviceUpdateStatus.secured_rejoin:
+        if msg.Status == t_zboss.DeviceUpdateStatus.secured_rejoin:
             # 0x000 as parent device, currently unused
             pass
             # self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
-        elif msg.Status == t_nrf.DeviceUpdateStatus.unsecured_join:
+        elif msg.Status == t_zboss.DeviceUpdateStatus.unsecured_join:
             # 0x000 as parent device, currently unused
             pass
             # self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
-        elif msg.Status == t_nrf.DeviceUpdateStatus.device_left:
+        elif msg.Status == t_zboss.DeviceUpdateStatus.device_left:
             pass
             # self.handle_leave(msg.Nwk, msg.IEEE)
-        elif msg.Status == t_nrf.DeviceUpdateStatus.tc_rejoin:
+        elif msg.Status == t_zboss.DeviceUpdateStatus.tc_rejoin:
             pass
             # self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
 
     def on_apsde_indication(self, msg):
         """APSDE-DATA.indication handler."""
-        is_broadcast = bool(msg.FrameFC & t_nrf.APSFrameFC.Broadcast)
-        is_group = bool(msg.FrameFC & t_nrf.APSFrameFC.Group)
-        is_secure = bool(msg.FrameFC & t_nrf.APSFrameFC.Secure)
+        is_broadcast = bool(msg.FrameFC & t_zboss.APSFrameFC.Broadcast)
+        is_group = bool(msg.FrameFC & t_zboss.APSFrameFC.Group)
+        is_secure = bool(msg.FrameFC & t_zboss.APSFrameFC.Secure)
 
         if is_broadcast:
             dst = t.AddrModeAddress(
@@ -555,7 +573,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
     def on_ncp_reset(self, msg):
         """NCP_RESET.indication handler."""
-        if msg.ResetSrc == t_nrf.ResetSource.RESET_SRC_POWER_ON:
+        if msg.ResetSrc == t_zboss.ResetSource.RESET_SRC_POWER_ON:
             return
         LOGGER.debug(
             f"Resetting ControllerApplication. Source: {msg.ResetSrc}")
@@ -625,6 +643,6 @@ class ControllerApplication(zigpy.application.ControllerApplication):
                     UseAlias=t.Bool.false,
                     AliasSrcAddr=t.NWK(0x0000),
                     AliasSeqNbr=t.uint8_t(0x00),
-                    Payload=t_nrf.Payload(packet.data.serialize()),
+                    Payload=t_zboss.Payload(packet.data.serialize()),
                 )
             )
