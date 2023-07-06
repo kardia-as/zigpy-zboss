@@ -5,7 +5,7 @@ import zigpy_zboss.types as zboss_t
 from . import basic
 
 
-class DatasetType(zboss_t.enum_uint16):
+class DatasetId(zboss_t.enum_uint16):
     """NVRAM dataset types."""
 
     ZB_NVRAM_RESERVED = 0
@@ -68,6 +68,7 @@ class NwkAddrMap(
     def deserialize(
             cls, data: bytes, *, align=False) -> tuple[basic.LVList, bytes]:
         """Deserialize object."""
+        data = data[2:]  # Dropping dataset length attribute
         header, data = cls._header.deserialize(data)
         r = cls()
         for i in range(header.length):

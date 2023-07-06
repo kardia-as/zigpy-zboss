@@ -400,11 +400,11 @@ class NcpConfig(t.CommandsBase):
         blocking=True,
         req_schema=(
             t.Param("TSN", t.uint8_t, "Transmission Sequence Number"),
-            t.Param("DatasetType", t.uint16_t, "A dataset type to read"),
+            t.Param("DatasetId", t.uint16_t, "A dataset type to read"),
         ),
         rsp_schema=t.STATUS_SCHEMA + (
             t.Param("NVRAMVersion", t.uint16_t, "Current NVRAM version"),
-            t.Param("DatasetType", t.uint16_t, "Requested dataset type"),
+            t.Param("DatasetId", t.DatasetId, "Requested dataset type"),
             t.Param("DatasetVersion", t.uint16_t, "Current dataset version"),
             t.Param("Dataset", t.NVRAMDataset, "Data bytes array"),
         ),

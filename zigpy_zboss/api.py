@@ -12,6 +12,7 @@ import zigpy_zboss.config as conf
 from zigpy_zboss import uart
 from zigpy_zboss.frames import Frame
 from zigpy_zboss import commands as c
+from zigpy_zboss.nvram import NVRAMHelper
 from collections import Counter, defaultdict
 from zigpy_zboss.utils import IndicationListener
 from zigpy_zboss.utils import BaseResponseListener
@@ -43,6 +44,7 @@ class NRF:
 
         self.capabilities = None
 
+        self.nvram = NVRAMHelper(self)
         self.network_info: zigpy.state.NetworkInformation = None
         self.node_info: zigpy.state.NodeInfo = None
 

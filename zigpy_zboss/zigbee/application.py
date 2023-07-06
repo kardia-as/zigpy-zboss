@@ -394,27 +394,15 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         if not load_devices:
             return
 
-        map = await self._get_addr_map()
-
+        map = await self._api.nvram.read(
+                t_zboss.DatasetId.ZB_NVRAM_ADDR_MAP,
+                t_zboss.NwkAddrMap
+            )
         for rec in map:
             if rec.nwk_addr == 0x0000:
                 continue
             self.state.network_info.children.append(rec.ieee_addr)
             self.state.network_info.nwk_addresses[rec.ieee_addr] = rec.nwk_addr
-
-        await self._get_aps_secure_data()
-
-    async def _get_addr_map(self):
-        """Read NVRAM dataset ZB_NVRAM_ADDR_MAP."""
-        res = await self._api.request(
-            c.NcpConfig.ReadNVRAM.Req(
-                TSN=self.get_sequence(),
-                DatasetType=t_zboss.DatasetType.ZB_NVRAM_ADDR_MAP,
-            )
-        )
-        nwk_addr_map, _ = t_zboss.NwkAddrMap.deserialize(
-            res.Dataset.serialize()[2:])
-        return nwk_addr_map
 
     async def reset_network_info(self) -> None:
         """Reset node network information and leaves the current network."""
