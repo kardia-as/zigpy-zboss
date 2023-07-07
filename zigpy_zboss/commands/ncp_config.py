@@ -99,13 +99,8 @@ class NcpConfig(t.CommandsBase):
         ),
         rsp_schema=t.STATUS_SCHEMA + (
             t.Param(
-                "ChannelListLen",
-                t.uint8_t,
-                "Number of entries in the following Channel List array"
-            ),
-            t.Param(
                 "ChannelList",
-                t.EUI64,             # CREATE A TYPE FOR CHANNEL LIST ENTRY
+                t.ChannelEntryList,
                 "Array of ChannelListEntry structures"
             ),
         ),
@@ -399,26 +394,21 @@ class NcpConfig(t.CommandsBase):
     #     ),
     #     rsp_schema=t.STATUS_SCHEMA,
     # )
-    # ReadNVRAM = t.CommandDef(
-    #     t.ControlType.REQ,
-    #     NcpConfigCommandCode.NVRAM_READ,
-    #     blocking=True,
-    #     req_schema=(
-    #         t.Param("TSN", t.uint8_t, "Transmission Sequence Number"),
-    #         t.Param("DatasetType", t.uint8_t, "A dataset type to read"),
-    #     ),
-    #     rsp_schema=t.STATUS_SCHEMA + (
-    #         t.Param("NVRAMVersion", t.uint16_t, "Current NVRAM version"),
-    #         t.Param("DatasetType", t.uint16_t, "Requested dataset type"),
-    #         t.Param("DatasetVersion", t.uint16_t, "Current dataset version"),
-    #         t.Param(
-    #             "DatasetLength",
-    #             t.uint16_t,
-    #             "Length of the requested dataset"
-    #         ),
-    #         t.Param("Data", ???, "Data bytes array"),
-    #     ),
-    # )
+    ReadNVRAM = t.CommandDef(
+        t.ControlType.REQ,
+        NcpConfigCommandCode.NVRAM_READ,
+        blocking=True,
+        req_schema=(
+            t.Param("TSN", t.uint8_t, "Transmission Sequence Number"),
+            t.Param("DatasetId", t.uint16_t, "A dataset type to read"),
+        ),
+        rsp_schema=t.STATUS_SCHEMA + (
+            t.Param("NVRAMVersion", t.uint16_t, "Current NVRAM version"),
+            t.Param("DatasetId", t.DatasetId, "Requested dataset type"),
+            t.Param("DatasetVersion", t.uint16_t, "Current dataset version"),
+            t.Param("Dataset", t.NVRAMDataset, "Data bytes array"),
+        ),
+    )
     EraseNVRAM = t.CommandDef(
         t.ControlType.REQ,
         NcpConfigCommandCode.NVRAM_ERASE,
