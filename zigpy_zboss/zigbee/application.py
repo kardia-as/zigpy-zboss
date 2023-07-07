@@ -404,6 +404,16 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             self.state.network_info.children.append(rec.ieee_addr)
             self.state.network_info.nwk_addresses[rec.ieee_addr] = rec.nwk_addr
 
+        keys = await self._api.nvram.read(
+            t_zboss.DatasetId.ZB_NVRAM_APS_SECURE_DATA,
+            t_zboss.ApsSecureKeys
+        )
+        for key_entry in keys:
+            zigpy_key = zigpy.state.Key()
+            zigpy_key.key = t.KeyData(key_entry.key)
+            zigpy_key.partner_ieee = key_entry.ieee_addr
+            self.state.network_info.key_table.append(zigpy_key)
+
     async def reset_network_info(self) -> None:
         """Reset node network information and leaves the current network."""
         pass

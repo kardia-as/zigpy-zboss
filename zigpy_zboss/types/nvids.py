@@ -71,16 +71,38 @@ class NwkAddrMap(
         data = data[2:]  # Dropping dataset length attribute
         header, data = cls._header.deserialize(data)
         r = cls()
-        for i in range(header.length):
+        for _ in range(header.length):
             item, data = cls._deserialize_item(data, align=align)
             r.append(item)
         return r, data
 
 
-class ApsSecureRecord(t.Struct):
-    """Class representing a NVRAM APS Secure key record."""
+class ApsSecureEntry(t.Struct):
+    """Class representing a NVRAM APS Secure key entry."""
 
-    version: basic.uint16_t
-    _align: basic.uint16_t
     ieee_addr: t.EUI64
     key: t.KeyData
+    _unknown_1: basic.uint32_t
+
+    # Helper attribute to extract list size.
+    _entry_byte_size = 28
+
+
+class ApsSecureKeys(
+        basic.LVList,
+        item_type=ApsSecureEntry,
+        length_type=basic.uint16_t):
+    """Class representing a list of APS secure keys."""
+
+    @classmethod
+    def deserialize(
+            cls, data: bytes, *, align=False) -> tuple[basic.LVList, bytes]:
+        """Deserialize object."""
+        length, data = cls._header.deserialize(data)
+        r = cls()
+        data = data[4:]  # Dropping the 4 first bytes from the list
+        entry_cnt = (length - 4) / ApsSecureEntry._entry_byte_size
+        for _ in range(int(entry_cnt)):
+            item, data = cls._deserialize_item(data, align=align)
+            r.append(item)
+        return r, data
