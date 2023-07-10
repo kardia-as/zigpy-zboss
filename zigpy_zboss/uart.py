@@ -2,13 +2,13 @@
 import typing
 import asyncio
 import logging
+import zigpy.serial
 import async_timeout
 import serial  # type: ignore
 import zigpy_zboss.config as conf
 from zigpy_zboss import types as t
 from zigpy_zboss.frames import Frame
 from zigpy_zboss.checksum import CRC8
-import serial_asyncio  # type: ignore
 from zigpy_zboss.logger import SERIAL_LOGGER
 from zigpy_zboss.exceptions import InvalidFrame
 
@@ -23,11 +23,11 @@ class BufferTooShort(Exception):
     """Exception when the buffer is too short."""
 
 
-class Uart(asyncio.Protocol):
-    """Uart class."""
+class ZbossNcpProtocol(asyncio.Protocol):
+    """Zboss Ncp Protocol class."""
 
     def __init__(self, config, api) -> None:
-        """Initialize the Uart object."""
+        """Initialize the ZbossNcpProtocol object."""
         self._api = api
         self._ack_seq = 0
         self._pack_seq = 0
@@ -39,6 +39,10 @@ class Uart(asyncio.Protocol):
         self._tx_lock = asyncio.Lock()
         self._ack_received_event = None
         self._connected_event = asyncio.Event()
+
+        self._port = config[conf.CONF_DEVICE_PATH]
+        self._baudrate = config[conf.CONF_DEVICE_BAUDRATE]
+        self._flow_control = config[conf.CONF_DEVICE_FLOW_CONTROL]
 
     @property
     def api(self):
@@ -66,7 +70,7 @@ class Uart(asyncio.Protocol):
             self._reset_flag = value
 
     def connection_made(
-            self, transport: serial_asyncio.SerialTransport) -> None:
+            self, transport: asyncio.BaseTransport) -> None:
         """Notify serial port opened."""
         self._transport = transport
         message = f"Opened {transport.serial.name} serial port"
@@ -99,17 +103,13 @@ class Uart(asyncio.Protocol):
         async with async_timeout.timeout(timeout):
             while True:
                 try:
-                    _, proto = await serial_asyncio.create_serial_connection(
+                    _, proto = await zigpy.serial.create_serial_connection(
                         loop=loop,
                         protocol_factory=lambda: self,
-                        url=self._config[conf.CONF_DEVICE_PATH],
-                        baudrate=self._config[conf.CONF_DEVICE_BAUDRATE],
-                        parity=serial.PARITY_NONE,
-                        stopbits=serial.STOPBITS_ONE,
-                        xonxoff=(self._config[
-                            conf.CONF_DEVICE_FLOW_CONTROL] == "software"),
-                        rtscts=(self._config[
-                            conf.CONF_DEVICE_FLOW_CONTROL] == "hardware"),
+                        url=self._port,
+                        baudrate=self._baudrate,
+                        xonxoff=(self._flow_control == "software"),
+                        rtscts=(self._flow_control == "hardware"),
                     )
                     self._api._uart = proto
                     break
@@ -268,25 +268,23 @@ class Uart(asyncio.Protocol):
         )
 
 
-async def connect(config: conf.ConfigType, api) -> Uart:
+async def connect(config: conf.ConfigType, api) -> ZbossNcpProtocol:
     """Instantiate Uart object and connect to it."""
     loop = asyncio.get_running_loop()
 
-    LOGGER.info(
-        "Connecting to %s at %s baud",
-        config[conf.CONF_DEVICE_PATH],
-        config[conf.CONF_DEVICE_BAUDRATE]
-    )
+    port = config[conf.CONF_DEVICE_PATH]
+    baudrate = config[conf.CONF_DEVICE_BAUDRATE]
+    flow_control = config[conf.CONF_DEVICE_FLOW_CONTROL]
 
-    _, protocol = await serial_asyncio.create_serial_connection(
+    LOGGER.info("Connecting to %s at %s baud", port, baudrate)
+
+    _, protocol = await zigpy.serial.create_serial_connection(
         loop=loop,
-        protocol_factory=lambda: Uart(config, api),
-        url=config[conf.CONF_DEVICE_PATH],
-        baudrate=config[conf.CONF_DEVICE_BAUDRATE],
-        parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE,
-        xonxoff=(config[conf.CONF_DEVICE_FLOW_CONTROL] == "software"),
-        rtscts=(config[conf.CONF_DEVICE_FLOW_CONTROL] == "hardware"),
+        protocol_factory=lambda: ZbossNcpProtocol(config, api),
+        url=port,
+        baudrate=baudrate,
+        xonxoff=(flow_control == "software"),
+        rtscts=(flow_control == "hardware"),
     )
 
     try:
