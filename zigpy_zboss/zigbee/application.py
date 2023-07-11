@@ -273,6 +273,20 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             )
         )
 
+    async def _move_network_to_channel(
+            self, new_channel: int, new_nwk_update_id: int) -> None:
+        """Move device to a new channel."""
+        await self._api.request(
+            request=c.ZDO.MgmtNwkUpdate.Req(
+                TSN=self.get_sequence(),
+                ScanChannelMask=t.Channels.from_channel_list([new_channel]),
+                ScanDuration=zdo_t.NwkUpdate.CHANNEL_CHANGE_REQ,
+                ScanCount=0,
+                MgrAddr=0x0000,
+                DstNWK=0x0000,
+            ),
+        )
+
     async def load_network_info(self, *, load_devices=False):
         """Populate state.node_info and state.network_info."""
         res = await self._api.request(
