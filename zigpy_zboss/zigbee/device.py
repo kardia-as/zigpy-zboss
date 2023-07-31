@@ -222,7 +222,7 @@ class NrfZDO(ZigpyZDO):
                 TSN=self._device._application.get_sequence(),
                 ScanChannelMask=nwkUpdate.ScanChannels,
                 ScanDuration=nwkUpdate.ScanDuration,
-                ScanCount=nwkUpdate.ScanCount,
+                ScanCount=nwkUpdate.ScanCount or 0,
                 MgrAddr=self._device.nwk,
                 DstNWK=t.NWK(0x0000),
             )
