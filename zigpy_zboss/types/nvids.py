@@ -39,15 +39,33 @@ class NVRAMDataset(
     """Class representing a NVRAM dataset."""
 
 
-class NwkAddrMapHeader(t.Struct):
+class NVRAMStruct(t.Struct):
+    """Class representing struct used for NVRAM interaction."""
+
+    @classmethod
+    def get_byte_size(cls):
+        """Return the sum of the byte size of the fields in the struct."""
+        # Since some types are a list of basic types, they use _length
+        # attribute instead of the _size attribute (e.g t.EUI64).
+        size = 0
+        for structfield in cls.fields:
+            try:
+                size += structfield.type._size
+            except AttributeError:
+                size += structfield.type._length
+        return size
+
+
+class NwkAddrMapHeader(NVRAMStruct):
     """Class representing a NVRAM network address map header."""
 
-    length: t.uint8_t
+    byte_count: t.uint16_t
+    entry_count: t.uint8_t
     version: t.uint8_t
     _align: t.uint16_t
 
 
-class NwkAddrMapRecord(t.Struct):
+class NwkAddrMapRecord(NVRAMStruct):
     """Class representing a NVRAM network address map record v2."""
 
     ieee_addr: t.EUI64
@@ -58,41 +76,52 @@ class NwkAddrMapRecord(t.Struct):
     _align: t.uint24_t
 
 
-class NwkAddrMap(
+class DSNwkAddrMap(
         basic.LVList,
         item_type=NwkAddrMapRecord,
         length_type=NwkAddrMapHeader):
-    """Class representing a NVRAM network address map."""
+    """Class representing a NVRAM network address map dataset."""
 
     @classmethod
     def deserialize(
             cls, data: bytes, *, align=False) -> tuple[basic.LVList, bytes]:
         """Deserialize object."""
-        data = data[2:]  # Dropping dataset length attribute
         header, data = cls._header.deserialize(data)
         r = cls()
-        for _ in range(header.length):
+        for _ in range(header.entry_count):
             item, data = cls._deserialize_item(data, align=align)
             r.append(item)
         return r, data
 
+    def serialize(self, *, align=False) -> bytes:
+        """Serialize object."""
+        assert self._item_type is not None
+        serialized_items = b"".join(
+            [self._serialize_item(i, align=align) for i in self])
+        # Remove 2 bytes from the size because byte_count is not counted
+        byte_count = len(serialized_items) + self._header.get_byte_size() - 2
+        header = self._header(
+            byte_count=byte_count,
+            entry_count=len(self),
+            version=t.uint8_t(0x02),
+            _align=t.uint16_t(0x0000),
+        )
+        return header.serialize() + serialized_items
 
-class ApsSecureEntry(t.Struct):
+
+class ApsSecureEntry(NVRAMStruct):
     """Class representing a NVRAM APS Secure key entry."""
 
     ieee_addr: t.EUI64
     key: t.KeyData
     _unknown_1: basic.uint32_t
 
-    # Helper attribute to extract list size.
-    _entry_byte_size = 28
 
-
-class ApsSecureKeys(
+class DSApsSecureKeys(
         basic.LVList,
         item_type=ApsSecureEntry,
         length_type=basic.uint16_t):
-    """Class representing a list of APS secure keys."""
+    """Class representing a list of APS secure keys dataset."""
 
     @classmethod
     def deserialize(
@@ -101,8 +130,58 @@ class ApsSecureKeys(
         length, data = cls._header.deserialize(data)
         r = cls()
         data = data[4:]  # Dropping the 4 first bytes from the list
-        entry_cnt = (length - 4) / ApsSecureEntry._entry_byte_size
+        entry_cnt = (length - 4) / ApsSecureEntry.get_byte_size()
         for _ in range(int(entry_cnt)):
             item, data = cls._deserialize_item(data, align=align)
             r.append(item)
         return r, data
+
+    def serialize(self, *, align=False) -> bytes:
+        """Serialize object."""
+        assert self._item_type is not None
+        serialized_items = b"".join(
+            [self._serialize_item(i, align=align) for i in self])
+        return self._header(
+            len(self) * self._item_type.get_byte_size() + 4  # padding
+            ).serialize() + b"\x00\x00\x00\x00" + serialized_items
+
+
+class DSIbCounters(t.Struct):
+    """Class representing NIB and AIB counters dataset."""
+
+    byte_count: t.uint16_t
+    nib_counter: t.uint32_t
+    aib_counter: t.uint32_t
+
+
+class MacInterfaceTable(t.Struct):
+    """Class representing the NIB nwkMacInteraceTable."""
+
+    bitfield_0: t.uint8_t
+    bitfield_1: t.uint8_t
+    link_pwr_data_rate: t.uint16_t
+    channel_in_use: t.uint32_t
+    supported_channels: t.Channels
+
+
+class DSCommonData(t.Struct):
+    """Class representing the common data dataset."""
+
+    byte_count: t.uint16_t
+    bitfield: t.uint8_t
+    depth: t.uint8_t
+    nwk_manager_addr: t.NWK
+    panid: t.PanId
+    network_addr: t.NWK
+    channel_mask: t.Channels
+    aps_extended_panid: t.EUI64
+    nwk_extended_panid: t.EUI64
+    parent_addr: t.EUI64
+    tc_addr: t.EUI64
+    nwk_key: t.KeyData
+    nwk_key_seq: t.uint8_t
+    tc_standard_key: t.KeyData
+    channel: t.uint8_t
+    page: t.uint8_t
+    mac_interface_table: MacInterfaceTable
+    reserved: t.uint8_t

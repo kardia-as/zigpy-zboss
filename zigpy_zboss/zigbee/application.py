@@ -331,20 +331,26 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
         self.state.network_info.security_level = 0x05
 
-        res = await self._api.request(
-            c.NcpConfig.GetNwkKeys.Req(TSN=self.get_sequence()))
+        common = await self._api.nvram.read(
+            t_zboss.DatasetId.ZB_NVRAM_COMMON_DATA,
+            t_zboss.DSCommonData
+        )
+        counters = await self._api.nvram.read(
+            t_zboss.DatasetId.ZB_IB_COUNTERS,
+            t_zboss.DSIbCounters
+        )
         self.state.network_info.network_key = zigpy.state.Key(
-            key=res.NwkKey1,
-            tx_counter=0,
+            key=common.nwk_key,
+            tx_counter=counters.nib_counter,
             rx_counter=0,
-            seq=res.KeyNumber1,
+            seq=common.nwk_key_seq,
             partner_ieee=self.state.node_info.ieee,
         )
 
         if self.state.node_info.logical_type == \
                 zdo_t.LogicalType.Coordinator:
             self.state.network_info.tc_link_key = zigpy.state.Key(
-                key=self.config[conf.CONF_NWK][conf.CONF_NWK_TC_LINK_KEY],
+                key=common.tc_standard_key,
                 tx_counter=0,
                 rx_counter=0,
                 seq=0,
@@ -410,7 +416,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
         map = await self._api.nvram.read(
                 t_zboss.DatasetId.ZB_NVRAM_ADDR_MAP,
-                t_zboss.NwkAddrMap
+                t_zboss.DSNwkAddrMap
             )
         for rec in map:
             if rec.nwk_addr == 0x0000:
@@ -420,12 +426,13 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
         keys = await self._api.nvram.read(
             t_zboss.DatasetId.ZB_NVRAM_APS_SECURE_DATA,
-            t_zboss.ApsSecureKeys
+            t_zboss.DSApsSecureKeys
         )
         for key_entry in keys:
-            zigpy_key = zigpy.state.Key()
-            zigpy_key.key = t.KeyData(key_entry.key)
-            zigpy_key.partner_ieee = key_entry.ieee_addr
+            zigpy_key = zigpy.state.Key(
+                key=t.KeyData(key_entry.key),
+                partner_ieee=key_entry.ieee_addr
+            )
             self.state.network_info.key_table.append(zigpy_key)
 
     async def reset_network_info(self) -> None:
