@@ -130,7 +130,8 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         """Write the provided network and node info to the radio hardware."""
         network_info.stack_specific = \
             self.get_default_stack_specific_formation_settings()
-        node_info.ieee = network_info.extended_pan_id
+        if node_info.ieee == t.EUI64.UNKNOWN:
+            node_info.ieee = network_info.extended_pan_id
 
         # Write self.state.node_info.
         await self._api.request(
