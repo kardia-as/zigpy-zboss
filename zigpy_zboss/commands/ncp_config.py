@@ -379,21 +379,23 @@ class NcpConfig(t.CommandsBase):
             ),
         ),
     )
-    # WriteNVRAM = t.CommandDef(
-    #     t.ControlType.REQ,
-    #     NcpConfigCommandCode.NVRAM_WRITE,
-    #     blocking=True,
-    #     req_schema=(
-    #         t.Param("TSN", t.uint8_t, "Transmission Sequence Number"),
-    #         t.Param(
-    #             "DatasetNbr",
-    #             t.uint8_t,
-    #             "A number of datasets contained in this request"
-    #         ),
-    #         t.Param("Data", ???, "Data bytes array"),
-    #     ),
-    #     rsp_schema=t.STATUS_SCHEMA,
-    # )
+    WriteNVRAM = t.CommandDef(
+        t.ControlType.REQ,
+        NcpConfigCommandCode.NVRAM_WRITE,
+        blocking=True,
+        req_schema=(
+            t.Param("TSN", t.uint8_t, "Transmission Sequence Number"),
+            t.Param(
+                "DatasetCnt",
+                t.uint8_t,
+                "A number of datasets contained in this request"
+            ),
+            t.Param("DatasetId", t.DatasetId, "Requested dataset type"),
+            t.Param("Version", t.uint16_t, "Requested dataset type"),
+            t.Param("Dataset", t.NVRAMDataset, "Data bytes array"),
+        ),
+        rsp_schema=t.STATUS_SCHEMA,
+    )
     ReadNVRAM = t.CommandDef(
         t.ControlType.REQ,
         NcpConfigCommandCode.NVRAM_READ,
