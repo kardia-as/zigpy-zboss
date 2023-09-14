@@ -119,9 +119,9 @@ class HLPacket:
             object.__setattr__(self, "data", t.Bytes(self.data))
 
     @property
-    def length(self) -> t.uint8_t:
+    def length(self) -> t.uint16_t:
         """Length of the frame (including HL checksum)."""
-        return t.uint8_t(len(self.serialize()))
+        return t.uint16_t(len(self.serialize()))
 
     @classmethod
     def deserialize(cls, data):
