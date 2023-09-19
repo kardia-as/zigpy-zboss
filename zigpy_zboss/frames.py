@@ -9,6 +9,9 @@ from zigpy_zboss.checksum import CRC8
 from zigpy_zboss.checksum import CRC16
 
 
+ZBNCP_LL_BODY_SIZE_MAX = 247  # Check zbncp_ll_pkt.h in ZBOSS NCP host src
+
+
 class LLHeader(t.uint56_t):
     """Low Level Header class."""
 
@@ -111,7 +114,9 @@ class HLPacket:
     def __post_init__(self) -> None:
         """Magic method."""
         # We're frozen so `self.header = ...` is disallowed
-        if not isinstance(self.header, t.HLCommonHeader):
+        if self.header is None:
+            pass
+        elif not isinstance(self.header, t.HLCommonHeader):
             object.__setattr__(
                 self, "header", t.HLCommonHeader(self.header))
 
@@ -136,10 +141,15 @@ class HLPacket:
 
     def serialize(self) -> bytes:
         """Serialize frame and calculate CRC."""
-        hl_checksum = CRC16(
-            self.header.serialize() + self.data.serialize()).digest()
-        return hl_checksum.serialize() + self.header.serialize() + \
-            self.data.serialize()
+        serialized_data = self.data.serialize()
+        if self.header:
+            serialized_header = self.header.serialize()
+            serialized_hl_packet = serialized_header + serialized_data
+        else:
+            serialized_hl_packet = serialized_data
+
+        hl_checksum = CRC16(serialized_hl_packet).digest()
+        return hl_checksum.serialize() + serialized_hl_packet
 
 
 @dataclasses.dataclass
@@ -206,3 +216,84 @@ class Frame:
         """Return True if the frame is an acknowelgement frame."""
         return True if (
             self.ll_header.flags & t.LLFlags.isACK) else False
+
+    @property
+    def fragmentation_needed(self):
+        """Return True if frame fragmentation is needed.
+
+        If a frame is too long, the low level protocol is using fragmentation
+        in order to seperate the long frame into smaller fragments.
+        """
+        return self.count_fragments() > 1
+
+    def count_fragments(self):
+        """Count the number of frame fragments."""
+        ll_body_size = len(self.hl_packet.serialize()[2:])
+        return int(-(-ll_body_size // ZBNCP_LL_BODY_SIZE_MAX))
+
+    def handle_fragmentation(self):
+        """Handle frame fragmentation."""
+        if not self.fragmentation_needed:
+            return [self]
+
+        # Store initial hl packet data without crc.
+        serialized_hl_packet = self.hl_packet.serialize()[2:]
+        total_size = len(serialized_hl_packet)
+        first_frag_size = \
+            total_size % ZBNCP_LL_BODY_SIZE_MAX or ZBNCP_LL_BODY_SIZE_MAX
+
+        fragments = []
+        frag_idxs = range(first_frag_size, total_size, ZBNCP_LL_BODY_SIZE_MAX)
+
+        for frag_nbr in range(1, self.count_fragments() + 1):
+            if frag_nbr == 1:
+                frag = self._create_first_frag(first_frag_size)
+            elif frag_nbr == self.count_fragments():
+                frag = self._create_last_frag(serialized_hl_packet)
+            else:
+                idx = frag_idxs[frag_nbr - 2]
+                frag = self._create_frag(idx, serialized_hl_packet)
+            fragments.append(frag)
+        return fragments
+
+    def _create_first_frag(self, frag_size):
+        """Create the first fragment of a frame."""
+        # Sequence flag and CRC8 are set later before sending frame over uart.
+        ll_header = (
+            LLHeader()
+            .with_signature(Frame.signature)
+            .with_size(frag_size + 7)
+            .with_type(t.TYPE_ZBOSS_NCP_API_HL)
+            .with_flags(t.LLFlags.FirstFrag)
+        )
+        # CRC16 is automatically added when serialize() is called.
+        hl_packet = HLPacket(
+            self.hl_packet.header, self.hl_packet.data[:(frag_size - 4)])
+        return Frame(ll_header, hl_packet)
+
+    def _create_last_frag(self, serialized_hl_packet):
+        """Create the last fragment of a frame."""
+        # Sequence flag and CRC8 are set later before sending frame over uart.
+        ll_header = (
+            LLHeader()
+            .with_signature(Frame.signature)
+            .with_size(ZBNCP_LL_BODY_SIZE_MAX + 7)
+            .with_type(t.TYPE_ZBOSS_NCP_API_HL)
+            .with_flags(t.LLFlags.LastFrag)
+        )
+        hl_packet = HLPacket(
+            None, serialized_hl_packet[-ZBNCP_LL_BODY_SIZE_MAX:])
+        return Frame(ll_header, hl_packet)
+
+    def _create_frag(self, idx, serialized_hl_packet):
+        """Create a fragment that is not the first nor the last."""
+        # Sequence flag and CRC8 are set later before sending frame over uart.
+        ll_header = (
+            LLHeader()
+            .with_signature(Frame.signature)
+            .with_size(ZBNCP_LL_BODY_SIZE_MAX + 7)
+            .with_type(t.TYPE_ZBOSS_NCP_API_HL)
+        )
+        hl_packet = HLPacket(
+            None, serialized_hl_packet[idx:(idx + ZBNCP_LL_BODY_SIZE_MAX)])
+        return Frame(ll_header, hl_packet)
