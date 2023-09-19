@@ -162,8 +162,7 @@ class ZbossNcpProtocol(asyncio.Protocol):
     def _set_frame_flag(self, frame):
         """Return frame with required flags set."""
         flag = t.LLFlags(self._pack_seq << 2)
-        flag |= t.LLFlags.FirstFrag
-        flag |= t.LLFlags.LastFrag
+        flag |= frame.ll_header.flags
         frame.ll_header = frame.ll_header.with_flags(flag)
         return frame
 

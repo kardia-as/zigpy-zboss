@@ -11,7 +11,6 @@ import zigpy_zboss.types as t
 LOGGER = logging.getLogger(__name__)
 TYPE_ZBOSS_NCP_API_HL = t.uint8_t(0x06)
 
-
 class ControlType(t.enum_uint8):
     """Control Type."""
 
@@ -472,12 +471,13 @@ class CommandBase:
 
         hl_packet = HLPacket(self.header, b"".join(chunks))
 
-        # Flags and CRC8 are set later. Before sending to NCP.
+        # Sequence flag and CRC8 are set later before sending frame over uart.
         ll_header = (
             LLHeader()
             .with_signature(Frame.signature)
             .with_size(hl_packet.length + 5)
             .with_type(TYPE_ZBOSS_NCP_API_HL)
+            .with_flags(LLFlags.LastFrag | LLFlags.FirstFrag)
         )
 
         return Frame(ll_header, hl_packet)
