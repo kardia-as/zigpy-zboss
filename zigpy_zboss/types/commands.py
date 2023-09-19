@@ -11,6 +11,7 @@ import zigpy_zboss.types as t
 LOGGER = logging.getLogger(__name__)
 TYPE_ZBOSS_NCP_API_HL = t.uint8_t(0x06)
 
+
 class ControlType(t.enum_uint8):
     """Control Type."""
 
