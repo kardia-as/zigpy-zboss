@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import itertools
+import contextlib
 import zigpy.state
 import async_timeout
 import zigpy_zboss.types as t
@@ -202,6 +203,7 @@ class NRF:
             LOGGER.debug(f"Timeout after {timeout}s: {frame}")
             raise
 
+    @contextlib.asynccontextmanager
     async def _conditional_blocking_request_lock(self, blocking):
         """Use async lock if the request is a blocking request."""
         if blocking:
