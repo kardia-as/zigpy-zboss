@@ -185,7 +185,7 @@ class ZbossNcpProtocol(asyncio.Protocol):
                     # Calculate next sequence number
                     self._pack_seq = self._pack_seq % 3 + 1
                     self._ack_received_event.set()
-                return
+                continue
 
             # Acknowledge the received frame
             self._ack_seq = (frame.ll_header.flags & t.LLFlags.PacketSeq) >> 2

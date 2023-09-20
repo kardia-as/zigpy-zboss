@@ -29,8 +29,7 @@ class NVRAMHelper:
         if item_type:
             value, _ = item_type.deserialize(res.Dataset.serialize())
             LOGGER.debug('Read NVRAM [0x%04x] = %r', nv_id.value, value)
-
-        return value
+            return value
 
     async def write(self, nv_id: t.DatasetId, dataset_obj):
         """Try to write a NVRAM dataset."""
