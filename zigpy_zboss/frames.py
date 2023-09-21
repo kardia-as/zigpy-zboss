@@ -177,13 +177,18 @@ class Frame:
                 f"Invalid frame checksum for data {ll_header}: "
                 f"expected 0x{ll_header.crc8:02X}, got 0x{ll_checksum:02X}"
             )
-        if ll_header.flags & t.LLFlags.isACK:
+        flags = ll_header.flags
+
+        if flags & t.LLFlags.isACK:
             return cls(ll_header, None), data
 
         length = ll_header.size - 5
         payload, data = data[:length], data[length:]
-        hl_packet = HLPacket.deserialize(payload)
+        if flags & t.LLFlags.FirstFrag:
+            hl_packet = HLPacket.deserialize(payload)
+            return cls(ll_header, hl_packet), data
 
+        hl_packet = HLPacket(None, payload)
         return cls(ll_header, hl_packet), data
 
     @classmethod
@@ -204,6 +209,24 @@ class Frame:
         crc = CRC8(ll_header.serialize()[2:6]).digest()
         ll_header = ll_header.with_crc8(crc)
         return cls(ll_header, None)
+
+    @classmethod
+    def handle_rx_fragmentation(cls, fragments):
+        """Return a frame containing merged data from fragments."""
+        data = bytes()
+        for frag in fragments:
+            data += frag.hl_packet.serialize()[2:]
+        # Concatenate new CRC.
+        data = t.uint16_t(CRC16(data).digest()).serialize() + data
+        ll_header = (
+            LLHeader()
+            .with_signature(Frame.signature)
+            .with_size(len(data) + 5)
+            .with_type(t.TYPE_ZBOSS_NCP_API_HL)
+            .with_flags(t.LLFlags.FirstFrag | t.LLFlags.LastFrag)
+        )
+        hl_packet = HLPacket.deserialize(data)
+        return cls(ll_header, hl_packet)
 
     def serialize(self) -> bytes:
         """Serialize the frame."""
@@ -231,7 +254,7 @@ class Frame:
         ll_body_size = len(self.hl_packet.serialize()[2:])
         return int(-(-ll_body_size // ZBNCP_LL_BODY_SIZE_MAX))
 
-    def handle_fragmentation(self):
+    def handle_tx_fragmentation(self):
         """Handle frame fragmentation."""
         if not self.fragmentation_needed:
             return [self]

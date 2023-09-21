@@ -49,6 +49,8 @@ class NRF:
         self.network_info: zigpy.state.NetworkInformation = None
         self.node_info: zigpy.state.NodeInfo = None
 
+        self._rx_fragments = []
+
         self._ncp_debug = None
 
     def set_application(self, app):
@@ -122,6 +124,16 @@ class NRF:
 
         XXX: Can be called multiple times in a single event loop step!
         """
+        if not frame.ll_header.flags & t.LLFlags.LastFrag:
+            LOGGER.debug("Received fragment: %s", frame)
+            self._rx_fragments.append(frame)
+            return
+
+        if self._rx_fragments:
+            self._rx_fragments.append(frame)
+            frame = Frame.handle_rx_fragmentation(self._rx_fragments)
+            self._rx_fragments = []
+
         if frame.hl_packet.header not in c.COMMANDS_BY_ID:
             LOGGER.debug("Received an unknown frame: %s", frame)
             return
@@ -174,7 +186,7 @@ class NRF:
 
         frame = request.to_frame()
         # If the frame is too long, it needs fragmentation.
-        fragments = frame.handle_fragmentation()
+        fragments = frame.handle_tx_fragmentation()
 
         response_future = self.wait_for_response(request.Rsp(partial=True))
 
