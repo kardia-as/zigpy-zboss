@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import itertools
+import contextlib
 import zigpy.state
 import async_timeout
 import zigpy_zboss.types as t
@@ -47,6 +48,8 @@ class NRF:
         self.nvram = NVRAMHelper(self)
         self.network_info: zigpy.state.NetworkInformation = None
         self.node_info: zigpy.state.NodeInfo = None
+
+        self._rx_fragments = []
 
         self._ncp_debug = None
 
@@ -121,6 +124,16 @@ class NRF:
 
         XXX: Can be called multiple times in a single event loop step!
         """
+        if not frame.ll_header.flags & t.LLFlags.LastFrag:
+            LOGGER.debug("Received fragment: %s", frame)
+            self._rx_fragments.append(frame)
+            return
+
+        if self._rx_fragments:
+            self._rx_fragments.append(frame)
+            frame = Frame.handle_rx_fragmentation(self._rx_fragments)
+            self._rx_fragments = []
+
         if frame.hl_packet.header not in c.COMMANDS_BY_ID:
             LOGGER.debug("Received an unknown frame: %s", frame)
             return
@@ -172,16 +185,21 @@ class NRF:
                 f"Cannot send a command that isn't a request: {request!r}")
 
         frame = request.to_frame()
+        # If the frame is too long, it needs fragmentation.
+        fragments = frame.handle_tx_fragmentation()
 
         response_future = self.wait_for_response(request.Rsp(partial=True))
 
-        if request.blocking:
-            async with self._blocking_request_lock:
-                return await self._send_to_uart(
-                    frame, response_future, timeout=timeout)
+        async with self._conditional_blocking_request_lock(request.blocking):
+            return await self._send_frags(
+                fragments, response_future, timeout=timeout)
 
-        return await self._send_to_uart(
-            frame, response_future, timeout=timeout)
+    async def _send_frags(self, fragments, response_future, timeout):
+        """Send frame fragments to the uart."""
+        for frag in fragments:
+            if frag.ll_header.flags.value & t.LLFlags.LastFrag.value:
+                return await self._send_to_uart(frag, response_future, timeout)
+            await self._send_to_uart(frag, None)
 
     async def _send_to_uart(
             self, frame, response_future, timeout=DEFAULT_TIMEOUT):
@@ -190,11 +208,21 @@ class NRF:
             return
         try:
             await self._uart.send(frame)
-            async with async_timeout.timeout(timeout):
-                return await response_future
+            if response_future:
+                async with async_timeout.timeout(timeout):
+                    return await response_future
         except asyncio.TimeoutError:
             LOGGER.debug(f"Timeout after {timeout}s: {frame}")
             raise
+
+    @contextlib.asynccontextmanager
+    async def _conditional_blocking_request_lock(self, blocking):
+        """Use async lock if the request is a blocking request."""
+        if blocking:
+            async with self._blocking_request_lock:
+                yield
+        else:
+            yield
 
     def wait_for_responses(
             self, responses, *, context=False) -> asyncio.Future:

@@ -26,7 +26,23 @@ class NVRAMHelper:
         if not res.DatasetId == nv_id:
             raise
 
-        value, _ = item_type.deserialize(res.Dataset.serialize())
-        LOGGER.debug('Read NVRAM [0x%04x] = %r', nv_id.value, value)
+        if item_type:
+            value, _ = item_type.deserialize(res.Dataset.serialize())
+            LOGGER.debug('Read NVRAM [0x%04x] = %r', nv_id.value, value)
+            return value
 
-        return value
+    async def write(self, nv_id: t.DatasetId, dataset_obj):
+        """Try to write a NVRAM dataset."""
+        dataset = t.NVRAMDataset(dataset_obj.serialize())
+
+        res = await self.zboss.request(
+            c.NcpConfig.WriteNVRAM.Req(
+                TSN=self.zboss._app.get_sequence(),
+                DatasetCnt=1,
+                DatasetId=nv_id,
+                Version=0xffff,
+                Dataset=dataset
+            )
+        )
+
+        print(res)
