@@ -36,7 +36,7 @@ class DatasetId(zboss_t.enum_uint16):
 
 class NVRAMDataset(
         basic.LVList, item_type=basic.uint8_t, length_type=basic.uint16_t):
-    """Class representing a NVRAM dataset."""
+    """Class representing a generic NVRAM dataset."""
 
 
 class NVRAMStruct(t.Struct):
@@ -82,6 +82,8 @@ class DSNwkAddrMap(
         length_type=NwkAddrMapHeader):
     """Class representing a NVRAM network address map dataset."""
 
+    version = 2
+
     @classmethod
     def deserialize(
             cls, data: bytes, *, align=False) -> tuple[basic.LVList, bytes]:
@@ -123,6 +125,8 @@ class DSApsSecureKeys(
         length_type=basic.uint16_t):
     """Class representing a list of APS secure keys dataset."""
 
+    version = 0
+
     @classmethod
     def deserialize(
             cls, data: bytes, *, align=False) -> tuple[basic.LVList, bytes]:
@@ -142,12 +146,14 @@ class DSApsSecureKeys(
         serialized_items = b"".join(
             [self._serialize_item(i, align=align) for i in self])
         return self._header(
-            len(self) * self._item_type.get_byte_size() + 4  # padding
-            ).serialize() + b"\x00\x00\x00\x00" + serialized_items
+            len(self) * self._item_type.get_byte_size()
+            ).serialize() + serialized_items
 
 
 class DSIbCounters(t.Struct):
     """Class representing NIB and AIB counters dataset."""
+
+    version = 1
 
     byte_count: t.uint16_t
     nib_counter: t.uint32_t
@@ -166,6 +172,8 @@ class MacInterfaceTable(t.Struct):
 
 class DSCommonData(t.Struct):
     """Class representing the common data dataset."""
+
+    version = 3
 
     byte_count: t.uint16_t
     bitfield: t.uint8_t

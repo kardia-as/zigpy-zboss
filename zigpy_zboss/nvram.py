@@ -5,6 +5,7 @@ import zigpy_zboss.types as t
 import zigpy_zboss.commands as c
 
 LOGGER = logging.getLogger(__name__)
+WRITE_DS_LENGTH = 280
 
 
 class NVRAMHelper:
@@ -33,16 +34,18 @@ class NVRAMHelper:
 
     async def write(self, nv_id: t.DatasetId, dataset_obj):
         """Try to write a NVRAM dataset."""
-        dataset = t.NVRAMDataset(dataset_obj.serialize())
+        padding = bytes()
+        serialized_ds_obj = dataset_obj.serialize()[2:]
+        for _ in range(WRITE_DS_LENGTH - len(serialized_ds_obj)):
+            padding += b'\x00'
+        dataset = t.NVRAMDataset(serialized_ds_obj + padding)
 
-        res = await self.zboss.request(
+        await self.zboss.request(
             c.NcpConfig.WriteNVRAM.Req(
                 TSN=self.zboss._app.get_sequence(),
                 DatasetCnt=1,
                 DatasetId=nv_id,
-                Version=0xffff,
+                Version=dataset_obj.version,
                 Dataset=dataset
             )
         )
-
-        print(res)
