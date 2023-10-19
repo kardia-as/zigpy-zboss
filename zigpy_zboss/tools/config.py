@@ -26,9 +26,12 @@ def get_serial_by_id_path():
     return None
 
 
-def get_config():
+def get_config(argv=None):
     """Return the config used to connect to NCP."""
-    if path := get_serial_by_id_path():
-        CONFIG['device']['path'] = path
+    if argv:
+        CONFIG['device']['path'] = argv[0]
+    else:
+        if path := get_serial_by_id_path():
+            CONFIG['device']['path'] = path
     print(f"Path used to connect to NCP: {CONFIG['device']['path']}\n")
     return CONFIG

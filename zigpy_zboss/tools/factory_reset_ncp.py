@@ -1,4 +1,5 @@
 """Script to factory reset the coordinator."""
+import sys
 import serial
 import asyncio
 
@@ -15,10 +16,12 @@ async def factory_reset_ncp(config):
     await nrf.reset(option=t.ResetOptions(2))
 
 
-if __name__ == "__main__":
-    config = get_config()
+async def main(argv):
+    """Get config and factory reset NCP."""
+    config = get_config(argv)
+
     try:
-        asyncio.run(factory_reset_ncp(config))
+        await factory_reset_ncp(config)
         print("Coordinator successfully factory reset!")
     except serial.serialutil.SerialException as exc:
         print(f"Failed to factory reset coordinator! {exc}")
@@ -27,3 +30,7 @@ if __name__ == "__main__":
             f"Failed to factory reset coordinator! {exc2}\n"
             "Power cycle the module and try again."
         )
+
+
+if __name__ == "__main__":
+    asyncio.run(main(sys.argv[1:]))
