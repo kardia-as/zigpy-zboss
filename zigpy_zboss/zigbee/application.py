@@ -256,9 +256,9 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             )
         )
 
-        await self._form_network(network_info)
+        await self._form_network(network_info, node_info)
 
-    async def _form_network(self, network_info):
+    async def _form_network(self, network_info, node_info):
         """Clear the current config and forms a new network."""
         await self._api.request(
             request=c.NWK.Formation.Req(
@@ -270,7 +270,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
                 ScanDuration=0x05,
                 DistributedNetFlag=0x00,
                 DistributedNetAddr=t.NWK(0x0000),
-                IEEEAddr=network_info.extended_pan_id
+                IEEEAddr=node_info.ieee
             )
         )
 
