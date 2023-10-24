@@ -74,6 +74,8 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
         self.version = await self._api.version()
 
+        await self.register_endpoints()
+
         self.devices[self.state.node_info.ieee] = NrfCoordinator(
             self, self.state.node_info.ieee, self.state.node_info.nwk
         )
@@ -97,7 +99,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         simple_desc.input_clusters_count = len(simple_desc.input_clusters)
         simple_desc.output_clusters_count = len(simple_desc.output_clusters)
         await self._api.request(c.AF.SetSimpleDesc.Req(
-            TSN=self.get_sequence(), SimpleDesc=descriptor))
+            TSN=self.get_sequence(), SimpleDesc=simple_desc))
 
     def get_sequence(self):
         """Sequence getter overwrite."""
