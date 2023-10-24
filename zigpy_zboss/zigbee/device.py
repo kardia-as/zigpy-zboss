@@ -31,7 +31,6 @@ class NrfZDO(ZigpyZDO):
             (permit_duration, tc_significance),
         )
 
-    @zigpy.util.retryable_request
     async def Bind_req(self, eui64, ep, cluster, dst_address):
         """Binding request."""
         if dst_address.addrmode == t.AddrMode.IEEE:
@@ -73,7 +72,6 @@ class NrfZDO(ZigpyZDO):
 
         return (zdo_t.Status.SUCCESS, dst_address, cluster)
 
-    @zigpy.util.retryable_request
     async def Unbind_req(self, eui64, ep, cluster, dst_address):
         """Unbinding request."""
         if dst_address.addrmode == t.AddrMode.IEEE:
@@ -115,7 +113,6 @@ class NrfZDO(ZigpyZDO):
 
         return (zdo_t.Status.SUCCESS, dst_address, cluster)
 
-    @zigpy.util.retryable_request
     def request(self, command, *args, use_ieee=False):
         """Request overwrite for Bind/Unbind requests."""
         if command == zdo_t.ZDOCmd.Bind_req:
@@ -124,7 +121,6 @@ class NrfZDO(ZigpyZDO):
             return self.Unbind_req(*args)
         return super().request(command, *args, use_ieee=use_ieee)
 
-    @zigpy.util.retryable_request
     async def Node_Desc_req(self, nwk):
         """Node descriptor request."""
         res = await self._device._application._api.request(
@@ -138,7 +134,6 @@ class NrfZDO(ZigpyZDO):
 
         return (zdo_t.Status.SUCCESS, None, res.NodeDesc)
 
-    @zigpy.util.retryable_request
     async def Simple_Desc_req(self, nwk, ep):
         """Request simple descriptor."""
         res = await self._device._application._api.request(
@@ -162,7 +157,6 @@ class NrfZDO(ZigpyZDO):
 
         return (zdo_t.Status.SUCCESS, None, desc)
 
-    @zigpy.util.retryable_request
     async def Active_EP_req(self, nwk):
         """Request active end points."""
         res = await self._device._application._api.request(
@@ -176,7 +170,6 @@ class NrfZDO(ZigpyZDO):
 
         return (zdo_t.Status.SUCCESS, None, res.ActiveEpList)
 
-    @zigpy.util.retryable_request
     async def Mgmt_Lqi_req(self, idx):
         """Request Link Quality Index."""
         res = await self._device._application._api.request(
