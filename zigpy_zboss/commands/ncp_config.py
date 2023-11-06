@@ -2,7 +2,7 @@
 import zigpy_zboss.types as t
 
 
-class NcpConfigCommandCode(t.enum_uint16):
+class NcpConfigCommandCode(t.enum16):
     """Enum class for NCP config command_ids."""
 
     GET_MODULE_VERSION = 0x0001

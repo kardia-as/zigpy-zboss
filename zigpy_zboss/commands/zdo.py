@@ -8,7 +8,7 @@ import zigpy.zdo.types
 import zigpy_zboss.types as t
 
 
-class ZdoCommandCode(t.enum_uint16):
+class ZdoCommandCode(t.enum16):
     """Enum class for ZDO command_ids."""
 
     ZDO_NWK_ADDR_REQ = 0x0201
@@ -42,7 +42,7 @@ class NWKArray(t.CompleteList, item_type=t.NWK):
     """List of nwk addresses."""
 
 
-class AddrRequestType(t.enum_uint8):
+class AddrRequestType(t.enum8):
     """Enum class for address request type."""
 
     SINGLE = 0x00

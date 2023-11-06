@@ -2,7 +2,7 @@
 import zigpy_zboss.types as t
 
 
-class AFCommandCode(t.enum_uint16):
+class AFCommandCode(t.enum16):
     """Enum class for AF command_ids."""
 
     AF_SET_SIMPLE_DESC = 0x0101

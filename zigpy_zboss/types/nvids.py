@@ -5,7 +5,7 @@ import zigpy_zboss.types as zboss_t
 from . import basic
 
 
-class DatasetId(zboss_t.enum_uint16):
+class DatasetId(zboss_t.enum16):
     """NVRAM dataset types."""
 
     ZB_NVRAM_RESERVED = 0
