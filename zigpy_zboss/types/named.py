@@ -1,7 +1,6 @@
 """Module defining named types."""
 from __future__ import annotations
 
-import sys
 import typing
 import logging
 import dataclasses
@@ -28,7 +27,7 @@ LOGGER = logging.getLogger(__name__)
 JSONType = typing.Union[typing.Dict[str, typing.Any], typing.List[typing.Any]]
 
 
-class BindAddrMode(basic.enum_uint8):
+class BindAddrMode(basic.enum8):
     """Address mode for bind related requests."""
 
     Reserved_1 = 0x00
@@ -75,10 +74,6 @@ class ChannelEntry:
             f" channels={self.channel_mask!r})"
 
 
-class GroupId(basic.uint16_t, hex_repr=True):
-    """Group ID class."""
-
-
 @dataclasses.dataclass(frozen=True)
 class Param:
     """Schema parameter."""
@@ -87,32 +82,6 @@ class Param:
     type: type = None
     description: str = ""
     optional: bool = False
-
-
-class MissingEnumMixin:
-    """Mixin class for enum."""
-
-    @classmethod
-    def _missing_(cls, value):
-        if not isinstance(value, int):
-            raise ValueError(f"{value} is not a valid {cls.__name__}")
-
-        new_member = cls._member_type_.__new__(cls, value)
-        new_member._name_ = f"unknown_0x{value:02X}"
-        new_member._value_ = cls._member_type_(value)
-
-        if sys.version_info >= (3, 8):
-            # Show the warning in the calling code, not in this function
-            LOGGER.warning(
-                "Unhandled %s value: %s",
-                cls.__name__,
-                new_member,
-                stacklevel=2
-            )
-        else:
-            LOGGER.warning("Unhandled %s value: %s", cls.__name__, new_member)
-
-        return new_member
 
 
 class ChannelEntryList(
@@ -133,7 +102,7 @@ class Payload(List, item_type=basic.uint8_t):
     """Class representing a payload."""
 
 
-class DeviceUpdateStatus(basic.enum_uint8):
+class DeviceUpdateStatus(basic.enum8):
     """Enum class for device update status."""
 
     secured_rejoin = 0x00

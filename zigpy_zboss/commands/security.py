@@ -2,7 +2,7 @@
 import zigpy_zboss.types as t
 
 
-class SecurityCommandCode(t.enum_uint16):
+class SecurityCommandCode(t.enum16):
     """Enum class for Security command_ids."""
 
     SECUR_SET_LOCAL_IC = 0x0501

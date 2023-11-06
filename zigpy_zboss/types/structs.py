@@ -1,6 +1,6 @@
 """Module defining struct types."""
 import zigpy.types as t
-from . import basic, named
+from . import basic
 
 
 class SimpleDescriptor(t.Struct):
@@ -32,7 +32,7 @@ class SimpleDescriptor(t.Struct):
         return (desc, data)
 
 
-class KeyType(named.MissingEnumMixin, basic.enum_uint8):
+class KeyType(basic.enum8):
     """Enum class for a key type."""
 
     NONE = 0

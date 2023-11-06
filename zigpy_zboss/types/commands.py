@@ -12,7 +12,7 @@ LOGGER = logging.getLogger(__name__)
 TYPE_ZBOSS_NCP_API_HL = t.uint8_t(0x06)
 
 
-class ControlType(t.enum_uint8):
+class ControlType(t.enum8):
     """Control Type."""
 
     REQ = 0x00
@@ -20,7 +20,7 @@ class ControlType(t.enum_uint8):
     IND = 0x02
 
 
-class StatusCategory(t.enum_uint8):
+class StatusCategory(t.enum8):
     """Status Category."""
 
     GENERIC = 0
@@ -31,7 +31,7 @@ class StatusCategory(t.enum_uint8):
     CBKE = 6
 
 
-class StatusCodeGeneric(t.enum_uint8):
+class StatusCodeGeneric(t.enum8):
     """Status Code for the Generic category."""
 
     OK = 0
@@ -94,7 +94,7 @@ class StatusCodeGeneric(t.enum_uint8):
     OBSOLETE = 72
 
 
-class StatusCodeAPS(t.enum_uint8):
+class StatusCodeAPS(t.enum8):
     """Status Code for the APS category."""
 
     # A request has been executed successfully.
@@ -148,7 +148,7 @@ class StatusCodeAPS(t.enum_uint8):
     UNSUPPORTED_ATTRIBUTE = 0xb0
 
 
-class StatusCodeCBKE(t.enum_uint8):
+class StatusCodeCBKE(t.enum8):
     """Status Code for the CBKE category."""
 
     # The Issuer field within the key establishment partner's certificate is
@@ -172,7 +172,7 @@ class StatusCodeCBKE(t.enum_uint8):
     NO_KE_EP = 7
 
 
-class LLFlags(t.enum_flag_uint8):
+class LLFlags(t.bitmap8):
     """Flags in low level header."""
 
     isACK = 0x01
@@ -589,7 +589,7 @@ class CommandBase:
     __str__ = __repr__
 
 
-class PolicyType(t.enum_uint16):
+class PolicyType(t.enum16):
     """Class representing the policy type of the trust center."""
 
     TC_Link_Keys_Required = 0x0000
@@ -600,7 +600,7 @@ class PolicyType(t.enum_uint16):
     Disable_NWK_MGMT_Channel_Update = 0x0005
 
 
-class ResetOptions(t.enum_uint8):
+class ResetOptions(t.enum8):
     """Enum class for the reset options."""
 
     NoOptions = 0
@@ -609,7 +609,7 @@ class ResetOptions(t.enum_uint8):
     LockReadingKeys = 3
 
 
-class ResetSource(t.enum_uint8):
+class ResetSource(t.enum8):
     """Enum class for the reset source."""
 
     RESET_SRC_POWER_ON = 0
@@ -620,7 +620,7 @@ class ResetSource(t.enum_uint8):
     RESET_SRC_OTHER = 5
 
 
-class DeviceRole(t.enum_uint8):
+class DeviceRole(t.enum8):
     """Enum class for the device role."""
 
     ZC = 0
@@ -629,7 +629,7 @@ class DeviceRole(t.enum_uint8):
     NONE = 3
 
 
-class TimeoutIndex(t.enum_uint8):
+class TimeoutIndex(t.enum8):
     """Enum for the timeout index."""
 
     Seconds_10 = 0x00
@@ -650,7 +650,7 @@ class TimeoutIndex(t.enum_uint8):
     Minutes_16384 = 0x0E
 
 
-class PowerMode(t.enum_uint8):
+class PowerMode(t.enum8):
     """Enum class for power mode."""
 
     # Receiver synchronized with the receiver on when idle subfield of the
@@ -663,7 +663,7 @@ class PowerMode(t.enum_uint8):
     Stim = 0x02
 
 
-class PowerSourceLevel(t.enum_uint8):
+class PowerSourceLevel(t.enum8):
     """Enum class for the power source level."""
 
     Critical = 0
@@ -672,7 +672,7 @@ class PowerSourceLevel(t.enum_uint8):
     Percent_100 = 12
 
 
-class APSFrameFC(t.enum_flag_uint8):
+class APSFrameFC(t.bitmap8):
     """Enum class for APS frame flags."""
 
     Unicast = 1 << 0
@@ -682,7 +682,7 @@ class APSFrameFC(t.enum_flag_uint8):
     Retransmit = 1 << 6
 
 
-class MACCapability(t.enum_flag_uint8):
+class MACCapability(t.bitmap8):
     """Enum class for MAC capabilities."""
 
     AlternatePANCoordinator = 1 << 0
@@ -693,7 +693,7 @@ class MACCapability(t.enum_flag_uint8):
     AllocateAddress = 1 << 7
 
 
-class PowerSource(t.enum_flag_uint8):
+class PowerSource(t.bitmap8):
     """Enum class for power source."""
 
     Mains = 1 << 0

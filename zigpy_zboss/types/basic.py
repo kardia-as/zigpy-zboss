@@ -1,9 +1,57 @@
 """Module defining basic types."""
 from __future__ import annotations
+import typing
 
-import enum
+from zigpy.types import int8s, uint8_t, enum_factory  # noqa: F401
 
 from zigpy_zboss.types.cstruct import CStruct
+
+if typing.TYPE_CHECKING:
+    import enum
+
+    class enum8(int, enum.Enum):
+        """Enum with 8 bits value."""
+
+    class enum16(int, enum.Enum):
+        """Enum with 16 bits value."""
+
+    class enum24(int, enum.Enum):
+        """Enum with 24 bits value."""
+
+    class enum40(int, enum.Enum):
+        """Enum with 40 bits value."""
+
+    class enum64(int, enum.Enum):
+        """Enum with 64 bits value."""
+
+    class bitmap8(enum.IntFlag):
+        """Bitmap with 8 bits value."""
+
+    class bitmap16(enum.IntFlag):
+        """Bitmap with 16 bits value."""
+
+else:
+    from zigpy.types import (  # noqa: F401
+        enum8,
+        enum16,
+        bitmap8,
+        bitmap16,
+        uint16_t,
+        uint24_t,
+        uint32_t,
+        uint40_t,
+        uint56_t,
+        uint64_t,
+    )
+
+    class enum24(enum_factory(uint24_t)):
+        """Enum with 24 bits value."""
+
+    class enum40(enum_factory(uint40_t)):
+        """Enum with 40 bits value."""
+
+    class enum64(enum_factory(uint64_t)):
+        """Enum with 64 bits value."""
 
 
 class Bytes(bytes):
@@ -27,137 +75,6 @@ class Bytes(bytes):
         return f"b'{escaped}'"
 
     __str__ = __repr__
-
-
-class FixedIntType(int):
-    """Class for fized int type."""
-
-    _signed = None
-    _size = None
-
-    def __new__(cls, *args, **kwargs):
-        """Instantiate object."""
-        if cls._signed is None or cls._size is None:
-            raise TypeError(f"{cls} is abstract and cannot be created")
-
-        instance = super().__new__(cls, *args, **kwargs)
-        instance.serialize()
-
-        return instance
-
-    def __init_subclass__(cls, signed=None, size=None, hex_repr=None) -> None:
-        """Define parameters when the class is used as parent."""
-        super().__init_subclass__()
-
-        if signed is not None:
-            cls._signed = signed
-
-        if size is not None:
-            cls._size = size
-
-        if hex_repr:
-            fmt = f"0x{{:0{cls._size * 2}X}}"
-            cls.__str__ = cls.__repr__ = lambda self: fmt.format(self)
-        elif hex_repr is not None and not hex_repr:
-            cls.__str__ = super().__str__
-            cls.__repr__ = super().__repr__
-
-        # XXX: The enum module uses the first class with __new__ in its
-        #      __dict__ as the member type.
-        #      We have to ensure this is true for every subclass.
-        if "__new__" not in cls.__dict__:
-            cls.__new__ = cls.__new__
-
-    def serialize(self) -> bytes:
-        """Serialize object."""
-        try:
-            return self.to_bytes(self._size, "little", signed=self._signed)
-        except OverflowError as e:
-            # OverflowError is not a subclass of ValueError,
-            # making it annoying to catch
-            raise ValueError(str(e)) from e
-
-    @classmethod
-    def deserialize(cls, data: bytes) -> tuple[FixedIntType, bytes]:
-        """Deserialize object."""
-        if len(data) < cls._size:
-            raise ValueError(f"Data is too short to contain {cls._size} bytes")
-
-        r = cls.from_bytes(data[: cls._size], "little", signed=cls._signed)
-        data = data[cls._size:]
-        return r, data
-
-
-class uint_t(FixedIntType, signed=False):
-    """Class representing the uint_t type."""
-
-
-class int_t(FixedIntType, signed=True):
-    """Class representing int_t type."""
-
-
-class int8s(int_t, size=1):
-    """Class representing the int8s type."""
-
-
-class int16s(int_t, size=2):
-    """Class representing the int16s type."""
-
-
-class int24s(int_t, size=3):
-    """Class representing the int24s type."""
-
-
-class int32s(int_t, size=4):
-    """Class representing the int32s type."""
-
-
-class int40s(int_t, size=5):
-    """Class representing the int40s type."""
-
-
-class int48s(int_t, size=6):
-    """Class representing the int48s type."""
-
-
-class int56s(int_t, size=7):
-    """Class representing the int56s type."""
-
-
-class int64s(int_t, size=8):
-    """Class representing the int64s type."""
-
-
-class uint8_t(uint_t, size=1):
-    """Class representing the uint8_t type."""
-
-
-class uint16_t(uint_t, size=2):
-    """Class representing the uint16_t type."""
-
-
-class uint24_t(uint_t, size=3):
-    """Class representing the uint24_t type."""
-
-
-class uint32_t(uint_t, size=4):
-    """Class representing the uint32_t type."""
-
-
-class uint40_t(uint_t, size=5):
-    """Class representing the uint40_t type."""
-
-
-class uint48_t(uint_t, size=6):
-    """Class representing the uint48_t type."""
-
-
-class uint56_t(uint_t, size=7):
-    """Class representing the uint56_t type."""
-
-
-class uint64_t(uint_t, size=8):
-    """Class representing the uint64_t type."""
 
 
 class ShortBytes(Bytes):
@@ -292,91 +209,3 @@ class CompleteList(BaseListType):
             item, data = cls._deserialize_item(data, align=align)
             r.append(item)
         return r, data
-
-
-def enum_flag_factory(int_type: FixedIntType) -> enum.Flag:
-    """Enum flag factory.
-
-    Mixins are broken by Python 3.8.6 so we must dynamically create the enum
-    with the appropriate methods but with only one non-Enum parent class.
-    """
-    class _NewEnum(int_type, enum.Flag):
-        # Rebind classmethods to our own class
-        _missing_ = classmethod(enum.IntFlag._missing_.__func__)
-        _create_pseudo_member_ = classmethod(
-            enum.IntFlag._create_pseudo_member_.__func__
-        )
-
-        __or__ = enum.IntFlag.__or__
-        __and__ = enum.IntFlag.__and__
-        __xor__ = enum.IntFlag.__xor__
-        __ror__ = enum.IntFlag.__ror__
-        __rand__ = enum.IntFlag.__rand__
-        __rxor__ = enum.IntFlag.__rxor__
-        __invert__ = enum.IntFlag.__invert__
-
-    return _NewEnum
-
-
-class enum_uint8(uint8_t, enum.Enum):
-    """Class representing the enum_uint8 type."""
-
-
-class enum_uint16(uint16_t, enum.Enum):
-    """Class representing the enum_uint16 type."""
-
-
-class enum_uint24(uint24_t, enum.Enum):
-    """Class representing the enum_uint24 type."""
-
-
-class enum_uint32(uint32_t, enum.Enum):
-    """Class representing the enum_uint32 type."""
-
-
-class enum_uint40(uint40_t, enum.Enum):
-    """Class representing the enum_uint40 type."""
-
-
-class enum_uint48(uint48_t, enum.Enum):
-    """Class representing the enum_uint48 type."""
-
-
-class enum_uint56(uint56_t, enum.Enum):
-    """Class representing the enum_uint56 type."""
-
-
-class enum_uint64(uint64_t, enum.Enum):
-    """Class representing the enum_uint64 type."""
-
-
-class enum_flag_uint8(enum_flag_factory(uint8_t)):
-    """Class representing the enum_flag_uint8 type."""
-
-
-class enum_flag_uint16(enum_flag_factory(uint16_t)):
-    """Class representing the enum_flag_uint16 type."""
-
-
-class enum_flag_uint24(enum_flag_factory(uint24_t)):
-    """Class representing the enum_flag_uint24 type."""
-
-
-class enum_flag_uint32(enum_flag_factory(uint32_t)):
-    """Class representing the enum_flag_uint32 type."""
-
-
-class enum_flag_uint40(enum_flag_factory(uint40_t)):
-    """Class representing the enum_flag_uint40 type."""
-
-
-class enum_flag_uint48(enum_flag_factory(uint48_t)):
-    """Class representing the enum_flag_uint48 type."""
-
-
-class enum_flag_uint56(enum_flag_factory(uint56_t)):
-    """Class representing the enum_flag_uint56 type."""
-
-
-class enum_flag_uint64(enum_flag_factory(uint64_t)):
-    """Class representing the enum_flag_uint64 type."""

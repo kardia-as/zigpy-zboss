@@ -2,7 +2,7 @@
 import zigpy_zboss.types as t
 
 
-class NWKCommandCode(t.enum_uint16):
+class NWKCommandCode(t.enum16):
     """Enum class for NWK command_ids."""
 
     NWK_FORMATION = 0x0401

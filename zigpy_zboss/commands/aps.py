@@ -3,7 +3,7 @@ import zigpy.types
 import zigpy_zboss.types as t
 
 
-class APSCommandCode(t.enum_uint16):
+class APSCommandCode(t.enum16):
     """Enum class for APS command_ids."""
 
     APSDE_DATA_REQ = 0x0301
@@ -18,14 +18,14 @@ class APSCommandCode(t.enum_uint16):
     APSME_UNBIND_ALL = 0x030a
 
 
-class KeySrcAndAttr(t.enum_flag_uint8):
+class KeySrcAndAttr(t.bitmap8):
     """Enum class for key source."""
 
     KeySrc = 1 << 0
     KeyUsed = 3 << 1
 
 
-class TransmitOptions(t.enum_flag_uint8):
+class TransmitOptions(t.bitmap8):
     """Enum class for transmit options."""
 
     NONE = 0x00
