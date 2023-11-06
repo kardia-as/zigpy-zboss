@@ -1,7 +1,6 @@
 """Module defining named types."""
 from __future__ import annotations
 
-import sys
 import typing
 import logging
 import dataclasses
