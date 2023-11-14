@@ -130,19 +130,20 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
     async def write_network_info(self, *, network_info, node_info):
         """Write the provided network and node info to the radio hardware."""
-        network_info.stack_specific = \
-            self.get_default_stack_specific_formation_settings()
-        if node_info.ieee == t.EUI64.UNKNOWN:
-            node_info.ieee = network_info.extended_pan_id
+        if not network_info.stack_specific.get("form_quickly", False):
+            await self.reset_network_info()
 
-        # Write self.state.node_info.
-        await self._api.request(
-            c.NcpConfig.SetLocalIEEE.Req(
-                TSN=self.get_sequence(),
-                MacInterfaceNum=0,
-                IEEE=node_info.ieee
-            )
+        network_info.stack_specific.update(
+            self.get_default_stack_specific_formation_settings()
         )
+        if node_info.ieee != t.EUI64.UNKNOWN:
+            await self._api.request(
+                c.NcpConfig.SetLocalIEEE.Req(
+                    TSN=self.get_sequence(),
+                    MacInterfaceNum=0,
+                    IEEE=node_info.ieee
+                )
+            )
 
         await self._api.request(
             request=c.NcpConfig.SetZigbeeRole.Req(
@@ -172,6 +173,10 @@ class ControllerApplication(zigpy.application.ControllerApplication):
                 Mask=network_info.channel_mask
             )
         )
+
+        if network_info.stack_specific.get("form_quickly", False):
+            await self._form_network(network_info, node_info)
+            return
 
         await self._api.request(
             request=c.NcpConfig.SetNwkKey.Req(
@@ -294,6 +299,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         """Populate state.node_info and state.network_info."""
         res = await self._api.request(
             c.NcpConfig.GetJoinStatus.Req(TSN=self.get_sequence()))
+        self.state.network_info.stack_specific["joined"] = res.Joined
         if not res.Joined & 0x01:
             raise zigpy.exceptions.NetworkNotFormed
 
@@ -391,12 +397,6 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         ] = res.ChildrenNbr
 
         res = await self._api.request(
-            c.NcpConfig.GetJoinStatus.Req(TSN=self.get_sequence()))
-        self.state.network_info.stack_specific[
-            "joined"
-        ] = res.Joined
-
-        res = await self._api.request(
             c.NcpConfig.GetAuthenticationStatus.Req(TSN=self.get_sequence()))
         self.state.network_info.stack_specific[
             "authenticated"
@@ -440,7 +440,8 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
     async def reset_network_info(self) -> None:
         """Reset node network information and leaves the current network."""
-        pass
+        assert self._api is not None
+        await self._api.reset(option=t_zboss.ResetOptions.FactoryReset)
 
     async def start_without_formation(self):
         """Start the network with settings currently stored on the module."""
