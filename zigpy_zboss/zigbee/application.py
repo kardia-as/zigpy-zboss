@@ -47,7 +47,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
     async def connect(self):
         """Connect to the zigbee module."""
         assert self._api is None
-        is_responsive = await self.probe(self.config)
+        is_responsive = await self.probe(self.config.get(conf.CONF_DEVICE, {}))
         if not is_responsive:
             raise NrfResponseError
         nrf = NRF(self.config)
@@ -471,20 +471,24 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         return self.config[conf.CONF_NRF_CONFIG]
 
     @classmethod
-    async def probe(cls, device_config: dict) -> bool:
+    async def probe(
+            cls, device_config: dict[str, Any]) -> bool | dict[str, Any]:
         """Probe the NCP.
 
-        Checks whether the NCP device is responding to request.
+        Checks whether the NCP device is responding to requests.
         """
-        nrf = NRF(device_config)
+        config = cls.SCHEMA(
+            {conf.CONF_DEVICE: cls.SCHEMA_DEVICE(device_config)})
+        nrf = NRF(config)
         try:
             await nrf.connect()
             async with async_timeout.timeout(PROBE_TIMEOUT):
                 await nrf.request(
                     c.NcpConfig.GetZigbeeRole.Req(TSN=1), timeout=1)
-            return True
         except asyncio.TimeoutError:
             return False
+        else:
+            return device_config
         finally:
             nrf.close()
 
