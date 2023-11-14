@@ -275,7 +275,7 @@ async def connect(config: conf.ConfigType, api) -> ZbossNcpProtocol:
     baudrate = config[conf.CONF_DEVICE_BAUDRATE]
     flow_control = config[conf.CONF_DEVICE_FLOW_CONTROL]
 
-    LOGGER.info("Connecting to %s at %s baud", port, baudrate)
+    LOGGER.debug("Connecting to %s at %s baud", port, baudrate)
 
     _, protocol = await zigpy.serial.create_serial_connection(
         loop=loop,
@@ -292,5 +292,7 @@ async def connect(config: conf.ConfigType, api) -> ZbossNcpProtocol:
     except asyncio.TimeoutError:
         protocol.close()
         raise RuntimeError("Could not communicate with NCP!")
+
+    LOGGER.debug("Connected to %s at %s baud", port, baudrate)
 
     return protocol
