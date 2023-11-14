@@ -144,12 +144,6 @@ class ControllerApplication(zigpy.application.ControllerApplication):
                     IEEE=node_info.ieee
                 )
             )
-        else:
-            # Get the default device IEEE set by ZBOSS
-            res = await self._api.request(
-                c.NcpConfig.GetLocalIEEE.Req(
-                    TSN=self.get_sequence(), MacInterfaceNum=0))
-            node_info.ieee = res.IEEE
 
         await self._api.request(
             request=c.NcpConfig.SetZigbeeRole.Req(
@@ -283,7 +277,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
                 ScanDuration=0x05,
                 DistributedNetFlag=0x00,
                 DistributedNetAddr=t.NWK(0x0000),
-                IEEEAddr=node_info.ieee
+                ExtPanId=network_info.extended_pan_id
             )
         )
 

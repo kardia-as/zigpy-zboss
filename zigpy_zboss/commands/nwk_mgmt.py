@@ -84,9 +84,9 @@ class NWK(t.CommandsBase):
                     "distributed network"
                 ),
                 t.Param(
-                    "IEEEAddr",
+                    "ExtPanId",
                     t.EUI64,
-                    "The ieee address of the device"
+                    "The network extended PAN ID."
                 ),
             )
         ),
