@@ -1,8 +1,8 @@
 # zigpy-zboss tools
 
-- Factory reset the nRF NCP:
+- Factory reset the zboss NCP:
 
-`$ python -m zigpy_zboss.tools.factory_reset_ncp`
+`$ python -m zigpy_zboss.tools.factory_reset_ncp <device path>`
 
 - Get firmware, zigbee stack and protocol version:
 

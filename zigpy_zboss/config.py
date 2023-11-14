@@ -61,7 +61,7 @@ def keys_have_same_length(*keys):
     return validator
 
 
-CONF_NRF_CONFIG = "nrf_config"
+CONF_ZBOSS_CONFIG = "zboss_config"
 CONF_TX_POWER = "tx_power"
 CONF_LED_MODE = "led_mode"
 CONF_SKIP_BOOTLOADER = "skip_bootloader"
@@ -74,7 +74,7 @@ CONF_CONNECT_DTR_STATES = "connect_dtr_pin_states"
 CONFIG_SCHEMA = CONFIG_SCHEMA.extend(
     {
         vol.Required(CONF_DEVICE): SCHEMA_DEVICE,
-        vol.Optional(CONF_NRF_CONFIG, default={}): vol.Schema(
+        vol.Optional(CONF_ZBOSS_CONFIG, default={}): vol.Schema(
             vol.All(
                 {
                     vol.Optional(CONF_TX_POWER, default=None): vol.Any(

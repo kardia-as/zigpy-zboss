@@ -1,4 +1,4 @@
-"""Module for nRF api interface."""
+"""Module for ZBOSS api interface."""
 from __future__ import annotations
 
 import asyncio
@@ -31,11 +31,11 @@ CONNECT_PROBE_TIMEOUT = 10
 DEFAULT_TIMEOUT = 5
 
 
-class NRF:
-    """Class linking zigpy with the nRF SoC."""
+class ZBOSS:
+    """Class linking zigpy with ZBOSS running on nRF SoC."""
 
     def __init__(self, config: conf.ConfigType):
-        """Initialize NRF class."""
+        """Initialize ZBOSS class."""
         self._uart = None
         self._app = None
         self._config = config
@@ -54,7 +54,7 @@ class NRF:
         self._ncp_debug = None
 
     def set_application(self, app):
-        """Set the application using the NRF class."""
+        """Set the application using the ZBOSS class."""
         assert self._app is None
         self._app = app
 
@@ -63,8 +63,8 @@ class NRF:
         return self._config[conf.CONF_DEVICE][conf.CONF_DEVICE_PATH]
 
     @property
-    def _nrf_config(self) -> conf.ConfigType:
-        return self._config[conf.CONF_NRF_CONFIG]
+    def _zboss_config(self) -> conf.ConfigType:
+        return self._config[conf.CONF_ZBOSS_CONFIG]
 
     async def connect(self) -> None:
         """Connect to serial device.
@@ -98,7 +98,7 @@ class NRF:
         """Port has been closed.
 
         Called by the UART object to indicate that the port was closed.
-        Propagates up to the `ControllerApplication` that owns this NRF
+        Propagates up to the `ControllerApplication` that owns this ZBOSS
         instance.
         """
         LOGGER.debug("We were disconnected from %s: %s", self._port_path, exc)
@@ -106,8 +106,8 @@ class NRF:
     def close(self) -> None:
         """Clean up resources, namely the listener queues.
 
-        Calling this will reset NRF to the same internal state as a fresh NRF
-        instance.
+        Calling this will reset ZBOSS to the same internal state as a fresh
+        ZBOSS instance.
         """
         self._app = None
         self.version = None
@@ -253,7 +253,7 @@ class NRF:
 
     def remove_listener(self, listener: BaseResponseListener) -> None:
         """
-        Unbinds a listener from NRF.
+        Unbinds a listener from ZBOSS.
 
         Used by `wait_for_responses` to remove listeners for completed futures,
         regardless of their completion reason.

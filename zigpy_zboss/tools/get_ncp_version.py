@@ -2,16 +2,16 @@
 import serial
 import asyncio
 
-from zigpy_zboss.api import NRF
+from zigpy_zboss.api import ZBOSS
 
 from zigpy_zboss.tools.config import get_config
 
 
 async def get_ncp_version(config):
     """Get the NCP firmware version."""
-    nrf = NRF(config)
-    await nrf.connect()
-    version = await nrf.version()
+    zboss = ZBOSS(config)
+    await zboss.connect()
+    version = await zboss.version()
     print("Current NCP versions: \n"
           f"FW: {version[0]}\n"
           f"Stack: {version[1]}\n"

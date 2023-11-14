@@ -10,7 +10,7 @@ from zigpy.zdo import types as zdo_t
 from zigpy.zdo import ZDO as ZigpyZDO
 
 
-class NrfZDO(ZigpyZDO):
+class ZbossZDO(ZigpyZDO):
     """The ZDO endpoint of a device."""
 
     def handle_mgmt_permit_joining_req(
@@ -225,18 +225,18 @@ class NrfZDO(ZigpyZDO):
         return (None, res.ScannedChannels, None, None, res.EnergyValues)
 
 
-class NrfDevice(zigpy.device.Device):
+class ZbossDevice(zigpy.device.Device):
     """Class representing an nRF device."""
 
     def __init__(self, *args, **kwargs):
         """Initialize instance."""
         super().__init__(*args, **kwargs)
         assert hasattr(self, "zdo")
-        self.zdo = NrfZDO(self)
+        self.zdo = ZbossZDO(self)
         self.endpoints[0] = self.zdo
 
 
-class NrfCoordinator(NrfDevice):
+class ZbossCoordinator(ZbossDevice):
     """Zigpy Device representing the controller."""
 
     def __init__(self, *args, **kwargs):
