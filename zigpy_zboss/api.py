@@ -140,10 +140,7 @@ class ZBOSS:
 
         command_cls = c.COMMANDS_BY_ID[frame.hl_packet.header]
 
-        try:
-            command, _ = command_cls.from_frame(frame)
-        except ValueError:
-            raise
+        command = command_cls.from_frame(frame)
 
         LOGGER.debug("Received command: %s", command)
         matched = False

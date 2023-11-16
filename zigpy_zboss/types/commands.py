@@ -503,6 +503,13 @@ class CommandBase:
                 else:
                     params[param.name], data = param.type.deserialize(data)
             except ValueError:
+                if frame.hl_packet.header.control_type == ControlType.RSP:
+                    # If the response to a request failed, the status code
+                    # is different from 0 and the NCP does not send more data.
+                    # Return a partial command object including the status.
+                    status_code = params["StatusCode"]
+                    if status_code != 0:
+                        return cls(**params, partial=True)
                 if not data and param.optional:
                     # If we're out of data and the parameter is optional,
                     # we're done
@@ -517,13 +524,7 @@ class CommandBase:
                 else:
                     # Otherwise, let the exception happen
                     raise
-
-        # if data:
-        #     raise ValueError(
-        #         f"Frame {frame} contains trailing data after parsing: {data}"
-        #     )
-
-        return cls(**params), data
+        return cls(**params)
 
     def matches(self, other: "CommandBase") -> bool:
         """Match parameters and values with other CommandBase."""
