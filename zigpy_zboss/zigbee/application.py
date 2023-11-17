@@ -348,35 +348,37 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             t_zboss.DatasetId.ZB_IB_COUNTERS,
             t_zboss.DSIbCounters
         )
-        self.state.network_info.network_key = zigpy.state.Key(
-            key=common.nwk_key,
-            tx_counter=counters.nib_counter,
-            rx_counter=0,
-            seq=common.nwk_key_seq,
-            partner_ieee=self.state.node_info.ieee,
-        )
-
-        if self.state.node_info.logical_type == \
-                zdo_t.LogicalType.Coordinator:
-            self.state.network_info.tc_link_key = zigpy.state.Key(
-                key=common.tc_standard_key,
-                tx_counter=0,
+        if common and counters:
+            self.state.network_info.network_key = zigpy.state.Key(
+                key=common.nwk_key,
+                tx_counter=counters.nib_counter,
                 rx_counter=0,
-                seq=0,
+                seq=common.nwk_key_seq,
                 partner_ieee=self.state.node_info.ieee,
             )
-        else:
-            res = await self._api.request(
-                c.NcpConfig.GetTrustCenterAddr.Req(TSN=self.get_sequence()))
-            self.state.network_info.tc_link_key = (
-                zigpy.state.Key(
-                    key=None,
+
+            if self.state.node_info.logical_type == \
+                    zdo_t.LogicalType.Coordinator:
+                self.state.network_info.tc_link_key = zigpy.state.Key(
+                    key=common.tc_standard_key,
                     tx_counter=0,
                     rx_counter=0,
                     seq=0,
-                    partner_ieee=res.TCIEEE,
-                ),
-            )
+                    partner_ieee=self.state.node_info.ieee,
+                )
+            else:
+                res = await self._api.request(
+                    c.NcpConfig.GetTrustCenterAddr.Req(
+                        TSN=self.get_sequence()))
+                self.state.network_info.tc_link_key = (
+                    zigpy.state.Key(
+                        key=None,
+                        tx_counter=0,
+                        rx_counter=0,
+                        seq=0,
+                        partner_ieee=res.TCIEEE,
+                    ),
+                )
 
         res = await self._api.request(
             c.NcpConfig.GetRxOnWhenIdle.Req(TSN=self.get_sequence()))
