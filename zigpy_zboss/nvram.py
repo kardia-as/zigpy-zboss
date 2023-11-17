@@ -23,6 +23,8 @@ class NVRAMHelper:
                 DatasetId=nv_id
             )
         )
+        if res.StatusCode != 0:
+            return
 
         if not res.DatasetId == nv_id:
             raise

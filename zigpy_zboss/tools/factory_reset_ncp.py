@@ -3,7 +3,7 @@ import sys
 import serial
 import asyncio
 
-from zigpy_zboss.api import NRF
+from zigpy_zboss.api import ZBOSS
 from zigpy_zboss import types as t
 
 from zigpy_zboss.tools.config import get_config
@@ -11,9 +11,9 @@ from zigpy_zboss.tools.config import get_config
 
 async def factory_reset_ncp(config):
     """Send factory reset command to NCP."""
-    nrf = NRF(config)
-    await nrf.connect()
-    await nrf.reset(option=t.ResetOptions(2))
+    zboss = ZBOSS(config)
+    await zboss.connect()
+    await zboss.reset(option=t.ResetOptions(2))
 
 
 async def main(argv):

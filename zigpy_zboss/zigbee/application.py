@@ -16,11 +16,11 @@ import zigpy.zdo.types as zdo_t
 import zigpy_zboss.config as conf
 
 from typing import Any, Dict
-from zigpy_zboss.api import NRF
+from zigpy_zboss.api import ZBOSS
 from zigpy_zboss import commands as c
 from zigpy.exceptions import DeliveryError
-from .device import NrfCoordinator, NrfDevice
-from zigpy_zboss.exceptions import NrfResponseError
+from .device import ZbossCoordinator, ZbossDevice
+from zigpy_zboss.exceptions import ZbossResponseError
 from zigpy_zboss.config import CONFIG_SCHEMA, SCHEMA_DEVICE
 
 LOGGER = logging.getLogger(__name__)
@@ -40,19 +40,19 @@ class ControllerApplication(zigpy.application.ControllerApplication):
     def __init__(self, config: Dict[str, Any]):
         """Initialize instance."""
         super().__init__(config=zigpy.config.ZIGPY_SCHEMA(config))
-        self._api: NRF | None = None
+        self._api: ZBOSS | None = None
         self._reset_task = None
         self.version = None
 
     async def connect(self):
         """Connect to the zigbee module."""
         assert self._api is None
-        is_responsive = await self.probe(self.config)
+        is_responsive = await self.probe(self.config.get(conf.CONF_DEVICE, {}))
         if not is_responsive:
-            raise NrfResponseError
-        nrf = NRF(self.config)
-        await nrf.connect()
-        self._api = nrf
+            raise ZbossResponseError
+        zboss = ZBOSS(self.config)
+        await zboss.connect()
+        self._api = zboss
         self._api.set_application(self)
         self._bind_callbacks()
 
@@ -76,7 +76,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
         await self.register_endpoints()
 
-        self.devices[self.state.node_info.ieee] = NrfCoordinator(
+        self.devices[self.state.node_info.ieee] = ZbossCoordinator(
             self, self.state.node_info.ieee, self.state.node_info.nwk
         )
 
@@ -348,35 +348,37 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             t_zboss.DatasetId.ZB_IB_COUNTERS,
             t_zboss.DSIbCounters
         )
-        self.state.network_info.network_key = zigpy.state.Key(
-            key=common.nwk_key,
-            tx_counter=counters.nib_counter,
-            rx_counter=0,
-            seq=common.nwk_key_seq,
-            partner_ieee=self.state.node_info.ieee,
-        )
-
-        if self.state.node_info.logical_type == \
-                zdo_t.LogicalType.Coordinator:
-            self.state.network_info.tc_link_key = zigpy.state.Key(
-                key=common.tc_standard_key,
-                tx_counter=0,
+        if common and counters:
+            self.state.network_info.network_key = zigpy.state.Key(
+                key=common.nwk_key,
+                tx_counter=counters.nib_counter,
                 rx_counter=0,
-                seq=0,
+                seq=common.nwk_key_seq,
                 partner_ieee=self.state.node_info.ieee,
             )
-        else:
-            res = await self._api.request(
-                c.NcpConfig.GetTrustCenterAddr.Req(TSN=self.get_sequence()))
-            self.state.network_info.tc_link_key = (
-                zigpy.state.Key(
-                    key=None,
+
+            if self.state.node_info.logical_type == \
+                    zdo_t.LogicalType.Coordinator:
+                self.state.network_info.tc_link_key = zigpy.state.Key(
+                    key=common.tc_standard_key,
                     tx_counter=0,
                     rx_counter=0,
                     seq=0,
-                    partner_ieee=res.TCIEEE,
-                ),
-            )
+                    partner_ieee=self.state.node_info.ieee,
+                )
+            else:
+                res = await self._api.request(
+                    c.NcpConfig.GetTrustCenterAddr.Req(
+                        TSN=self.get_sequence()))
+                self.state.network_info.tc_link_key = (
+                    zigpy.state.Key(
+                        key=None,
+                        tx_counter=0,
+                        rx_counter=0,
+                        seq=0,
+                        partner_ieee=res.TCIEEE,
+                    ),
+                )
 
         res = await self._api.request(
             c.NcpConfig.GetRxOnWhenIdle.Req(TSN=self.get_sequence()))
@@ -466,27 +468,31 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         raise NotImplementedError
 
     @property
-    def nrf_config(self) -> conf.ConfigType:
-        """Shortcut property to access the NRF radio config."""
-        return self.config[conf.CONF_NRF_CONFIG]
+    def zboss_config(self) -> conf.ConfigType:
+        """Shortcut property to access the ZBOSS radio config."""
+        return self.config[conf.CONF_ZBOSS_CONFIG]
 
     @classmethod
-    async def probe(cls, device_config: dict) -> bool:
+    async def probe(
+            cls, device_config: dict[str, Any]) -> bool | dict[str, Any]:
         """Probe the NCP.
 
-        Checks whether the NCP device is responding to request.
+        Checks whether the NCP device is responding to requests.
         """
-        nrf = NRF(device_config)
+        config = cls.SCHEMA(
+            {conf.CONF_DEVICE: cls.SCHEMA_DEVICE(device_config)})
+        zboss = ZBOSS(config)
         try:
-            await nrf.connect()
+            await zboss.connect()
             async with async_timeout.timeout(PROBE_TIMEOUT):
-                await nrf.request(
+                await zboss.request(
                     c.NcpConfig.GetZigbeeRole.Req(TSN=1), timeout=1)
-            return True
         except asyncio.TimeoutError:
             return False
+        else:
+            return device_config
         finally:
-            nrf.close()
+            zboss.close()
 
     # Overwrites zigpy because of custom ZDO layer required for ZBOSS.
     def add_device(self, ieee: t.EUI64, nwk: t.NWK):
@@ -494,7 +500,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         assert isinstance(ieee, t.EUI64)
         # TODO: Shut down existing device
 
-        dev = NrfDevice(self, ieee, nwk)
+        dev = ZbossDevice(self, ieee, nwk)
         self.devices[ieee] = dev
         return dev
 

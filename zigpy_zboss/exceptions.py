@@ -1,4 +1,4 @@
-"""Zigpy nrf exceptions."""
+"""Zigpy Zboss exceptions."""
 
 
 class InvalidFrame(ValueError):
@@ -17,5 +17,5 @@ class ModuleHardwareResetError(Exception):
     """Module hardware reset error."""
 
 
-class NrfResponseError(Exception):
-    """nRF response error."""
+class ZbossResponseError(Exception):
+    """ZBOSS response error."""
