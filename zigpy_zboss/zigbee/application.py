@@ -596,6 +596,8 @@ class ControllerApplication(zigpy.application.ControllerApplication):
                 if is_secure
                 else t.TransmitOptions.NONE
             ),
+            lqi=msg.LQI,
+            rssi=msg.RSSI
         )
 
         self.packet_received(packet)
