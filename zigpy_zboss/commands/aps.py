@@ -205,7 +205,7 @@ class APS(t.CommandsBase):
                 "Received frame last hop destination MAC address"
             ),
             t.Param("LQI", t.uint8_t, "Received frame LQI"),
-            t.Param("RSSI", t.uint8_t, "Received frame RSSI"),
+            t.Param("RSSI", t.int8s, "Received frame RSSI"),
             t.Param(
                 "KeySrcAndAttr",
                 t.ApsAttributes,
