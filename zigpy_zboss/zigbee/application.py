@@ -504,6 +504,26 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         self.devices[ieee] = dev
         return dev
 
+    async def _discover_unknown_device(self, nwk: t.NWK) -> None:
+        """Discover the IEEE address of a device with an unknown NWK."""
+        res = await self._api.request(
+            c.ZDO.IeeeAddrReq.Req(
+                TSN=self.get_sequence(),
+                DstNWK=t.BroadcastAddress.RX_ON_WHEN_IDLE,
+                NWKtoMatch=nwk,
+                RequestType=zdo_t.AddrRequestType.Single,
+                StartIndex=0,
+                )
+        )
+
+        nwk = res.RemoteDevNWK
+        ieee = res.RemoteDevIEEE
+
+        LOGGER.debug("Discovered IEEE address for NWK=%s: %s", nwk, ieee)
+        self.handle_join(
+            nwk=nwk, ieee=ieee, parent_nwk=None, handle_rejoin=False
+        )
+
     #####################################################
     # Callbacks attached during startup                 #
     #####################################################
