@@ -4,6 +4,14 @@
 
 Together with the zigpy library and a home automation software application with compatible Zigbee gateway implementation, (such as for example the **[Home Assistant's ZHA integration component](https://www.home-assistant.io/integrations/zha/)**), you can directly control Zigbee devices from most product manufacturers, like; IKEA, Philips Hue, Inovelli, LEDVANCE/OSRAM, SmartThings/Samsung, SALUS/Computime, SONOFF/ITEAD, Xiaomi/Aqara, and many more.
 
+# Back-story and use cases
+
+This is currently an 'as-is' independent and unofficial implementation radio library for zigpy, as such should be considered experimental and you should only expect best-effort support from volunteers in the open-source community!
+
+Zigbee NCP support for ZOI (ZBOSS Open Initiative) based Zigbee radios compatible with ZBOSS NCP firmware for zigpy based Zigbee gateway implementation is still in very early development. 
+
+Development is initially focused on Zigbee Coordinator functionality Nordic Semiconductor's development kit hardware which has been tested to be compatible. Those also officially recognized as Zigbee-Compliant platforms by the CSA (Connectivity Standards Alliance, formerly the Zigbee Alliance), of which both [DSR Cooperation](https://pt.dsr-corporation.com/news/zboss-open-initiative-in-2021/) and [Nordic Semiconductor](https://developer.nordicsemi.com/nRF_Connect_SDK/doc/zboss/) are board and promoter members of.
+
 # Hardware requirements
 
 Nordic Semi USB adapters and development kits/boards based on nRF52840 SoC are used as reference hardware in the zigpy-zboss project:
