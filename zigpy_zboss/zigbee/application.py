@@ -626,7 +626,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
                 "Coordinator is disconnected, cannot send request")
 
         if zigpy.zdo.ZDO_ENDPOINT in (packet.src_ep, packet.dst_ep):
-            await self._handle_zdo_packet(packet)
+            await self._device.zdo.zboss_specific_cmd(packet)
             return
 
         LOGGER.debug("Sending packet %r", packet)
@@ -681,69 +681,3 @@ class ControllerApplication(zigpy.application.ControllerApplication):
                     Payload=t_zboss.Payload(packet.data.serialize()),
                 )
             )
-
-    async def _handle_zdo_packet(self, packet: t.ZigbeePacket) -> None:
-        """ZDO packets that can't be send using the ZBOSS APSDE request."""
-        # The current zigpy device may not exist if we receive a packet early
-        try:
-            zdo = self._device.zdo
-        except KeyError:
-            zdo = zigpy.zdo.ZDO(None)
-
-        try:
-            zdo_hdr, zdo_args = zdo.deserialize(
-                cluster_id=packet.cluster_id, data=packet.data.serialize()
-            )
-        except ValueError:
-            LOGGER.debug("Could not parse ZDO message from packet")
-            return
-
-        if zdo_hdr.command_id == zdo_t.ZDOCmd.IEEE_addr_req:
-            await self._ieee_addr_req(packet, zdo_hdr, zdo_args)
-
-    async def _ieee_addr_req(
-            self,
-            packet: t.ZigbeePacket,
-            zdo_hdr: zdo_t.ZDOHeader,
-            zdo_args: tuple[Any]) -> None:
-        """Send ZDO IEEE addr request and handle the response."""
-        tsn = zdo_hdr.tsn
-        nwki, req_type, index = zdo_args
-        res = await self._api.request(
-            c.ZDO.IeeeAddrReq.Req(
-                TSN=tsn,
-                DstNWK=packet.dst.address,
-                NWKtoMatch=nwki,
-                RequestType=req_type,
-                StartIndex=index,
-                )
-        )
-
-        status = zdo_t.Status(res.StatusCode)
-        ieee = res.RemoteDevIEEE
-        nwki = res.RemoteDevNWK
-        data = tsn.serialize() \
-            + status.serialize() \
-            + ieee.serialize() \
-            + nwki.serialize()
-
-        packet = t.ZigbeePacket(
-            src=t.AddrModeAddress(
-                addr_mode=t.AddrMode.NWK,
-                address=res.RemoteDevNWK,
-            ),
-            src_ep=0,
-            dst=t.AddrModeAddress(
-                addr_mode=t.AddrMode.NWK,
-                address=self.state.node_info.nwk,
-            ),
-            dst_ep=0,
-            tsn=tsn,
-            profile_id=0,
-            cluster_id=zdo_t.ZDOCmd.IEEE_addr_rsp,
-            data=t.SerializableBytes(data),
-            tx_options=t.TransmitOptions.NONE,
-            lqi=None,
-            rssi=None
-        )
-        self.packet_received(packet)
