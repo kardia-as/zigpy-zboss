@@ -629,6 +629,10 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             raise DeliveryError(
                 "Coordinator is disconnected, cannot send request")
 
+        if zigpy.zdo.ZDO_ENDPOINT in (packet.src_ep, packet.dst_ep):
+            await self._device.zdo.zboss_specific_cmd(packet)
+            return
+
         LOGGER.debug("Sending packet %r", packet)
 
         options = c.aps.TransmitOptions.NONE
