@@ -292,7 +292,7 @@ class ZbossZDO(ZigpyZDO):
             lqi=None,
             rssi=None
         )
-        self.packet_received(packet)
+        self._device._application.packet_received(packet)
 
 
 class ZbossDevice(zigpy.device.Device):
