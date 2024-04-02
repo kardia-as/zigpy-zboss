@@ -631,6 +631,10 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
         LOGGER.debug("Sending packet %r", packet)
 
+        if zigpy.zdo.ZDO_ENDPOINT in (packet.src_ep, packet.dst_ep):
+            await self._device.zdo.zboss_specific_cmd(packet)
+            return
+
         options = c.aps.TransmitOptions.NONE
 
         if t.TransmitOptions.ACK in packet.tx_options:

@@ -5,13 +5,17 @@ import zigpy.device
 import zigpy.endpoint
 import zigpy.types as t
 import zigpy_zboss.types as t_zboss
+from typing import Any
 from zigpy_zboss import commands as c
 from zigpy.zdo import types as zdo_t
 from zigpy.zdo import ZDO as ZigpyZDO
 
 
+LOGGER = logging.getLogger(__name__)
+
+
 class ZbossZDO(ZigpyZDO):
-    """The ZDO endpoint of a device."""
+    """The ZDO endpoint of a ZBOSS device."""
 
     def handle_mgmt_permit_joining_req(
         self,
@@ -223,6 +227,72 @@ class ZbossZDO(ZigpyZDO):
         if res.StatusCode != 0:
             return (None, None, None, None, None)
         return (None, res.ScannedChannels, None, None, res.EnergyValues)
+
+    async def zboss_specific_cmd(self, packet: t.ZigbeePacket) -> None:
+        """Reroute ZDO packet sent over APSDE to custom ZBOSS ZDO commands."""
+        try:
+            zdo_hdr, zdo_args = self.deserialize(
+                cluster_id=packet.cluster_id, data=packet.data.serialize()
+            )
+        except ValueError:
+            LOGGER.debug("Could not parse ZDO message from packet")
+            return
+
+        if zdo_hdr.command_id == zdo_t.ZDOCmd.IEEE_addr_req:
+            await self._IEEE_addr_req(packet, zdo_hdr, zdo_args)
+
+    async def _IEEE_addr_req(
+            self,
+            packet: t.ZigbeePacket,
+            zdo_hdr: zdo_t.ZDOHeader,
+            zdo_args: tuple[Any]) -> None:
+        """Send ZDO IEEE addr request and handle the response."""
+        tsn = zdo_hdr.tsn
+        nwki, req_type, index = zdo_args
+        res = await self._api.request(
+            c.ZDO.IeeeAddrReq.Req(
+                TSN=tsn,
+                DstNWK=packet.dst.address,
+                NWKtoMatch=nwki,
+                RequestType=req_type,
+                StartIndex=index,
+                )
+        )
+
+        if res.StatusCode:
+            # ZDO command failed, use dummy values.
+            ieee = t.EUI64([0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff])
+            nwki = t.NWK(0xffff)
+        else:
+            ieee = res.RemoteDevIEEE
+            nwki = res.RemoteDevNWK
+
+        status = zdo_t.Status(res.StatusCode)
+        data = tsn.serialize() \
+            + status.serialize() \
+            + ieee.serialize() \
+            + nwki.serialize()
+
+        packet = t.ZigbeePacket(
+            src=t.AddrModeAddress(
+                addr_mode=t.AddrMode.NWK,
+                address=res.RemoteDevNWK,
+            ),
+            src_ep=0,
+            dst=t.AddrModeAddress(
+                addr_mode=t.AddrMode.NWK,
+                address=self.state.node_info.nwk,
+            ),
+            dst_ep=0,
+            tsn=tsn,
+            profile_id=0,
+            cluster_id=zdo_t.ZDOCmd.IEEE_addr_rsp,
+            data=t.SerializableBytes(data),
+            tx_options=t.TransmitOptions.NONE,
+            lqi=None,
+            rssi=None
+        )
+        self._device._application.packet_received(packet)
 
 
 class ZbossDevice(zigpy.device.Device):
