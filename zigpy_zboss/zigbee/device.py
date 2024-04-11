@@ -249,7 +249,7 @@ class ZbossZDO(ZigpyZDO):
         """Send ZDO IEEE addr request and handle the response."""
         tsn = zdo_hdr.tsn
         nwki, req_type, index = zdo_args
-        res = await self._api.request(
+        res = await self._device._application._api.request(
             c.ZDO.IeeeAddrReq.Req(
                 TSN=tsn,
                 DstNWK=packet.dst.address,
