@@ -147,6 +147,92 @@ class NWK(t.CommandsBase):
         ),
         rsp_schema=t.STATUS_SCHEMA,
     )
+    GetNeighborByIeee = t.CommandDef(
+        t.ControlType.REQ,
+        NWKCommandCode.NWK_GET_NEIGHBOR_BY_IEEE,
+        blocking=False,
+        req_schema=(
+            (
+                t.Param("TSN", t.uint8_t, "Transmission Sequence Number"),
+                t.Param("IEEE", t.EUI64, "IEEE address"),
+            )
+        ),
+        rsp_schema=t.STATUS_SCHEMA + (
+            t.Param("IEEE", t.EUI64, "Ieee address"),
+            t.Param("NWK", t.NWK, "Short address"),
+            t.Param(
+                "DeviceRole",
+                t.DeviceRole,
+                "Zigbee role code: 0 - ZC, 1 - ZR, 1 - ZED."
+            ),
+            t.Param("RxOnWhenIdle", t.uint8_t, "0 if sleepy ZED, else 1."),
+            t.Param("EDConfig", t.uint16_t, "Always 0."),
+            t.Param(
+                "TimeoutCounter",
+                t.uint32_t,
+                "The current time remaining, in seconds, for the end device. "
+                "After reaching 0, the end device will be aged out (the "
+                "field has no significance for NCP ZED or when a neighbor is "
+                "a router)."
+            ),
+            t.Param(
+                "DeviceTimeout",
+                t.uint32_t,
+                "Timeout, in seconds, for the end device child. "
+                "ED child periodically sends a keepalive to their router "
+                "parent to insure they remain in the router’s neighbor table "
+                "(the field has no significance for NCP ZED or when a "
+                "neighbor is a router)."
+            ),
+            t.Param(
+                "Relationship",
+                t.Relationship,
+                "The relationship between the neighbor and the current device"
+            ),
+            t.Param(
+                "TransmitFailureCnt",
+                t.uint8_t,
+                "A value indicating if previous transmissions to the "
+                "device were successful or not."
+            ),
+            t.Param(
+                "LQI",
+                t.uint8_t,
+                "The estimated link quality for RF transmissions from this "
+                "device. LQI is calculated using RSSI provided by PHY layer "
+                "with the formula: if rssi < -101 LQI = 0; else if "
+                "(rssi > -40) LQI = 255; else LQI = (255 * (RSSI + 101)) / 61"
+            ),
+            t.Param(
+                "OutgoingCost",
+                t.uint8_t,
+                "The cost of an outgoing link as measured by the neighbor. "
+                "A value of 0 indicates no outgoing cost is available (the "
+                "field has no significance for NCP ZED or when NCP ZR and a "
+                "neighbor is its child). Formula: 7 - ((LQI >> 5 ) & 0x07)"
+            ),
+            t.Param(
+                "Age",
+                t.uint8_t,
+                "The number of nwkLink-StatusPeriod intervals since a link "
+                "status command was received (applicable for routers only)"
+            ),
+            t.Param(
+                "KeepAliveReceived",
+                t.uint8_t,
+                "At least one keepalive has been received from the end device"
+                " since the router has rebooted (the field has no "
+                "significance for NCP ZED)."
+            ),
+            t.Param(
+                "MacIntfIdx",
+                t.uint8_t,
+                "Index into the MAC Interface Table indicating what interface "
+                "the neighbor or child is bound to. There is only one MAC "
+                "interface for NCP, so the field has no significance."
+            ),
+        ),
+    )
     NwkLeaveInd = t.CommandDef(
         t.ControlType.IND,
         NWKCommandCode.NWK_LEAVE_IND,

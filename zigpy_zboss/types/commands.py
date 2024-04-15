@@ -703,6 +703,17 @@ class PowerSource(t.bitmap8):
     Reserved = 1 << 3
 
 
+class Relationship(t.enum8):
+    """Enum class for Relationship."""
+
+    Parent = 0x00
+    Child = 0x01
+    Sibling = 0x02
+    NoneOfTheAbove = 0x03
+    PreviousChild = 0x04
+    Unauthenticated = 0x05
+
+
 STATUS_SCHEMA = (
     t.Param("TSN", t.uint8_t, "Transmit Sequence Number"),
     t.Param("StatusCat", StatusCategory, "Status category code"),
