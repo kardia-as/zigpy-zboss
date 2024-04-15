@@ -498,6 +498,13 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         finally:
             zboss.close()
 
+    async def _watchdog_feed(self):
+        """Watchdog loop to periodically test if ZBOSS is still running."""
+        await self._api.request(
+            c.NcpConfig.GetZigbeeRole.Req(TSN=self.get_sequence()),
+            timeout=15
+        )
+
     # Overwrites zigpy because of custom ZDO layer required for ZBOSS.
     def add_device(self, ieee: t.EUI64, nwk: t.NWK):
         """Create zigpy `Device` object with the provided IEEE and NWK addr."""
