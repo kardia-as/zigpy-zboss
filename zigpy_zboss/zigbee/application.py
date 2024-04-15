@@ -553,8 +553,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             pass
             # self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
         elif msg.Status == t_zboss.DeviceUpdateStatus.device_left:
-            pass
-            # self.handle_leave(msg.Nwk, msg.IEEE)
+            self.handle_leave(msg.Nwk, msg.IEEE)
         elif msg.Status == t_zboss.DeviceUpdateStatus.tc_rejoin:
             pass
             # self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
