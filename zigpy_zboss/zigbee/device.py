@@ -256,16 +256,19 @@ class ZbossZDO(ZigpyZDO):
                 NWKtoMatch=nwki,
                 RequestType=req_type,
                 StartIndex=index,
-                )
+                ),
+            timeout=70,
         )
 
         if res.StatusCode:
             # ZDO command failed, use dummy values.
             ieee = t.EUI64([0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff])
             nwki = t.NWK(0xffff)
+            src_ad = t.NWK(0x0000)
         else:
             ieee = res.RemoteDevIEEE
             nwki = res.RemoteDevNWK
+            src_ad = res.RemoteDevNWK
 
         status = zdo_t.Status(res.StatusCode)
         data = tsn.serialize() \
@@ -276,12 +279,12 @@ class ZbossZDO(ZigpyZDO):
         packet = t.ZigbeePacket(
             src=t.AddrModeAddress(
                 addr_mode=t.AddrMode.NWK,
-                address=res.RemoteDevNWK,
+                address=src_ad,
             ),
             src_ep=0,
             dst=t.AddrModeAddress(
                 addr_mode=t.AddrMode.NWK,
-                address=self.state.node_info.nwk,
+                address=t.NWK(0x0000),
             ),
             dst_ep=0,
             tsn=tsn,
