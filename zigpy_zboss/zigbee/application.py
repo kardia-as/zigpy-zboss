@@ -426,7 +426,8 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         for rec in map:
             if rec.nwk_addr == 0x0000:
                 continue
-            self.state.network_info.children.append(rec.ieee_addr)
+            if rec.ieee_addr not in self.state.network_info.children:
+                self.state.network_info.children.append(rec.ieee_addr)
             self.state.network_info.nwk_addresses[rec.ieee_addr] = rec.nwk_addr
 
         keys = await self._api.nvram.read(
