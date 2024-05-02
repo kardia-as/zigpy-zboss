@@ -160,13 +160,6 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         )
 
         await self._api.request(
-            request=c.NcpConfig.SetShortPANID.Req(
-                TSN=self.get_sequence(),
-                PANID=network_info.pan_id
-            )
-        )
-
-        await self._api.request(
             request=c.NcpConfig.SetChannelMask.Req(
                 TSN=self.get_sequence(),
                 Page=t.uint8_t(0x00),
@@ -265,6 +258,14 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
         await self._form_network(network_info, node_info)
 
+        # We have to set the PANID after formation for some reason
+        await self._api.request(
+            request=c.NcpConfig.SetShortPANID.Req(
+                TSN=self.get_sequence(),
+                PANID=network_info.pan_id
+            )
+        )
+
     async def _form_network(self, network_info, node_info):
         """Clear the current config and forms a new network."""
         await self._api.request(
@@ -315,7 +316,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
         res = await self._api.request(
             c.NcpConfig.GetZigbeeRole.Req(TSN=self.get_sequence()))
-        self.state.node_info.logical_type = res.DeviceRole
+        self.state.node_info.logical_type = zdo_t.LogicalType(res.DeviceRole)
 
         res = await self._api.request(
             c.NcpConfig.GetExtendedPANID.Req(TSN=self.get_sequence()))
