@@ -1,7 +1,3 @@
-import asyncio
-
-import pytest
-
 import zigpy_zboss.types as t
 import zigpy_zboss.commands as c
 from zigpy_zboss.utils import deduplicate_commands
@@ -9,7 +5,7 @@ from zigpy_zboss.utils import deduplicate_commands
 
 def test_command_deduplication_simple():
     c1 = c.NcpConfig.GetModuleVersion.Req(TSN=10)
-    c2 =  c.NcpConfig.NCPModuleReset.Req(TSN=10,Option=t.ResetOptions(0))
+    c2 = c.NcpConfig.NCPModuleReset.Req(TSN=10, Option=t.ResetOptions(0))
 
     assert deduplicate_commands([]) == ()
     assert deduplicate_commands([c1]) == (c1,)
