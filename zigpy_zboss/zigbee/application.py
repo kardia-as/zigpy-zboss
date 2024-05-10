@@ -145,7 +145,10 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         if not network_info.stack_specific.get("form_quickly", False):
             await self.reset_network_info()
 
-        network_info.stack_specific.update(
+        zboss_stack_specific = network_info.stack_specific.setdefault(
+            "zboss", {}
+        )
+        zboss_stack_specific.update(
             self.get_default_stack_specific_formation_settings()
         )
         if node_info.ieee != t.EUI64.UNKNOWN:
@@ -195,21 +198,21 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         await self._api.request(
             request=c.NcpConfig.SetRxOnWhenIdle.Req(
                 TSN=self.get_sequence(),
-                RxOnWhenIdle=network_info.stack_specific["rx_on_when_idle"]
+                RxOnWhenIdle=zboss_stack_specific["rx_on_when_idle"]
             )
         )
 
         await self._api.request(
             request=c.NcpConfig.SetEDTimeout.Req(
                 TSN=self.get_sequence(),
-                Timeout=network_info.stack_specific["end_device_timeout"]
+                Timeout=zboss_stack_specific["end_device_timeout"]
             )
         )
 
         await self._api.request(
             request=c.NcpConfig.SetMaxChildren.Req(
                 TSN=self.get_sequence(),
-                ChildrenNbr=network_info.stack_specific[
+                ChildrenNbr=zboss_stack_specific[
                     "max_children"]
             )
         )
@@ -218,7 +221,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             request=c.NcpConfig.SetTCPolicy.Req(
                 TSN=self.get_sequence(),
                 PolicyType=t_zboss.PolicyType.TC_Link_Keys_Required,
-                PolicyValue=network_info.stack_specific[
+                PolicyValue=zboss_stack_specific[
                     "tc_policy"]["unique_tclk_required"]
             )
         )
@@ -227,7 +230,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             request=c.NcpConfig.SetTCPolicy.Req(
                 TSN=self.get_sequence(),
                 PolicyType=t_zboss.PolicyType.IC_Required,
-                PolicyValue=network_info.stack_specific[
+                PolicyValue=zboss_stack_specific[
                     "tc_policy"]["ic_required"]
             )
         )
@@ -236,7 +239,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             request=c.NcpConfig.SetTCPolicy.Req(
                 TSN=self.get_sequence(),
                 PolicyType=t_zboss.PolicyType.TC_Rejoin_Enabled,
-                PolicyValue=network_info.stack_specific[
+                PolicyValue=zboss_stack_specific[
                     "tc_policy"]["tc_rejoin_enabled"]
             )
         )
@@ -245,7 +248,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             request=c.NcpConfig.SetTCPolicy.Req(
                 TSN=self.get_sequence(),
                 PolicyType=t_zboss.PolicyType.Ignore_TC_Rejoin,
-                PolicyValue=network_info.stack_specific[
+                PolicyValue=zboss_stack_specific[
                     "tc_policy"]["tc_rejoin_ignored"]
             )
         )
@@ -254,7 +257,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             request=c.NcpConfig.SetTCPolicy.Req(
                 TSN=self.get_sequence(),
                 PolicyType=t_zboss.PolicyType.APS_Insecure_Join,
-                PolicyValue=network_info.stack_specific[
+                PolicyValue=zboss_stack_specific[
                     "tc_policy"]["aps_insecure_join_enabled"]
             )
         )
@@ -263,7 +266,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             request=c.NcpConfig.SetTCPolicy.Req(
                 TSN=self.get_sequence(),
                 PolicyType=t_zboss.PolicyType.Disable_NWK_MGMT_Channel_Update,
-                PolicyValue=network_info.stack_specific[
+                PolicyValue=zboss_stack_specific[
                     "tc_policy"]["mgmt_channel_update_disabled"]
             )
         )
@@ -312,9 +315,14 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         """Populate state.node_info and state.network_info."""
         res = await self._api.request(
             c.NcpConfig.GetJoinStatus.Req(TSN=self.get_sequence()))
-        self.state.network_info.stack_specific["joined"] = res.Joined
+
         if not res.Joined & 0x01:
             raise zigpy.exceptions.NetworkNotFormed
+
+        zboss_stack_specific = (
+            self.state.network_info.stack_specific.setdefault("zboss", {})
+        )
+        zboss_stack_specific["joined"] = res.Joined
 
         res = await self._api.request(c.NcpConfig.GetShortAddr.Req(
             TSN=self.get_sequence()
@@ -395,39 +403,27 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
         res = await self._api.request(
             c.NcpConfig.GetRxOnWhenIdle.Req(TSN=self.get_sequence()))
-        self.state.network_info.stack_specific[
-            "rx_on_when_idle"
-        ] = res.RxOnWhenIdle
+        zboss_stack_specific["rx_on_when_idle"] = res.RxOnWhenIdle
 
         res = await self._api.request(
             c.NcpConfig.GetEDTimeout.Req(TSN=self.get_sequence()))
-        self.state.network_info.stack_specific[
-            "end_device_timeout"
-        ] = res.Timeout
+        zboss_stack_specific["end_device_timeout"] = res.Timeout
 
         res = await self._api.request(
             c.NcpConfig.GetMaxChildren.Req(TSN=self.get_sequence()))
-        self.state.network_info.stack_specific[
-            "max_children"
-        ] = res.ChildrenNbr
+        zboss_stack_specific["max_children"] = res.ChildrenNbr
 
         res = await self._api.request(
             c.NcpConfig.GetAuthenticationStatus.Req(TSN=self.get_sequence()))
-        self.state.network_info.stack_specific[
-            "authenticated"
-        ] = res.Authenticated
+        zboss_stack_specific["authenticated"] = res.Authenticated
 
         res = await self._api.request(
             c.NcpConfig.GetParentAddr.Req(TSN=self.get_sequence()))
-        self.state.network_info.stack_specific[
-            "parent_nwk"
-        ] = res.NWKParentAddr
+        zboss_stack_specific["parent_nwk"] = res.NWKParentAddr
 
         res = await self._api.request(
             c.NcpConfig.GetCoordinatorVersion.Req(TSN=self.get_sequence()))
-        self.state.network_info.stack_specific[
-            "coordinator_version"
-        ] = res.CoordinatorVersion
+        zboss_stack_specific["coordinator_version"] = res.CoordinatorVersion
 
         if not load_devices:
             return
