@@ -409,7 +409,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
                 t_zboss.DatasetId.ZB_NVRAM_ADDR_MAP,
                 t_zboss.DSNwkAddrMap
             )
-        for rec in map:
+        for rec in (map or []):
             if rec.nwk_addr == 0x0000:
                 continue
             if rec.ieee_addr not in self.state.network_info.children:
@@ -420,7 +420,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             t_zboss.DatasetId.ZB_NVRAM_APS_SECURE_DATA,
             t_zboss.DSApsSecureKeys
         )
-        for key_entry in keys:
+        for key_entry in (keys or []):
             zigpy_key = zigpy.state.Key(
                 key=t.KeyData(key_entry.key),
                 partner_ieee=key_entry.ieee_addr
