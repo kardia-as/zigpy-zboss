@@ -81,6 +81,8 @@ class ZbossNcpProtocol(asyncio.Protocol):
 
     def connection_lost(self, exc: typing.Optional[Exception]) -> None:
         """Lost connection."""
+        LOGGER.debug("Connection has been lost: %r", exc)
+
         if self._api is not None:
             self._api.connection_lost(exc)
 
@@ -240,8 +242,6 @@ async def connect(config: conf.ConfigType, api) -> ZbossNcpProtocol:
     port = config[conf.CONF_DEVICE_PATH]
     baudrate = config[conf.CONF_DEVICE_BAUDRATE]
     flow_control = config[conf.CONF_DEVICE_FLOW_CONTROL]
-
-    LOGGER.debug("Connecting to %s at %s baud", port, baudrate)
 
     _, protocol = await zigpy.serial.create_serial_connection(
         loop=loop,
