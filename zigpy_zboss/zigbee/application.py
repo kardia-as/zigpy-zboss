@@ -439,8 +439,9 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
     async def reset_network_info(self) -> None:
         """Reset node network information and leaves the current network."""
-        assert self._api is not None
-        await self._api.reset(option=t_zboss.ResetOptions.FactoryReset)
+        await self._api.request(
+            c.NcpConfig.EraseNVRAM.Req(TSN=self.get_sequence())
+        )
 
     async def start_without_formation(self):
         """Start the network with settings currently stored on the module."""
