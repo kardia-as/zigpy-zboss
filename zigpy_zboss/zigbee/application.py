@@ -40,7 +40,6 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         """Initialize instance."""
         super().__init__(config=zigpy.config.ZIGPY_SCHEMA(config))
         self._api: ZBOSS | None = None
-        self.version = None
 
     async def connect(self):
         """Connect to the zigbee module."""
@@ -80,8 +79,6 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             await self.load_network_info()
 
         await self.start_without_formation()
-
-        self.version = await self._api.version()
 
         await self.register_endpoints()
 
@@ -325,6 +322,13 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             TSN=self.get_sequence()
         ))
         self.state.node_info.nwk = res.NWKAddr
+
+        fw_ver, stack_ver, proto_ver = await self._api.version()
+
+        # TODO: is there a way to read the coordinator model and manufacturer?
+        self.state.node_info.model = "ZBOSS"
+        self.state.node_info.manufacturer = "DSR"
+        self.state.node_info.version = f"{fw_ver} (stack {stack_ver})"
 
         res = await self._api.request(
             c.NcpConfig.GetLocalIEEE.Req(
