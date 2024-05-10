@@ -478,28 +478,6 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         """Shortcut property to access the ZBOSS radio config."""
         return self.config[conf.CONF_ZBOSS_CONFIG]
 
-    @classmethod
-    async def probe(
-            cls, device_config: dict[str, Any]) -> bool | dict[str, Any]:
-        """Probe the NCP.
-
-        Checks whether the NCP device is responding to requests.
-        """
-        config = cls.SCHEMA(
-            {conf.CONF_DEVICE: cls.SCHEMA_DEVICE(device_config)})
-        zboss = ZBOSS(config)
-        try:
-            await zboss.connect()
-            async with async_timeout.timeout(PROBE_TIMEOUT):
-                await zboss.request(
-                    c.NcpConfig.GetZigbeeRole.Req(TSN=1), timeout=1)
-        except asyncio.TimeoutError:
-            return False
-        else:
-            return device_config
-        finally:
-            zboss.close()
-
     async def _watchdog_feed(self):
         """Watchdog loop to periodically test if ZBOSS is still running."""
         await self._api.request(
