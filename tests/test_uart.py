@@ -3,6 +3,7 @@ from serial_asyncio import SerialTransport
 
 import zigpy_zboss.config as conf
 import zigpy_zboss.commands as c
+import zigpy_zboss.types as t
 from zigpy_zboss import uart as znp_uart
 from zigpy_zboss.frames import Frame
 from zigpy_zboss.checksum import CRC8
@@ -66,7 +67,12 @@ def dummy_serial_conn(event_loop, mocker):
 def test_uart_rx_basic(connected_uart):
     znp, uart = connected_uart
 
-    test_command = c.NcpConfig.GetModuleVersion.Req(TSN=10)
+    test_command = c.NcpConfig.GetZigbeeRole.Rsp(
+            TSN=10,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            DeviceRole=t.DeviceRole(1)
+        )
     test_frame = test_command.to_frame()
     test_frame = ll_checksum(test_frame)
     test_frame_bytes = Frame(
@@ -88,7 +94,12 @@ def test_uart_str_repr(connected_uart):
 def test_uart_rx_byte_by_byte(connected_uart):
     znp, uart = connected_uart
 
-    test_command = c.NcpConfig.GetModuleVersion.Req(TSN=10)
+    test_command = c.NcpConfig.GetZigbeeRole.Rsp(
+            TSN=10,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            DeviceRole=t.DeviceRole(1)
+        )
     test_frame = test_command.to_frame()
     test_frame = ll_checksum(test_frame)
     test_frame_bytes = Frame(
@@ -104,7 +115,12 @@ def test_uart_rx_byte_by_byte(connected_uart):
 def test_uart_rx_byte_by_byte_garbage(connected_uart):
     znp, uart = connected_uart
 
-    test_command = c.NcpConfig.GetModuleVersion.Req(TSN=10)
+    test_command = c.NcpConfig.GetZigbeeRole.Rsp(
+            TSN=10,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            DeviceRole=t.DeviceRole(1)
+        )
     test_frame = test_command.to_frame()
     test_frame = ll_checksum(test_frame)
     test_frame_bytes = Frame(
@@ -130,7 +146,12 @@ def test_uart_rx_byte_by_byte_garbage(connected_uart):
 def test_uart_rx_big_garbage(connected_uart):
     znp, uart = connected_uart
 
-    test_command = c.NcpConfig.GetModuleVersion.Req(TSN=10)
+    test_command = c.NcpConfig.GetZigbeeRole.Rsp(
+            TSN=10,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            DeviceRole=t.DeviceRole(1)
+        )
     test_frame = test_command.to_frame()
     test_frame = ll_checksum(test_frame)
     test_frame_bytes = Frame(
@@ -155,7 +176,12 @@ def test_uart_rx_big_garbage(connected_uart):
 def test_uart_rx_corrupted_fcs(connected_uart):
     znp, uart = connected_uart
 
-    test_command = c.NcpConfig.GetModuleVersion.Req(TSN=10)
+    test_command = c.NcpConfig.GetZigbeeRole.Rsp(
+            TSN=10,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            DeviceRole=t.DeviceRole(1)
+        )
     test_frame = test_command.to_frame()
     test_frame = ll_checksum(test_frame)
     test_frame_bytes = Frame(
@@ -172,7 +198,12 @@ def test_uart_rx_corrupted_fcs(connected_uart):
 def test_uart_rx_sof_stress(connected_uart):
     znp, uart = connected_uart
 
-    test_command = c.NcpConfig.GetModuleVersion.Req(TSN=10)
+    test_command = c.NcpConfig.GetZigbeeRole.Rsp(
+            TSN=10,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            DeviceRole=t.DeviceRole(1)
+        )
     test_frame = test_command.to_frame()
     test_frame = ll_checksum(test_frame)
     test_frame_bytes = Frame(
@@ -196,7 +227,12 @@ def test_uart_frame_received_error(connected_uart, mocker):
     znp, uart = connected_uart
     znp.frame_received = mocker.Mock(side_effect=RuntimeError("An error"))
 
-    test_command = c.NcpConfig.GetModuleVersion.Req(TSN=10)
+    test_command = c.NcpConfig.GetZigbeeRole.Rsp(
+            TSN=10,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            DeviceRole=t.DeviceRole(1)
+        )
     test_frame = test_command.to_frame()
     test_frame = ll_checksum(test_frame)
     test_frame_bytes = Frame(
