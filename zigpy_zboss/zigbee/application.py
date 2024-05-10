@@ -211,59 +211,35 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             )
         )
 
-        await self._api.request(
-            request=c.NcpConfig.SetTCPolicy.Req(
-                TSN=self.get_sequence(),
-                PolicyType=t_zboss.PolicyType.TC_Link_Keys_Required,
-                PolicyValue=zboss_stack_specific[
-                    "tc_policy"]["unique_tclk_required"]
+        for policy_type, policy_value in {
+            t_zboss.PolicyType.TC_Link_Keys_Required: (
+                zboss_stack_specific["tc_policy"]["unique_tclk_required"]
+            ),
+            t_zboss.PolicyType.IC_Required: (
+                zboss_stack_specific["tc_policy"]["ic_required"]
+            ),
+            t_zboss.PolicyType.TC_Rejoin_Enabled: (
+                zboss_stack_specific["tc_policy"]["tc_rejoin_enabled"]
+            ),
+            t_zboss.PolicyType.Ignore_TC_Rejoin: (
+                zboss_stack_specific["tc_policy"]["tc_rejoin_ignored"]
+            ),
+            t_zboss.PolicyType.APS_Insecure_Join: (
+                zboss_stack_specific["tc_policy"]["aps_insecure_join_enabled"]
+            ),
+            t_zboss.PolicyType.Disable_NWK_MGMT_Channel_Update: (
+                zboss_stack_specific["tc_policy"][
+                    "mgmt_channel_update_disabled"
+                ]
+            ),
+        }.items():
+            await self._api.request(
+                request=c.NcpConfig.SetTCPolicy.Req(
+                    TSN=self.get_sequence(),
+                    PolicyType=policy_type,
+                    PolicyValue=policy_value,
+                )
             )
-        )
-
-        await self._api.request(
-            request=c.NcpConfig.SetTCPolicy.Req(
-                TSN=self.get_sequence(),
-                PolicyType=t_zboss.PolicyType.IC_Required,
-                PolicyValue=zboss_stack_specific[
-                    "tc_policy"]["ic_required"]
-            )
-        )
-
-        await self._api.request(
-            request=c.NcpConfig.SetTCPolicy.Req(
-                TSN=self.get_sequence(),
-                PolicyType=t_zboss.PolicyType.TC_Rejoin_Enabled,
-                PolicyValue=zboss_stack_specific[
-                    "tc_policy"]["tc_rejoin_enabled"]
-            )
-        )
-
-        await self._api.request(
-            request=c.NcpConfig.SetTCPolicy.Req(
-                TSN=self.get_sequence(),
-                PolicyType=t_zboss.PolicyType.Ignore_TC_Rejoin,
-                PolicyValue=zboss_stack_specific[
-                    "tc_policy"]["tc_rejoin_ignored"]
-            )
-        )
-
-        await self._api.request(
-            request=c.NcpConfig.SetTCPolicy.Req(
-                TSN=self.get_sequence(),
-                PolicyType=t_zboss.PolicyType.APS_Insecure_Join,
-                PolicyValue=zboss_stack_specific[
-                    "tc_policy"]["aps_insecure_join_enabled"]
-            )
-        )
-
-        await self._api.request(
-            request=c.NcpConfig.SetTCPolicy.Req(
-                TSN=self.get_sequence(),
-                PolicyType=t_zboss.PolicyType.Disable_NWK_MGMT_Channel_Update,
-                PolicyValue=zboss_stack_specific[
-                    "tc_policy"]["mgmt_channel_update_disabled"]
-            )
-        )
 
         await self._form_network(network_info, node_info)
 
