@@ -357,10 +357,16 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             t_zboss.DatasetId.ZB_IB_COUNTERS,
             t_zboss.DSIbCounters
         )
-        if common and counters:
+
+        # Counters NVRAM dataset can be missing if we don't use the network
+        tx_counter = 0
+        if counters is not None:
+            tx_counter = counters.nib_counter
+
+        if common is not None:
             self.state.network_info.network_key = zigpy.state.Key(
                 key=common.nwk_key,
-                tx_counter=counters.nib_counter,
+                tx_counter=tx_counter,
                 rx_counter=0,
                 seq=common.nwk_key_seq,
                 partner_ieee=self.state.node_info.ieee,
