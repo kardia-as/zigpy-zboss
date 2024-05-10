@@ -80,6 +80,9 @@ class ZbossNcpProtocol(asyncio.Protocol):
         SERIAL_LOGGER.info(message)
         self._connected_event.set()
 
+        if self._api is not None:
+            self._api.connection_made()
+
     def connection_lost(self, exc: typing.Optional[Exception]) -> None:
         """Lost connection."""
         if self._api is not None:
