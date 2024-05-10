@@ -1,12 +1,12 @@
 """ControllerApplication for ZBOSS NCP protocol based adapters."""
-import asyncio
+from __future__ import annotations
+
 import logging
 import zigpy.util
 import zigpy.state
 import zigpy.appdb
 import zigpy.config
 import zigpy.device
-import async_timeout
 import zigpy.endpoint
 import zigpy.exceptions
 import zigpy.types as t
@@ -596,18 +596,8 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         """NCP_RESET.indication handler."""
         if msg.ResetSrc == t_zboss.ResetSource.RESET_SRC_POWER_ON:
             return
-        LOGGER.debug(
-            f"Resetting ControllerApplication. Source: {msg.ResetSrc}")
-        if self._reset_task:
-            LOGGER.debug("Preempting ControllerApplication reset")
-            self._reset_task.cancel()
 
-        self._reset_task = asyncio.create_task(self._reset_controller())
-
-    async def _reset_controller(self):
-        """Restart the application controller."""
-        self.disconnect()
-        await self.startup()
+        self.connection_lost(RuntimeError(msg))
 
     async def send_packet(self, packet: t.ZigbeePacket) -> None:
         """Send packets."""
