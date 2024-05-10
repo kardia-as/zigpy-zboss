@@ -67,7 +67,13 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         if self._reset_task and not self._reset_task.done():
             self._reset_task.cancel()
         if self._api is not None:
-            await self._api.reset()
+            try:
+                await self._api.reset()
+            except Exception:
+                LOGGER.debug(
+                    "Failed to reset API during disconnect", exc_info=True
+                )
+
             self._api.close()
             self._api = None
 
