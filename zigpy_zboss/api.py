@@ -202,13 +202,14 @@ class ZBOSS:
             await self._send_to_uart(frag, None)
 
     async def _send_to_uart(
-            self, frame, response_future, timeout=DEFAULT_TIMEOUT):
+            self, frame, response_future=None, timeout=DEFAULT_TIMEOUT):
         """Send the frame and waits for the response."""
         if self._uart is None:
             return
+
         try:
             await self._uart.send(frame)
-            if response_future:
+            if response_future is not None:
                 async with async_timeout.timeout(timeout):
                     return await response_future
         except asyncio.TimeoutError:
@@ -327,7 +328,11 @@ class ZBOSS:
             version[idx] = ".".join([major, minor, revision, commit])
         return tuple(version)
 
-    async def reset(self, option=t.ResetOptions(0)):
+    async def reset(
+        self,
+        option: t.ResetOptions = t.ResetOptions(0),
+        wait_for_reset: bool = True
+    ):
         """Reset the NCP module (see ResetOptions)."""
         if self._app is not None:
             tsn = self._app.get_sequence()
@@ -335,6 +340,11 @@ class ZBOSS:
             tsn = 0
         req = c.NcpConfig.NCPModuleReset.Req(TSN=tsn, Option=option)
         self._uart.reset_flag = True
+
+        if not wait_for_reset:
+            await self._send_to_uart(req.to_frame())
+            return
+
         res = await self._send_to_uart(
             req.to_frame(),
             self.wait_for_response(

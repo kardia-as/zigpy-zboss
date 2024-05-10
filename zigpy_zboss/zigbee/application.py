@@ -64,7 +64,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         """Disconnect from the zigbee module."""
         if self._api is not None:
             try:
-                await self._api.reset()
+                await self._api.reset(wait_for_reset=False)
             except Exception:
                 LOGGER.debug(
                     "Failed to reset API during disconnect", exc_info=True
