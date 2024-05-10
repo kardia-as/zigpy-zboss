@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import asyncio
 import zigpy.util
 import zigpy.state
 import zigpy.appdb
@@ -126,15 +127,13 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             "authenticated": t.Bool.false,
             "parent_nwk": None,
             "coordinator_version": None,
-            "tc_policy": {
-                "unique_tclk_required": t.Bool.false,
-                "ic_required": t.Bool.false,
-                "tc_rejoin_enabled": t.Bool.true,
-                "unsecured_tc_rejoin_enabled": t.Bool.false,
-                "tc_rejoin_ignored": t.Bool.false,
-                "aps_insecure_join_enabled": t.Bool.false,
-                "mgmt_channel_update_disabled": t.Bool.false,
-            },
+            "tc_policy_unique_tclk_required": t.Bool.false,
+            "tc_policy_ic_required": t.Bool.false,
+            "tc_policy_tc_rejoin_enabled": t.Bool.true,
+            "tc_policy_unsecured_tc_rejoin_enabled": t.Bool.false,
+            "tc_policy_tc_rejoin_ignored": t.Bool.false,
+            "tc_policy_aps_insecure_join_enabled": t.Bool.false,
+            "tc_policy_mgmt_channel_update_disabled": t.Bool.false,
         }
 
     async def write_network_info(self, *, network_info, node_info):
@@ -142,12 +141,15 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         if not network_info.stack_specific.get("form_quickly", False):
             await self.reset_network_info()
 
+        # Prefer the existing stack-specific settings to the defaults
         zboss_stack_specific = network_info.stack_specific.setdefault(
             "zboss", {}
         )
-        zboss_stack_specific.update(
-            self.get_default_stack_specific_formation_settings()
-        )
+        zboss_stack_specific.update({
+            **self.get_default_stack_specific_formation_settings(),
+            **zboss_stack_specific
+        })
+
         if node_info.ieee != t.EUI64.UNKNOWN:
             await self._api.request(
                 c.NcpConfig.SetLocalIEEE.Req(
@@ -191,49 +193,24 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             )
         )
 
-        # Write stack-specific parameters.
-        await self._api.request(
-            request=c.NcpConfig.SetRxOnWhenIdle.Req(
-                TSN=self.get_sequence(),
-                RxOnWhenIdle=zboss_stack_specific["rx_on_when_idle"]
-            )
-        )
-
-        await self._api.request(
-            request=c.NcpConfig.SetEDTimeout.Req(
-                TSN=self.get_sequence(),
-                Timeout=zboss_stack_specific["end_device_timeout"]
-            )
-        )
-
-        await self._api.request(
-            request=c.NcpConfig.SetMaxChildren.Req(
-                TSN=self.get_sequence(),
-                ChildrenNbr=zboss_stack_specific[
-                    "max_children"]
-            )
-        )
-
         for policy_type, policy_value in {
             t_zboss.PolicyType.TC_Link_Keys_Required: (
-                zboss_stack_specific["tc_policy"]["unique_tclk_required"]
+                zboss_stack_specific["tc_policy_unique_tclk_required"]
             ),
             t_zboss.PolicyType.IC_Required: (
-                zboss_stack_specific["tc_policy"]["ic_required"]
+                zboss_stack_specific["tc_policy_ic_required"]
             ),
             t_zboss.PolicyType.TC_Rejoin_Enabled: (
-                zboss_stack_specific["tc_policy"]["tc_rejoin_enabled"]
+                zboss_stack_specific["tc_policy_tc_rejoin_enabled"]
             ),
             t_zboss.PolicyType.Ignore_TC_Rejoin: (
-                zboss_stack_specific["tc_policy"]["tc_rejoin_ignored"]
+                zboss_stack_specific["tc_policy_tc_rejoin_ignored"]
             ),
             t_zboss.PolicyType.APS_Insecure_Join: (
-                zboss_stack_specific["tc_policy"]["aps_insecure_join_enabled"]
+                zboss_stack_specific["tc_policy_aps_insecure_join_enabled"]
             ),
             t_zboss.PolicyType.Disable_NWK_MGMT_Channel_Update: (
-                zboss_stack_specific["tc_policy"][
-                    "mgmt_channel_update_disabled"
-                ]
+                zboss_stack_specific["tc_policy_mgmt_channel_update_disabled"]
             ),
         }.items():
             await self._api.request(
@@ -253,6 +230,34 @@ class ControllerApplication(zigpy.application.ControllerApplication):
                 PANID=network_info.pan_id
             )
         )
+
+        # Write stack-specific parameters.
+        await self._api.request(
+            request=c.NcpConfig.SetRxOnWhenIdle.Req(
+                TSN=self.get_sequence(),
+                RxOnWhenIdle=zboss_stack_specific["rx_on_when_idle"]
+            )
+        )
+
+        await self._api.request(
+            request=c.NcpConfig.SetEDTimeout.Req(
+                TSN=self.get_sequence(),
+                Timeout=t_zboss.TimeoutIndex(
+                    zboss_stack_specific["end_device_timeout"]
+                )
+            )
+        )
+
+        await self._api.request(
+            request=c.NcpConfig.SetMaxChildren.Req(
+                TSN=self.get_sequence(),
+                ChildrenNbr=zboss_stack_specific["max_children"]
+            )
+        )
+
+        # XXX: We must wait a moment after setting the PAN ID, otherwise the
+        # setting does not persist
+        await asyncio.sleep(1)
 
     async def _form_network(self, network_info, node_info):
         """Clear the current config and forms a new network."""
