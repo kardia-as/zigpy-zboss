@@ -297,7 +297,7 @@ class ZBOSS:
         """
         listener = IndicationListener(responses, callback=callback)
 
-        LOGGER.debug(f"Creating callback {listener}")
+        LISTENER_LOGGER.debug(f"Creating callback {listener}")
 
         for header in listener.matching_headers():
             self._listeners[header].append(listener)
