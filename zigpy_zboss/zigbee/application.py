@@ -40,7 +40,6 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         """Initialize instance."""
         super().__init__(config=zigpy.config.ZIGPY_SCHEMA(config))
         self._api: ZBOSS | None = None
-        self._reset_task = None
         self.version = None
 
     async def connect(self):
@@ -64,8 +63,6 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
     async def disconnect(self):
         """Disconnect from the zigbee module."""
-        if self._reset_task and not self._reset_task.done():
-            self._reset_task.cancel()
         if self._api is not None:
             try:
                 await self._api.reset()
