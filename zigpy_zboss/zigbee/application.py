@@ -256,12 +256,13 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
     async def _form_network(self, network_info, node_info):
         """Clear the current config and forms a new network."""
+        channel_mask = t.Channels.from_channel_list([network_info.channel])
+
         await self._api.request(
             request=c.NWK.Formation.Req(
                 TSN=self.get_sequence(),
                 ChannelList=t_zboss.ChannelEntryList([
-                    t_zboss.ChannelEntry(
-                        page=0, channel_mask=network_info.channel_mask)
+                    t_zboss.ChannelEntry(page=0, channel_mask=channel_mask)
                 ]),
                 ScanDuration=0x05,
                 DistributedNetFlag=0x00,
