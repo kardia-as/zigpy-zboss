@@ -20,6 +20,8 @@ from zigpy_zboss.utils import BaseResponseListener
 from zigpy_zboss.utils import OneShotResponseListener
 
 LOGGER = logging.getLogger(__name__)
+LISTENER_LOGGER = LOGGER.getChild("listener")
+LISTENER_LOGGER.propagate = False
 
 # All of these are in seconds
 AFTER_BOOTLOADER_SKIP_BYTE_DELAY = 2.5
@@ -153,11 +155,11 @@ class ZBOSS:
                 continue
 
             if not listener.resolve(command):
-                LOGGER.debug(f"{command} does not match {listener}")
+                LISTENER_LOGGER.debug(f"{command} does not match {listener}")
                 continue
 
             matched = True
-            LOGGER.debug(f"{command} matches {listener}")
+            LISTENER_LOGGER.debug(f"{command} matches {listener}")
 
             if isinstance(listener, OneShotResponseListener):
                 one_shot_matched = True
@@ -233,7 +235,7 @@ class ZBOSS:
         """
         listener = OneShotResponseListener(responses)
 
-        LOGGER.debug("Creating one-shot listener %s", listener)
+        LISTENER_LOGGER.debug("Creating one-shot listener %s", listener)
 
         for header in listener.matching_headers():
             self._listeners[header].append(listener)
@@ -262,7 +264,7 @@ class ZBOSS:
         if not self._listeners:
             return
 
-        LOGGER.debug("Removing listener %s", listener)
+        LISTENER_LOGGER.debug("Removing listener %s", listener)
 
         for header in listener.matching_headers():
             try:
@@ -271,7 +273,7 @@ class ZBOSS:
                 pass
 
             if not self._listeners[header]:
-                LOGGER.debug(
+                LISTENER_LOGGER.debug(
                     "Cleaning up empty listener list for header %s", header
                 )
                 del self._listeners[header]
@@ -282,7 +284,7 @@ class ZBOSS:
                 self._listeners.values()):
             counts[type(listener)] += 1
 
-        LOGGER.debug(
+        LISTENER_LOGGER.debug(
             f"There are {counts[IndicationListener]} callbacks and"
             f" {counts[OneShotResponseListener]} one-shot listeners remaining"
         )
@@ -330,10 +332,12 @@ class ZBOSS:
 
     async def reset(
         self,
-        option: t.ResetOptions = t.ResetOptions(0),
+        option: t.ResetOptions = t.ResetOptions.NoOptions,
         wait_for_reset: bool = True
     ):
         """Reset the NCP module (see ResetOptions)."""
+        LOGGER.debug("Sending a reset: %s", option)
+
         if self._app is not None:
             tsn = self._app.get_sequence()
         else:
