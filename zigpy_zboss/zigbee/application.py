@@ -20,7 +20,6 @@ from zigpy_zboss.api import ZBOSS
 from zigpy_zboss import commands as c
 from zigpy.exceptions import DeliveryError
 from .device import ZbossCoordinator, ZbossDevice
-from zigpy_zboss.exceptions import ZbossResponseError
 from zigpy_zboss.config import CONFIG_SCHEMA, SCHEMA_DEVICE
 
 LOGGER = logging.getLogger(__name__)
@@ -47,11 +46,18 @@ class ControllerApplication(zigpy.application.ControllerApplication):
     async def connect(self):
         """Connect to the zigbee module."""
         assert self._api is None
-        is_responsive = await self.probe(self.config.get(conf.CONF_DEVICE, {}))
-        if not is_responsive:
-            raise ZbossResponseError
+
         zboss = ZBOSS(self.config)
-        await zboss.connect()
+
+        try:
+            await zboss.connect()
+            await zboss.request(
+                c.NcpConfig.GetZigbeeRole.Req(TSN=1), timeout=1
+            )
+        except Exception:
+            zboss.close()
+            raise
+
         self._api = zboss
         self._api.set_application(self)
         self._bind_callbacks()
@@ -464,10 +470,6 @@ class ControllerApplication(zigpy.application.ControllerApplication):
                 TCSignificance=t.uint8_t(0x01),
             )
         )
-
-    def permit_with_key(self, node, code, time_s=60):
-        """Permit with key."""
-        raise NotImplementedError
 
     def permit_with_link_key(self, node, link_key, time_s=60):
         """Permit with link key."""
