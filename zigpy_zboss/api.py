@@ -101,7 +101,8 @@ class ZBOSS:
         Propagates up to the `ControllerApplication` that owns this ZBOSS
         instance.
         """
-        LOGGER.debug("We were disconnected from %s: %s", self._port_path, exc)
+        if self._app is not None:
+            self._app.connection_lost(exc)
 
     def close(self) -> None:
         """Clean up resources, namely the listener queues.
