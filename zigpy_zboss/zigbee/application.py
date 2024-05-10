@@ -85,8 +85,11 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         self.devices[self.state.node_info.ieee] = ZbossCoordinator(
             self, self.state.node_info.ieee, self.state.node_info.nwk
         )
-
         await self._device.schedule_initialize()
+
+        # We can only read the coordinator info after the network is formed
+        self.state.node_info.model = self._device.model
+        self.state.node_info.manufacturer = self._device.manufacturer
 
     async def force_remove(self, dev: zigpy.device.Device) -> None:
         """Send a lower-level leave command to the device."""
@@ -299,13 +302,6 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         ))
         self.state.node_info.nwk = res.NWKAddr
 
-        fw_ver, stack_ver, proto_ver = await self._api.version()
-
-        # TODO: is there a way to read the coordinator model and manufacturer?
-        self.state.node_info.model = "ZBOSS"
-        self.state.node_info.manufacturer = "DSR"
-        self.state.node_info.version = f"{fw_ver} (stack {stack_ver})"
-
         res = await self._api.request(
             c.NcpConfig.GetLocalIEEE.Req(
                 TSN=self.get_sequence(), MacInterfaceNum=0))
@@ -314,6 +310,20 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         res = await self._api.request(
             c.NcpConfig.GetZigbeeRole.Req(TSN=self.get_sequence()))
         self.state.node_info.logical_type = zdo_t.LogicalType(res.DeviceRole)
+
+        # TODO: it looks like we can't load the device info unless a network is
+        # running, as it is only accessible via ZCL
+        try:
+            self._device
+        except KeyError:
+            self.state.node_info.model = "ZBOSS"
+            self.state.node_info.manufacturer = "DSR"
+        else:
+            self.state.node_info.model = self._device.model
+            self.state.node_info.manufacturer = self._device.manufacturer
+
+        fw_ver, stack_ver, proto_ver = await self._api.version()
+        self.state.node_info.version = f"{fw_ver} (stack {stack_ver})"
 
         res = await self._api.request(
             c.NcpConfig.GetExtendedPANID.Req(TSN=self.get_sequence()))
