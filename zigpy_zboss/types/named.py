@@ -43,8 +43,11 @@ class ChannelEntry:
         """Create a channel entry instance."""
         instance = super().__new__(cls)
 
+        if page is None or channel_mask is None:
+            raise AttributeError("Page and channel_mask cannot be None")
+
         instance.page = basic.uint8_t(page)
-        instance.channel_mask = channel_mask
+        instance.channel_mask = Channels(channel_mask)
 
         return instance
 
