@@ -628,7 +628,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
     async def _reset_controller(self):
         """Restart the application controller."""
-        self.disconnect()
+        await self.disconnect()
         await self.startup()
 
     async def send_packet(self, packet: t.ZigbeePacket) -> None:
