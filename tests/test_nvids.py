@@ -116,7 +116,6 @@ def test_dsnwkaddrmap():
     assert remaining_data == b''
     assert len(result) == 2
 
-
     assert result[0].ieee_addr == dummy_map_record1.ieee_addr
     assert result[0].nwk_addr == dummy_map_record1.nwk_addr
     assert result[0].index == dummy_map_record1.index
