@@ -105,7 +105,7 @@ class DSNwkAddrMap(
         header = self._header(
             byte_count=byte_count,
             entry_count=len(self),
-            version=t.uint8_t(0x02),
+            version=self.version,
             _align=t.uint16_t(0x0000),
         )
         return header.serialize() + serialized_items

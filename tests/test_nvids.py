@@ -1,6 +1,9 @@
 import zigpy_zboss.types as t
 from zigpy_zboss.types import nvids
-from zigpy_zboss.types.nvids import ApsSecureEntry, DSApsSecureKeys
+from zigpy_zboss.types.nvids import (
+    ApsSecureEntry, DSApsSecureKeys,
+    NwkAddrMapHeader, NwkAddrMapRecord, DSNwkAddrMap
+)
 from struct import pack
 
 
@@ -70,4 +73,63 @@ def test_dsapssecurekeys():
     total_length = (entry_size * 2)
     length_bytes = pack("<H", total_length)
     expected_data = length_bytes + entry_data1 + entry_data2
+    assert serialized_data == expected_data
+
+
+def test_dsnwkaddrmap():
+    """Test the serialize/deserialize method of the DSNwkAddrMap class."""
+    ieee_addr = t.EUI64([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08])
+    nwk_addr = t.NWK(0x1234)
+    index = t.uint8_t(1)
+    redirect_type = t.uint8_t(0)
+    redirect_ref = t.uint8_t(5)
+    dummy_map_record1 = NwkAddrMapRecord(
+        ieee_addr=ieee_addr, nwk_addr=nwk_addr,
+        index=index, redirect_type=redirect_type,
+        redirect_ref=redirect_ref, _align=0
+    )
+    ieee_addr2 = t.EUI64([0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10])
+    nwk_addr2 = t.NWK(0x5678)
+    index2 = t.uint8_t(2)
+    redirect_type2 = t.uint8_t(1)
+    redirect_ref2 = t.uint8_t(6)
+    dummy_map_record2 = NwkAddrMapRecord(
+        ieee_addr=ieee_addr2, nwk_addr=nwk_addr2,
+        index=index2, redirect_type=redirect_type2,
+        redirect_ref=redirect_ref2, _align=0
+    )
+    # Assume byte_count excludes itself
+    header = NwkAddrMapHeader(
+        byte_count=36, entry_count=2, version=2, _align=t.uint16_t(0x0000)
+    )
+    header_bytes = header.serialize()
+
+    record_bytes = (
+            dummy_map_record1.serialize() + dummy_map_record2.serialize()
+    )
+
+    data = header_bytes + record_bytes
+
+    # Test Deserialize
+    result, remaining_data = DSNwkAddrMap.deserialize(data)
+
+    assert remaining_data == b''
+    assert len(result) == 2
+
+
+    assert result[0].ieee_addr == dummy_map_record1.ieee_addr
+    assert result[0].nwk_addr == dummy_map_record1.nwk_addr
+    assert result[0].index == dummy_map_record1.index
+    assert result[0].redirect_type == dummy_map_record1.redirect_type
+    assert result[0].redirect_ref == dummy_map_record1.redirect_ref
+
+    assert result[1].ieee_addr == dummy_map_record2.ieee_addr
+    assert result[1].nwk_addr == dummy_map_record2.nwk_addr
+    assert result[1].index == dummy_map_record2.index
+    assert result[1].redirect_type == dummy_map_record2.redirect_type
+    assert result[1].redirect_ref == dummy_map_record2.redirect_ref
+
+    # Test Serialize
+    serialized_data = result.serialize()
+    expected_data = header_bytes + record_bytes
     assert serialized_data == expected_data
