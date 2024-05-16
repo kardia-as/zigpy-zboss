@@ -524,6 +524,11 @@ class CommandBase:
                 else:
                     # Otherwise, let the exception happen
                     raise
+        if data:
+            raise ValueError(
+                f"Frame {frame} contains trailing data after parsing: {data}"
+            )
+
         return cls(**params)
 
     def matches(self, other: "CommandBase") -> bool:
