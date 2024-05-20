@@ -14,12 +14,13 @@ Development is initially focused on Zigbee Coordinator functionality Nordic Semi
 
 # Hardware requirements
 
-Nordic Semi USB adapters or development kit/board based on either nRF52840 (nRF52 series SoC) or nRF5340 (nRF53 series SoC) with serial port interface:
+Nordic Semi USB adapters or development kits/boards based on either the nRF52840 (nRF52 series) SoC or the nRF5340 (nRF53 series) SoC:
 
 - **[nRF52840 dongle](https://www.nordicsemi.com/Products/Development-hardware/nrf52840-dongle)**
 - **[nRF52840 development kit](https://www.nordicsemi.com/Products/Development-hardware/nrf52840-dk)**
+- **[nRF5340 development kit](https://www.nordicsemi.com/Products/Development-hardware/nrf5340-dk)** (nRF5340 DK has not been tested but should be compatible)
 
-Note! So far only the nRF52840 SoC has been used for development and tested as reference hardware by the developers of the zigpy-zboss project.
+Note! Only nRF52840 SoC has been used for development and tested as reference hardware by the developers of the zigpy-zboss project.
 
 # Firmware
 
