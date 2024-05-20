@@ -14,16 +14,18 @@ Development is initially focused on Zigbee Coordinator functionality Nordic Semi
 
 # Hardware requirements
 
-Nordic Semi USB adapters and development kits/boards based on nRF52840 SoC are used as reference hardware in the zigpy-zboss project:
+Nordic Semi USB adapters or development kit/board based on either nRF52840 (nRF52 series SoC) or nRF5340 (nRF53 series SoC) with serial port interface:
 
 - **[nRF52840 dongle](https://www.nordicsemi.com/Products/Development-hardware/nrf52840-dongle)**
 - **[nRF52840 development kit](https://www.nordicsemi.com/Products/Development-hardware/nrf52840-dk)**
+
+Note! So far only the nRF52840 SoC has been used for development and tested as reference hardware by the developers of the zigpy-zboss project.
 
 # Firmware
 
 Development and testing in zigpy-zboss project is done with a firmware image built using the [ZBOSS NCP Host sample](https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/samples/zigbee/ncp/README.html) from Nordic Semi:
 
--  **[nrf-zboss-ncp](https://github.com/kardia-as/nrf-zboss-ncp)** - Compiled ZBOSS NCP Host firmware image required to be flash on the nRF52840 device.
+-  **[nrf-zboss-ncp](https://github.com/kardia-as/nrf-zboss-ncp)** - Compiled ZBOSS NCP Host firmware image required to be flash on a compatible nRF52840 or nRF5340 device.
 
 # Releases via PyPI
 
