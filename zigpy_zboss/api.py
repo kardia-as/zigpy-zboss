@@ -44,6 +44,7 @@ class ZBOSS:
         self._blocking_request_lock = asyncio.Lock()
 
         self.capabilities = None
+        self.version = None
 
         self.nvram = NVRAMHelper(self)
         self.network_info: zigpy.state.NetworkInformation = None
@@ -110,7 +111,14 @@ class ZBOSS:
         ZBOSS instance.
         """
         self._app = None
+
+        for _header, listeners in self._listeners.items():
+            for listener in listeners:
+                listener.cancel()
+
+        self._listeners.clear()
         self.version = None
+        self.capabilities = None
 
         if self._uart is not None:
             self._uart.close()
@@ -118,7 +126,6 @@ class ZBOSS:
 
     def frame_received(self, frame: Frame) -> bool:
         """Frame has been received.
-
         Called when a frame has been received.
         Returns whether or not the frame was handled by any listener.
 

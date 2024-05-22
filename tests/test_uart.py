@@ -11,16 +11,16 @@ from zigpy_zboss.checksum import CRC8
 
 @pytest.fixture
 def connected_uart(mocker):
-    znp = mocker.Mock()
+    zboss = mocker.Mock()
     config = {
         conf.CONF_DEVICE_PATH: "/dev/ttyACM0",
         conf.CONF_DEVICE_BAUDRATE: 115200,
         conf.CONF_DEVICE_FLOW_CONTROL: None}
 
-    uart = znp_uart.ZbossNcpProtocol(config, znp)
+    uart = znp_uart.ZbossNcpProtocol(config, zboss)
     uart.connection_made(mocker.Mock())
 
-    yield znp, uart
+    yield zboss, uart
 
 
 def ll_checksum(frame):
