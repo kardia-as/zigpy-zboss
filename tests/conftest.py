@@ -265,7 +265,7 @@ class BaseServerZBOSS(ZBOSS):
             LOGGER.debug(
                 "Replying to %s with %s", request, response
             )
-            self.send(response)
+            await self.send(response)
 
     def reply_once_to(self, request, responses, *, override=False):
         if override:
@@ -297,9 +297,9 @@ class BaseServerZBOSS(ZBOSS):
 
         return callback
 
-    def send(self, response):
+    async def send(self, response):
         if response is not None and self._uart is not None:
-            self._uart.send(response.to_frame(align=self.align_structs))
+            await self._uart.send(response.to_frame(align=self.align_structs))
 
     def close(self):
         # We don't clear listeners on shutdown

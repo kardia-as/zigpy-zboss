@@ -188,6 +188,10 @@ class ZBOSS:
             raise ValueError(
                 f"Cannot send a command that isn't a request: {request!r}")
 
+        if self._uart is None:
+            raise RuntimeError(
+                "Coordinator is disconnected, cannot send request")
+
         frame = request.to_frame()
         # If the frame is too long, it needs fragmentation.
         fragments = frame.handle_tx_fragmentation()
