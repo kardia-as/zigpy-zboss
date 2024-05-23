@@ -47,7 +47,7 @@ async def test_api_close(connected_zboss, mocker):
     def dict_minus(d, minus):
         return {k: v for k, v in d.items() if k not in minus}
 
-    ignored_keys = ["_blocking_request_lock", "nvram", "_listeners"]
+    ignored_keys = ["_blocking_request_lock", "nvram"]
 
     # Closing ZBOSS should reset it completely to that of a fresh object
     # We have to ignore our mocked method and the lock

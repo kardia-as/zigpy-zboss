@@ -115,6 +115,7 @@ class ZBOSS:
         for _header, listeners in self._listeners.items():
             for listener in listeners:
                 listener.cancel()
+        self._listeners.clear()
 
         self.version = None
         self.capabilities = None
