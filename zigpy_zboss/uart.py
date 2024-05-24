@@ -96,6 +96,11 @@ class ZbossNcpProtocol(asyncio.Protocol):
         if not self._reset_flag:
             SERIAL_LOGGER.warning(
                 f"Unexpected connection lost... {exc}")
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            LOGGER.debug("Reconnect skipped: Event loop is not running")
+            return
         self._reconnect_task = asyncio.create_task(self._reconnect())
 
     async def _reconnect(self, timeout=RECONNECT_TIMEOUT):

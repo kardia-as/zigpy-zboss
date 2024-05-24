@@ -5,11 +5,9 @@ import pytest
 import async_timeout
 
 import zigpy_zboss.types as t
-import zigpy_zboss.config as conf
 import zigpy_zboss.commands as c
 from zigpy_zboss.frames import (
-    Frame, InvalidFrame, CRC8,
-    HLPacket, ZBNCP_LL_BODY_SIZE_MAX, LLHeader
+    Frame, HLPacket, ZBNCP_LL_BODY_SIZE_MAX, LLHeader
 )
 
 
@@ -25,8 +23,6 @@ async def test_cleanup_timeout_internal(connected_zboss):
     # We should be cleaned up
     assert not any(zboss._listeners.values())
 
-    zboss.close()
-
 
 @pytest.mark.asyncio
 async def test_cleanup_timeout_external(connected_zboss):
@@ -41,9 +37,6 @@ async def test_cleanup_timeout_external(connected_zboss):
 
     # We should be cleaned up
     assert not any(zboss._listeners.values())
-
-    zboss.close()
-    await asyncio.sleep(0.1)
 
 
 @pytest.mark.asyncio
@@ -91,7 +84,6 @@ async def test_zboss_request_kwargs(connected_zboss, event_loop):
         await zboss.request(
             c.NWK.NwkLeaveInd.Ind(partial=True)
         )
-    zboss.close()
 
 
 @pytest.mark.asyncio
@@ -120,60 +112,23 @@ async def test_zboss_sreq_srsp(connected_zboss, event_loop):
 
     await zboss.request(c.NcpConfig.GetModuleVersion.Req(TSN=1), 10)
 
-    zboss.close()
 
-# @pytest.mark.asyncio
-# async def test_zboss_unknown_frame(connected_zboss, caplog):
-#     zboss, _ = connected_zboss
-#     hl_header = t.HLCommonHeader(
-#         version=0x0121, type=0xFFFF, id=0x123421
-#     )
-#     hl_packet = HLPacket(header=hl_header, data=t.Bytes())
-#     frame = Frame(ll_header=LLHeader(), hl_packet=hl_packet)
-#
-#     caplog.set_level(logging.ERROR)
-#     zboss.frame_received(frame)
-#
-#     # Unknown frames are logged in their entirety but an error is not thrown
-#     assert repr(frame) in caplog.text
-#
-#     zboss.close()
+@pytest.mark.asyncio
+async def test_zboss_unknown_frame(connected_zboss, caplog):
+    zboss, _ = connected_zboss
+    hl_header = t.HLCommonHeader(
+        version=0x0121, type=0xFFFF, id=0x123421
+    )
+    hl_packet = HLPacket(header=hl_header, data=t.Bytes())
+    ll_header = LLHeader(flags=0xC0, size=0x0A)
+    frame = Frame(ll_header=ll_header, hl_packet=hl_packet)
 
+    caplog.set_level(logging.DEBUG)
+    zboss.frame_received(frame)
 
-# async def test_handling_known_bad_command_parsing(connected_zboss, caplog):
-#     zboss, _ = connected_zboss
-#
-#     bad_frame = GeneralFrame(
-#         header=t.CommandHeader(
-#             id=0x9F, subsystem=t.Subsystem.ZDO, type=t.CommandType.AREQ
-#         ),
-#         data=b"\x13\xDB\x84\x01\x21",
-#     )
-#
-#     caplog.set_level(logging.WARNING)
-#     zboss.frame_received(bad_frame)
-#
-#     # The frame is expected to fail to parse so will be
-#     # logged as only a warning
-#     assert len(caplog.records) == 1
-#     assert caplog.records[0].levelname == "WARNING"
-#     assert repr(bad_frame) in caplog.messages[0]
-#
-#
-# async def test_handling_unknown_bad_command_parsing(connected_zboss):
-#     zboss, _ = connected_zboss
-#
-#     bad_frame = GeneralFrame(
-#         header=t.CommandHeader(
-#             id=0xCB, subsystem=t.Subsystem.ZDO, type=t.CommandType.AREQ
-#         ),
-#         data=b"\x13\xDB\x84\x01\x21",
-#     )
-#
-#     with pytest.raises(ValueError):
-#         zboss.frame_received(bad_frame)
-#
-#
+    # Unknown frames are logged in their entirety but an error is not thrown
+    assert repr(frame) in caplog.text
+
 
 @pytest.mark.asyncio
 async def test_send_failure_when_disconnected(connected_zboss):
@@ -185,3 +140,48 @@ async def test_send_failure_when_disconnected(connected_zboss):
 
     assert "Coordinator is disconnected" in str(e.value)
     zboss.close()
+
+
+@pytest.mark.asyncio
+async def test_frame_merge(connected_zboss, mocker):
+    zboss, zboss_server = connected_zboss
+
+    large_data = b"a" * (ZBNCP_LL_BODY_SIZE_MAX * 2 + 50)
+    command = c.NcpConfig.ReadNVRAM.Rsp(
+                TSN=10,
+                StatusCat=t.StatusCategory(1),
+                StatusCode=20,
+                NVRAMVersion=t.uint16_t(0x0000),
+                DatasetId=t.DatasetId(0x0000),
+                Dataset=t.NVRAMDataset(large_data),
+                DatasetVersion=t.uint16_t(0x0000)
+            )
+    frame = command.to_frame()
+
+    callback = mocker.Mock()
+
+    zboss.register_indication_listener(
+        c.NcpConfig.ReadNVRAM.Rsp(
+            TSN=10,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            NVRAMVersion=t.uint16_t(0x0000),
+            DatasetId=t.DatasetId(0x0000),
+            Dataset=t.NVRAMDataset(large_data),
+            DatasetVersion=t.uint16_t(0x0000)
+        ), callback
+    )
+
+    # Perform fragmentation
+    fragments = frame.handle_tx_fragmentation()
+    assert len(fragments) > 1
+
+    # Receiving first and middle fragments
+    for fragment in fragments[:-1]:
+        assert not zboss.frame_received(fragment)
+
+    # receiving the last fragment
+    assert zboss.frame_received(fragments[-1])
+
+    # Check the state of _rx_fragments after merging
+    assert zboss._rx_fragments == []
