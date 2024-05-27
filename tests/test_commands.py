@@ -424,7 +424,7 @@ def test_command_equality():
     # Different frame types do not match, even if they have the same structure
     assert not c.ZDO.MgtLeave.Rsp(TSN=10,
                                   StatusCat=t.StatusCategory(1),
-                                  StatusCode=20, ).matches(
+                                  StatusCode=20).matches(
         c.ZDO.PermitJoin.Rsp(partial=True)
     )
 
