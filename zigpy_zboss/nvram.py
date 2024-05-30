@@ -24,7 +24,7 @@ class NVRAMHelper:
             )
         )
         if res.StatusCode != 0:
-            return
+            return None
 
         if not res.DatasetId == nv_id:
             raise

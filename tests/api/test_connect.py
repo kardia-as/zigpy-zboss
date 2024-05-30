@@ -27,7 +27,6 @@ async def test_api_close(connected_zboss, mocker):
     mocker.spy(uart, "close")
 
     # add some dummy fields and listeners, should be cleared on close
-    zboss.version = 2
     zboss.capabilities = 4
     zboss._listeners = {
         'listener1': [mocker.Mock()], 'listener2': [mocker.Mock()]
@@ -47,7 +46,7 @@ async def test_api_close(connected_zboss, mocker):
     def dict_minus(d, minus):
         return {k: v for k, v in d.items() if k not in minus}
 
-    ignored_keys = ["_blocking_request_lock", "nvram"]
+    ignored_keys = ["_blocking_request_lock", "nvram", "version"]
 
     # Closing ZBOSS should reset it completely to that of a fresh object
     # We have to ignore our mocked method and the lock

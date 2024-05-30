@@ -8,12 +8,18 @@ import gc
 import logging
 
 
-from unittest.mock import Mock, PropertyMock, patch
+from unittest.mock import Mock, PropertyMock, patch, MagicMock, AsyncMock
+
+from zigpy.zdo import types as zdo_t
+import zigpy
 
 import zigpy_zboss.config as conf
 from zigpy_zboss.uart import ZbossNcpProtocol
 import zigpy_zboss.types as t
+import zigpy_zboss.commands as c
 from zigpy_zboss.api import ZBOSS
+from zigpy_zboss.zigbee.application import ControllerApplication
+from zigpy_zboss.nvram import NVRAMHelper
 
 LOGGER = logging.getLogger(__name__)
 
@@ -234,6 +240,31 @@ def connected_zboss(event_loop, make_connected_zboss):
     zboss.close()
 
 
+
+def reply_to(request):
+    def inner(function):
+        if not hasattr(function, "_reply_to"):
+            function._reply_to = []
+
+        function._reply_to.append(request)
+
+        return function
+
+    return inner
+
+
+def serialize_zdo_command(command_id, **kwargs):
+    field_names, field_types = zdo_t.CLUSTERS[command_id]
+
+    return t.Bytes(zigpy.types.serialize(kwargs.values(), field_types))
+
+def deserialize_zdo_command(command_id, data):
+    field_names, field_types = zdo_t.CLUSTERS[command_id]
+    args, data = zigpy.types.deserialize(data, field_types)
+
+    return dict(zip(field_names, args))
+
+
 class BaseServerZBOSS(ZBOSS):
     align_structs = False
     version = None
@@ -305,3 +336,511 @@ class BaseServerZBOSS(ZBOSS):
         # We don't clear listeners on shutdown
         with patch.object(self, "_listeners", {}):
             return super().close()
+
+
+
+def simple_deepcopy(d):
+    if not hasattr(d, "copy"):
+        return d
+
+    if isinstance(d, (list, tuple)):
+        return type(d)(map(simple_deepcopy, d))
+    elif isinstance(d, dict):
+        return type(d)(
+            {simple_deepcopy(k): simple_deepcopy(v) for k, v in d.items()}
+        )
+    else:
+        return d.copy()
+
+
+def merge_dicts(a, b):
+    c = simple_deepcopy(a)
+
+    for key, value in b.items():
+        if isinstance(value, dict):
+            c[key] = merge_dicts(c.get(key, {}), value)
+        else:
+            c[key] = value
+
+    return c
+
+@pytest.fixture
+def make_application(make_zboss_server):
+    def inner(
+        server_cls,
+        client_config=None,
+        server_config=None,
+        **kwargs,
+    ):
+        default = config_for_port_path(FAKE_SERIAL_PORT)
+
+        client_config = merge_dicts(default, client_config or {})
+        server_config = merge_dicts(default, server_config or {})
+
+        app = ControllerApplication(client_config)
+
+        def add_initialized_device(self, *args, **kwargs):
+            device = self.add_device(*args, **kwargs)
+            device.status = zigpy.device.Status.ENDPOINTS_INIT
+            device.model = "Model"
+            device.manufacturer = "Manufacturer"
+
+            device.node_desc = zdo_t.NodeDescriptor(
+                logical_type=zdo_t.LogicalType.Router,
+                complex_descriptor_available=0,
+                user_descriptor_available=0,
+                reserved=0,
+                aps_flags=0,
+                frequency_band=zdo_t.NodeDescriptor.FrequencyBand.Freq2400MHz,
+                mac_capability_flags=142,
+                manufacturer_code=4476,
+                maximum_buffer_size=82,
+                maximum_incoming_transfer_size=82,
+                server_mask=11264,
+                maximum_outgoing_transfer_size=82,
+                descriptor_capability_field=0,
+            )
+
+            ep = device.add_endpoint(1)
+            ep.status = zigpy.endpoint.Status.ZDO_INIT
+
+            return device
+
+        async def start_network(self):
+            dev = self.add_initialized_device(
+                ieee=t.EUI64(range(8)), nwk=0xAABB
+            )
+            dev.model = "Coordinator Model"
+            dev.manufacturer = "Coordinator Manufacturer"
+
+            dev.zdo.Mgmt_NWK_Update_req = AsyncMock(
+                return_value=[
+                    zdo_t.Status.SUCCESS,
+                    t.Channels.ALL_CHANNELS,
+                    0,
+                    0,
+                    [80] * 16,
+                ]
+            )
+
+        async def permit(self, dev):
+            pass
+
+        async def energy_scan(self, channels, duration_exp, count):
+            return {self.state.network_info.channel: 0x1234}
+
+        async def force_remove(self, dev):
+            pass
+
+        async def add_endpoint(self, descriptor):
+            pass
+
+        async def permit_ncp(self, time_s=60):
+            pass
+
+        async def permit_with_link_key(self, node, link_key, time_s=60):
+            pass
+
+        async def reset_network_info(self):
+            pass
+
+        async def write_network_info(self, *, network_info, node_info):
+            pass
+
+        async def load_network_info(self, *, load_devices=False):
+            self.state.network_info.channel = 15
+
+        app.add_initialized_device = add_initialized_device.__get__(app)
+        app.start_network = start_network.__get__(app)
+        app.permit = permit.__get__(app)
+        app.energy_scan = energy_scan.__get__(app)
+        # app.force_remove = force_remove.__get__(app)
+        # app.add_endpoint = add_endpoint.__get__(app)
+        # app.permit_ncp = permit_ncp.__get__(app)
+        # app.permit_with_link_key = permit_with_link_key.__get__(app)
+        # app.reset_network_info = reset_network_info.__get__(app)
+        # app.write_network_info = write_network_info.__get__(app)
+        # app.load_network_info = load_network_info.__get__(app)
+
+        app.device_initialized = Mock(wraps=app.device_initialized)
+        app.listener_event = Mock(wraps=app.listener_event)
+        app.get_sequence = MagicMock(wraps=app.get_sequence, return_value=123)
+        app.send_packet = AsyncMock(wraps=app.send_packet)
+        app.write_network_info = AsyncMock(wraps=app.write_network_info)
+        # app.add_initialized_device(ieee=t.EUI64(range(8)), nwk=0xAABB)
+
+        server = make_zboss_server(
+            server_cls=server_cls, config=server_config, **kwargs
+        )
+
+        return app, server
+
+    return inner
+
+
+class BaseZStackDevice(BaseServerZBOSS):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.active_endpoints = []
+        self._nvram = {}
+        self._orig_nvram = {}
+        self.device_state = 0x00
+        self.zdo_callbacks = set()
+        for name in dir(self):
+            func = getattr(self, name)
+            for req in getattr(func, "_reply_to", []):
+                self.reply_to(request=req, responses=[func])
+
+
+    # def nvram_serialize(self, item):
+    #     return NVRAMHelper.serialize(self, item)
+    #
+    # def nvram_deserialize(self, data, item_type):
+    #     return NVRAMHelper.deserialize(self, data, item_type)
+
+    # def _unhandled_command(self, command):
+    #     LOGGER.warning("Server does not have a handler for command %s", command)
+    #     self.send(
+    #         c.RPCError.CommandNotRecognized.Rsp(
+    #             ErrorCode=c.rpc_error.ErrorCode.InvalidCommandId,
+    #             RequestHeader=command.to_frame().header,
+    #         )
+    #     )
+
+    def connection_lost(self, exc):
+        self.active_endpoints.clear()
+        return super().connection_lost(exc)
+
+
+    @reply_to(c.NcpConfig.GetJoinStatus.Req(partial=True))
+    def get_join_status(self, request):
+        return c.NcpConfig.GetJoinStatus.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            Joined=0x01  # Assume device is joined for this example
+        )
+
+    @reply_to(c.NcpConfig.NCPModuleReset.Req(partial=True))
+    def get_ncp_reset(self, request):
+        return c.NcpConfig.NCPModuleReset.Rsp(
+            TSN=0xFF,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20
+        )
+
+    @reply_to(c.NcpConfig.GetShortAddr.Req(partial=True))
+    def get_short_addr(self, request):
+        return c.NcpConfig.GetShortAddr.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            NWKAddr=t.NWK(0x1234)  # Example NWK address
+        )
+
+    @reply_to(c.NcpConfig.GetLocalIEEE.Req(partial=True))
+    def get_local_ieee(self, request):
+        return c.NcpConfig.GetLocalIEEE.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            MacInterfaceNum=request.MacInterfaceNum,
+            IEEE=t.EUI64([0, 1, 2, 3, 4, 5, 6, 7])  # Example IEEE address
+        )
+
+    @reply_to(c.NcpConfig.GetZigbeeRole.Req(partial=True))
+    def get_zigbee_role(self, request):
+        return c.NcpConfig.GetZigbeeRole.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            DeviceRole=t.DeviceRole(1)  # Example role
+        )
+
+    @reply_to(c.NcpConfig.GetExtendedPANID.Req(partial=True))
+    def get_extended_panid(self, request):
+        return c.NcpConfig.GetExtendedPANID.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            ExtendedPANID=t.EUI64.convert("00124b0001ab89cd")  # Example PAN ID
+        )
+
+    @reply_to(c.ZDO.PermitJoin.Req(partial=True))
+    def get_permit_join(self, request):
+        return c.ZDO.PermitJoin.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+        )
+
+    @reply_to(c.NcpConfig.GetShortPANID.Req(partial=True))
+    def get_short_panid(self, request):
+        return c.NcpConfig.GetShortPANID.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            PANID=t.PanId(0x5678)  # Example short PAN ID
+        )
+
+    @reply_to(c.NcpConfig.GetCurrentChannel.Req(partial=True))
+    def get_current_channel(self, request):
+        return c.NcpConfig.GetCurrentChannel.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            Page=0,
+            Channel=t.Channels(1)  # Example channel
+        )
+
+    @reply_to(c.NcpConfig.GetChannelMask.Req(partial=True))
+    def get_channel_mask(self, request):
+        return c.NcpConfig.GetChannelMask.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            ChannelList=t.ChannelEntryList(
+                [t.ChannelEntry(page=1, channel_mask=0x07fff800)])
+            )  # Example mask
+
+    @reply_to(c.NcpConfig.ReadNVRAM.Req(partial=True))
+    def read_nvram(self, request):
+        status_code = 1
+        if request.DatasetId == t.DatasetId.ZB_NVRAM_COMMON_DATA:
+            status_code = 0
+            dataset = t.DSCommonData(
+                byte_count=100,
+                bitfield=1,
+                depth=1,
+                nwk_manager_addr=0x0000,
+                panid=0x1234,
+                network_addr=0x5678,
+                channel_mask=t.Channels(14),
+                aps_extended_panid=t.EUI64.convert("00:11:22:33:44:55:66:77"),
+                nwk_extended_panid=t.EUI64.convert("00:11:22:33:44:55:66:77"),
+                parent_addr=t.EUI64.convert("00:11:22:33:44:55:66:77"),
+                tc_addr=t.EUI64.convert("00:11:22:33:44:55:66:77"),
+                nwk_key=t.KeyData(b'\x01' * 16),
+                nwk_key_seq=0,
+                tc_standard_key=t.KeyData(b'\x02' * 16),
+                channel=15,
+                page=0,
+                mac_interface_table=t.MacInterfaceTable(
+                    bitfield_0=0,
+                    bitfield_1=1,
+                    link_pwr_data_rate=250,
+                    channel_in_use=11,
+                    supported_channels=t.Channels(15)
+                ),
+                reserved=0
+            )
+            nvram_version = 3
+            dataset_version = 1
+        elif request.DatasetId == t.DatasetId.ZB_IB_COUNTERS:
+            status_code = 0
+            dataset = t.DSIbCounters(
+                byte_count=8,
+                nib_counter=100,  # Example counter value
+                aib_counter=50  # Example counter value
+            )
+            nvram_version = 1
+            dataset_version = 1
+        elif request.DatasetId == t.DatasetId.ZB_NVRAM_ADDR_MAP:
+            status_code = 0
+            dataset = t.DSNwkAddrMap(
+                header=t.NwkAddrMapHeader(
+                    byte_count=100,
+                    entry_count=2,
+                    _align=0
+                ),
+                items=[
+                    t.NwkAddrMapRecord(
+                        ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:77"),
+                        nwk_addr=0x1234,
+                        index=1,
+                        redirect_type=0,
+                        redirect_ref=0,
+                        _align=0
+                    ),
+                    t.NwkAddrMapRecord(
+                        ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:78"),
+                        nwk_addr=0x5678,
+                        index=2,
+                        redirect_type=0,
+                        redirect_ref=0,
+                        _align=0
+                    )
+                ]
+            )
+            nvram_version = 2
+            dataset_version = 1
+        elif request.DatasetId == t.DatasetId.ZB_NVRAM_APS_SECURE_DATA:
+            status_code = 0
+            dataset = t.DSApsSecureKeys(
+                header=10,
+                items=[
+                    t.ApsSecureEntry(
+                        ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:77"),
+                        key=t.KeyData(b'\x03' * 16),
+                        _unknown_1=0
+                    ),
+                    t.ApsSecureEntry(
+                        ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:78"),
+                        key=t.KeyData(b'\x04' * 16),
+                        _unknown_1=0
+                    )
+                ]
+            )
+            nvram_version = 1
+            dataset_version = 1
+        else:
+            dataset = t.NVRAMDataset(b'')
+            nvram_version = 1
+            dataset_version = 1
+
+        return c.NcpConfig.ReadNVRAM.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=status_code,
+            NVRAMVersion=nvram_version,
+            DatasetId=t.DatasetId(request.DatasetId),
+            DatasetVersion=dataset_version,
+            Dataset=t.NVRAMDataset(dataset.serialize())
+        )
+
+    @reply_to(c.NcpConfig.GetTrustCenterAddr.Req(partial=True))
+    def get_trust_center_addr(self, request):
+        return c.NcpConfig.GetTrustCenterAddr.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            TCIEEE=t.EUI64.convert("00:11:22:33:44:55:66:77")
+            # Example Trust Center IEEE address
+        )
+
+    @reply_to(c.NcpConfig.GetRxOnWhenIdle.Req(partial=True))
+    def get_rx_on_when_idle(self, request):
+        return c.NcpConfig.GetRxOnWhenIdle.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            RxOnWhenIdle=1  # Example RxOnWhenIdle value
+        )
+
+    @reply_to(c.NWK.StartWithoutFormation.Req(partial=True))
+    def start_without_formation(self, request):
+        return c.NWK.StartWithoutFormation.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=0  # Example status code
+        )
+
+    @reply_to(c.NcpConfig.GetModuleVersion.Req(partial=True))
+    def get_module_version(self, request):
+        return c.NcpConfig.GetModuleVersion.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,  # Example status code
+            FWVersion=1,  # Example firmware version
+            StackVersion=2,  # Example stack version
+            ProtocolVersion=3  # Example protocol version
+        )
+
+    @reply_to(c.AF.SetSimpleDesc.Req(partial=True))
+    def set_simple_desc(self, request):
+        return c.AF.SetSimpleDesc.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20  # Example status code
+        )
+
+    @reply_to(c.NcpConfig.GetEDTimeout.Req(partial=True))
+    def get_ed_timeout(self, request):
+        return c.NcpConfig.GetEDTimeout.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            Timeout=t.TimeoutIndex(0x01)  # Example timeout value
+        )
+
+    @reply_to(c.NcpConfig.GetMaxChildren.Req(partial=True))
+    def get_max_children(self, request):
+        return c.NcpConfig.GetMaxChildren.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            ChildrenNbr=5  # Example max children
+        )
+
+    @reply_to(c.NcpConfig.GetAuthenticationStatus.Req(partial=True))
+    def get_authentication_status(self, request):
+        return c.NcpConfig.GetAuthenticationStatus.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            Authenticated=1  # Example authenticated value
+        )
+
+    @reply_to(c.NcpConfig.GetParentAddr.Req(partial=True))
+    def get_parent_addr(self, request):
+        return c.NcpConfig.GetParentAddr.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            NWKParentAddr=t.NWK(0x1234)  # Example parent NWK address
+        )
+
+    @reply_to(c.NcpConfig.GetCoordinatorVersion.Req(partial=True))
+    def get_coordinator_version(self, request):
+        return c.NcpConfig.GetCoordinatorVersion.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=20,
+            CoordinatorVersion=1  # Example coordinator version
+        )
+
+    def on_zdo_node_desc_req(self, req, NWKAddrOfInterest):
+        if NWKAddrOfInterest != 0x0000:
+            return
+
+        responses = [
+            c.ZDO.NodeDescRsp.Callback(
+                Src=0x0000,
+                Status=t.ZDOStatus.SUCCESS,
+                NWK=0x0000,
+                NodeDescriptor=c.zdo.NullableNodeDescriptor(
+                    byte1=0,
+                    byte2=64,
+                    mac_capability_flags=143,
+                    manufacturer_code=0,
+                    maximum_buffer_size=80,
+                    maximum_incoming_transfer_size=160,
+                    server_mask=1,  # this differs
+                    maximum_outgoing_transfer_size=160,
+                    descriptor_capability_field=0,
+                ),
+            ),
+        ]
+
+        if zdo_t.ZDOCmd.Node_Desc_rsp in self.zdo_callbacks:
+            responses.append(
+                c.ZDO.NodeDescReq.Callback(
+                    Src=0x0000,
+                    IsBroadcast=t.Bool.false,
+                    ClusterId=zdo_t.ZDOCmd.Node_Desc_rsp,
+                    SecurityUse=0,
+                    TSN=req.TSN,
+                    MacDst=0x0000,
+                    Data=serialize_zdo_command(
+                        command_id=zdo_t.ZDOCmd.Node_Desc_rsp,
+                        Status=t.ZDOStatus.SUCCESS,
+                        NWKAddrOfInterest=0x0000,
+                        NodeDescriptor=zdo_t.NodeDescriptor(
+                            **responses[0].NodeDescriptor.as_dict()
+                        ),
+                    ),
+                )
+            )
+
+        return responses
+

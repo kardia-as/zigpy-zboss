@@ -44,7 +44,6 @@ class ZBOSS:
         self._blocking_request_lock = asyncio.Lock()
 
         self.capabilities = None
-        self.version = None
 
         self.nvram = NVRAMHelper(self)
         self.network_info: zigpy.state.NetworkInformation = None
@@ -117,7 +116,6 @@ class ZBOSS:
                 listener.cancel()
         self._listeners.clear()
 
-        self.version = None
         self.capabilities = None
 
         if self._uart is not None:
@@ -324,7 +322,7 @@ class ZBOSS:
         req = c.NcpConfig.GetModuleVersion.Req(TSN=tsn)
         res = await self.request(req)
         if res.StatusCode:
-            return
+            return None
         version = ['', '', '']
         for idx, ver in enumerate(
                 [res.FWVersion, res.StackVersion, res.ProtocolVersion]):
