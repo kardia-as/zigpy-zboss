@@ -7,7 +7,6 @@ import typing
 import gc
 import logging
 
-
 from unittest.mock import Mock, PropertyMock, patch, MagicMock, AsyncMock
 
 from zigpy.zdo import types as zdo_t
@@ -19,7 +18,6 @@ import zigpy_zboss.types as t
 import zigpy_zboss.commands as c
 from zigpy_zboss.api import ZBOSS
 from zigpy_zboss.zigbee.application import ControllerApplication
-from zigpy_zboss.nvram import NVRAMHelper
 
 LOGGER = logging.getLogger(__name__)
 
@@ -65,7 +63,7 @@ def pytest_fixture_post_finalizer(fixturedef, request) -> None:
 
 @pytest.fixture
 def event_loop(
-    request: pytest.FixtureRequest,
+        request: pytest.FixtureRequest,
 ) -> typing.Iterator[asyncio.AbstractEventLoop]:
     """Create an instance of the default event loop for each test case."""
     yield asyncio.get_event_loop_policy().new_event_loop()
@@ -240,7 +238,6 @@ def connected_zboss(event_loop, make_connected_zboss):
     zboss.close()
 
 
-
 def reply_to(request):
     def inner(function):
         if not hasattr(function, "_reply_to"):
@@ -257,6 +254,7 @@ def serialize_zdo_command(command_id, **kwargs):
     field_names, field_types = zdo_t.CLUSTERS[command_id]
 
     return t.Bytes(zigpy.types.serialize(kwargs.values(), field_types))
+
 
 def deserialize_zdo_command(command_id, data):
     field_names, field_types = zdo_t.CLUSTERS[command_id]
@@ -338,7 +336,6 @@ class BaseServerZBOSS(ZBOSS):
             return super().close()
 
 
-
 def simple_deepcopy(d):
     if not hasattr(d, "copy"):
         return d
@@ -364,13 +361,14 @@ def merge_dicts(a, b):
 
     return c
 
+
 @pytest.fixture
 def make_application(make_zboss_server):
     def inner(
-        server_cls,
-        client_config=None,
-        server_config=None,
-        **kwargs,
+            server_cls,
+            client_config=None,
+            server_config=None,
+            **kwargs,
     ):
         default = config_for_port_path(FAKE_SERIAL_PORT)
 
@@ -452,7 +450,7 @@ def make_application(make_zboss_server):
 
         app.add_initialized_device = add_initialized_device.__get__(app)
         app.start_network = start_network.__get__(app)
-        app.permit = permit.__get__(app)
+        # app.permit = permit.__get__(app)
         app.energy_scan = energy_scan.__get__(app)
         # app.force_remove = force_remove.__get__(app)
         # app.add_endpoint = add_endpoint.__get__(app)
@@ -478,6 +476,30 @@ def make_application(make_zboss_server):
     return inner
 
 
+def zdo_request_matcher(
+        dst_addr, command_id: t.uint16_t, **kwargs
+):
+    zdo_kwargs = {k: v for k, v in kwargs.items() if k.startswith("zdo_")}
+
+    kwargs = {k: v for k, v in kwargs.items() if not k.startswith("zdo_")}
+    kwargs.setdefault("DstEndpoint", 0x00)
+    # kwargs.setdefault("DstPanId", 0x0000)
+    kwargs.setdefault("SrcEndpoint", 0x00)
+    kwargs.setdefault("Radius", None)
+    # kwargs.setdefault("Options", None)
+
+    return c.APS.DataReq.Req(
+        DstAddr=t.EUI64.convert("00124b0001ab89cd"),
+        ClusterId=command_id,
+        Payload=t.Payload(
+            bytes([kwargs["TSN"]]) +
+            serialize_zdo_command(command_id, **zdo_kwargs)
+        ),
+        **kwargs,
+        partial=True,
+    )
+
+
 class BaseZStackDevice(BaseServerZBOSS):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -491,26 +513,9 @@ class BaseZStackDevice(BaseServerZBOSS):
             for req in getattr(func, "_reply_to", []):
                 self.reply_to(request=req, responses=[func])
 
-
-    # def nvram_serialize(self, item):
-    #     return NVRAMHelper.serialize(self, item)
-    #
-    # def nvram_deserialize(self, data, item_type):
-    #     return NVRAMHelper.deserialize(self, data, item_type)
-
-    # def _unhandled_command(self, command):
-    #     LOGGER.warning("Server does not have a handler for command %s", command)
-    #     self.send(
-    #         c.RPCError.CommandNotRecognized.Rsp(
-    #             ErrorCode=c.rpc_error.ErrorCode.InvalidCommandId,
-    #             RequestHeader=command.to_frame().header,
-    #         )
-    #     )
-
     def connection_lost(self, exc):
         self.active_endpoints.clear()
         return super().connection_lost(exc)
-
 
     @reply_to(c.NcpConfig.GetJoinStatus.Req(partial=True))
     def get_join_status(self, request):
@@ -601,7 +606,7 @@ class BaseZStackDevice(BaseServerZBOSS):
             StatusCode=20,
             ChannelList=t.ChannelEntryList(
                 [t.ChannelEntry(page=1, channel_mask=0x07fff800)])
-            )  # Example mask
+        )  # Example mask
 
     @reply_to(c.NcpConfig.ReadNVRAM.Req(partial=True))
     def read_nvram(self, request):
@@ -843,4 +848,3 @@ class BaseZStackDevice(BaseServerZBOSS):
             )
 
         return responses
-

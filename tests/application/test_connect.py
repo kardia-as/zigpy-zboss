@@ -1,5 +1,4 @@
 import asyncio
-import async_timeout
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -11,8 +10,8 @@ from zigpy_zboss.zigbee.application import ControllerApplication
 import zigpy_zboss.types as t
 import zigpy_zboss.commands as c
 
-# from ..conftest import FORMED_DEVICES, FormedLaunchpadCC26X2R1
 from ..conftest import BaseServerZBOSS, BaseZStackDevice
+
 
 @pytest.mark.asyncio
 async def test_no_double_connect(make_zboss_server, mocker):
@@ -20,13 +19,17 @@ async def test_no_double_connect(make_zboss_server, mocker):
 
     app = mocker.Mock()
     await uart_connect(
-        conf.SCHEMA_DEVICE({conf.CONF_DEVICE_PATH: zboss_server.serial_port}), app
+        conf.SCHEMA_DEVICE(
+            {conf.CONF_DEVICE_PATH: zboss_server.serial_port}
+        ), app
     )
 
     with pytest.raises(RuntimeError):
         await uart_connect(
-            conf.SCHEMA_DEVICE({conf.CONF_DEVICE_PATH: zboss_server.serial_port}), app
+            conf.SCHEMA_DEVICE(
+                {conf.CONF_DEVICE_PATH: zboss_server.serial_port}), app
         )
+
 
 @pytest.mark.asyncio
 async def test_leak_detection(make_zboss_server, mocker):
@@ -39,7 +42,8 @@ async def test_leak_detection(make_zboss_server, mocker):
     assert count_connected() == 0
     app = mocker.Mock()
     protocol1 = await uart_connect(
-        conf.SCHEMA_DEVICE({conf.CONF_DEVICE_PATH: zboss_server.serial_port}), app
+        conf.SCHEMA_DEVICE({conf.CONF_DEVICE_PATH: zboss_server.serial_port}),
+        app
     )
     assert count_connected() == 1
     protocol1.close()
@@ -47,7 +51,8 @@ async def test_leak_detection(make_zboss_server, mocker):
 
     # Once more for good measure
     protocol2 = await uart_connect(
-        conf.SCHEMA_DEVICE({conf.CONF_DEVICE_PATH: zboss_server.serial_port}), app
+        conf.SCHEMA_DEVICE({conf.CONF_DEVICE_PATH: zboss_server.serial_port}),
+        app
     )
     assert count_connected() == 1
     protocol2.close()
@@ -112,7 +117,6 @@ async def test_probe_multiple(make_application):
         {conf.CONF_DEVICE_PATH: zboss_server.serial_port}
     )
 
-
     assert await app.probe(config)
     assert await app.probe(config)
     assert await app.probe(config)
@@ -137,6 +141,7 @@ async def test_shutdown_from_app(mocker, make_application, event_loop):
     # And the serial connection should have been closed
     assert transport.close.call_count >= 1
 
+
 @pytest.mark.asyncio
 async def test_clean_shutdown(make_application):
     app, zboss_server = make_application(server_cls=BaseZStackDevice)
@@ -146,6 +151,7 @@ async def test_clean_shutdown(make_application):
     await app.shutdown()
 
     assert app._api is None
+
 
 @pytest.mark.asyncio
 async def test_multiple_shutdown(make_application):
