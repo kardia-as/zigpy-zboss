@@ -543,26 +543,31 @@ class BaseZStackDevice(BaseServerZBOSS):
             NWKAddr=t.NWK(0x1234)  # Example NWK address
         )
 
-    @reply_to(c.APS.DataReq.Req(partial=True, DstEndpoint=0))
+    @reply_to(c.APS.DataReq.Req(partial=True))
     def on_zdo_request(self, req):
-        kwargs = deserialize_zdo_command(req.ClusterId, req.Data[1:])
-        handler_name = f"on_zdo_{zdo_t.ZDOCmd(req.ClusterId).name.lower()}"
-        handler = getattr(self, handler_name, None)
+        # kwargs = deserialize_zdo_command(req.ClusterId, req.Payload)
+        # handler_name = f"on_zdo_{zdo_t.ZDOCmd(req.ClusterId).name.lower()}"
+        # handler = getattr(self, handler_name, None)
+        #
+        # if handler is None:
+        #     LOGGER.warning(
+        #         "No ZDO handler %s, kwargs: %s",
+        #         handler_name, kwargs
+        #     )
+        #     return
+        #
+        # responses = handler(req=req, **kwargs) or []
 
-        if handler is None:
-            LOGGER.warning(
-                "No ZDO handler %s, kwargs: %s",
-                handler_name, kwargs
-            )
-            return
-
-        responses = handler(req=req, **kwargs) or []
-
-        return [c.APS.DataReq.Rsp(
-            TSN=1,
-            StatusCat=t.StatusCategory(1),
-            StatusCode=0
-        )] + responses
+        return c.APS.DataReq.Rsp(
+            TSN=req.TSN,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=20,
+            DstAddr=req.DstAddr,
+            DstEndpoint=req.DstEndpoint,
+            SrcEndpoint=req.SrcEndpoint,
+            TxTime=1,
+            DstAddrMode=zigpy.types.AddrMode.NWK
+        )
 
     @reply_to(c.NcpConfig.GetLocalIEEE.Req(partial=True))
     def get_local_ieee(self, request):

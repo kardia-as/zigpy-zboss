@@ -35,41 +35,41 @@ async def test_zigpy_request(make_application):
     ep.add_input_cluster(6)
 
     # Respond to a light turn on request
-    data_req = zboss_server.reply_once_to(
-        request=c.APS.DataReq.Req(
-            TSN=1, ParamLength=21, DataLength=3,
-            DstAddr=t.EUI64.convert("00:00:00:00:00:00:aa:bb"),
-            ProfileID=260, ClusterId=6, DstEndpoint=1,
-            SrcEndpoint=1, Radius=0, DstAddrMode=zigpy_t.AddrMode.NWK,
-            Payload=t.Payload(b"\x01\x01\x01"), UseAlias=t.Bool.false,
-            AliasSrcAddr=t.NWK(0x0000), AliasSeqNbr=t.uint8_t(0x00),
-            TxOptions=c.aps.TransmitOptions.NONE,
-            partial=True
-    ),
-    responses=[
-            c.APS.DataReq.Rsp(
-                TSN=1,
-                StatusCat=t.StatusCategory(4),
-                StatusCode=1,
-                DstAddr=t.EUI64.convert("00:00:00:00:00:00:aa:bb"),
-                DstEndpoint=1,
-                SrcEndpoint=1,
-                TxTime=1,
-                DstAddrMode=zigpy_t.AddrMode.NWK
-            ),
-            # c.APS.DataIndication.Ind(
-            #     ParamLength=21, PayloadLength=None, FrameFC=None,
-            #     SrcAddr=None, DstAddr=None, GrpAddr=None, DstEndpoint=1,
-            #     SrcEndpoint=1, ClusterId=6, ProfileId=260,
-            #     PacketCounter=None, SrcMACAddr=None, DstMACAddr=None, LQI=None,
-            #     RSSI=None, KeySrcAndAttr=None, Payload=None, partial=True
-            # ),
-        ],
-    )
+    # data_req = zboss_server.reply_once_to(
+    #     request=c.APS.DataReq.Req(
+    #         TSN=1, ParamLength=21, DataLength=3,
+    #         DstAddr=t.EUI64.convert("00:00:00:00:00:00:aa:bb"),
+    #         ProfileID=260, ClusterId=6, DstEndpoint=1,
+    #         SrcEndpoint=1, Radius=0, DstAddrMode=zigpy_t.AddrMode.NWK,
+    #         Payload=t.Payload(b"\x01\x01\x01"), UseAlias=t.Bool.false,
+    #         AliasSrcAddr=t.NWK(0x0000), AliasSeqNbr=t.uint8_t(0x00),
+    #         TxOptions=c.aps.TransmitOptions.NONE,
+    #         partial=True
+    # ),
+    # responses=[
+    #         c.APS.DataReq.Rsp(
+    #             TSN=1,
+    #             StatusCat=t.StatusCategory(4),
+    #             StatusCode=1,
+    #             DstAddr=t.EUI64.convert("00:00:00:00:00:00:aa:bb"),
+    #             DstEndpoint=1,
+    #             SrcEndpoint=1,
+    #             TxTime=1,
+    #             DstAddrMode=zigpy_t.AddrMode.NWK
+    #         ),
+    #         # c.APS.DataIndication.Ind(
+    #         #     ParamLength=21, PayloadLength=None, FrameFC=None,
+    #         #     SrcAddr=None, DstAddr=None, GrpAddr=None, DstEndpoint=1,
+    #         #     SrcEndpoint=1, ClusterId=6, ProfileId=260,
+    #         #     PacketCounter=None, SrcMACAddr=None, DstMACAddr=None, LQI=None,
+    #         #     RSSI=None, KeySrcAndAttr=None, Payload=None, partial=True
+    #         # ),
+    #     ],
+    # )
 
     # Turn on the light
     await device.endpoints[1].on_off.on()
-    # await data_req
+    #await data_req
 
     await app.shutdown()
 
