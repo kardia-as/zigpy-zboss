@@ -543,7 +543,7 @@ class BaseZStackDevice(BaseServerZBOSS):
             NWKAddr=t.NWK(0x1234)  # Example NWK address
         )
 
-    @reply_to(c.APS.DataReq.Req(partial=True))
+    @reply_to(c.APS.DataReq.Req(partial=True, DstEndpoint=0))
     def on_zdo_request(self, req):
         # kwargs = deserialize_zdo_command(req.ClusterId, req.Payload)
         # handler_name = f"on_zdo_{zdo_t.ZDOCmd(req.ClusterId).name.lower()}"

@@ -291,6 +291,11 @@ async def test_request_concurrency(make_application, mocker):
 
     device = app.add_initialized_device(ieee=t.EUI64(range(8)), nwk=0xAABB)
 
+    ep = device.add_endpoint(1)
+    ep.status = zigpy.endpoint.Status.ZDO_INIT
+    ep.profile_id = 260
+    ep.add_input_cluster(6)
+
     # Keep track of how many requests we receive at once
     in_flight_requests = 0
     did_lock = False
@@ -304,7 +309,7 @@ async def test_request_concurrency(make_application, mocker):
                 did_lock = True
 
             in_flight_requests += 1
-            assert in_flight_requests <= 10
+            assert in_flight_requests <= 2
 
             await asyncio.sleep(0.1)
             await zboss_server.send(c.APS.DataReq.Rsp(
@@ -317,17 +322,6 @@ async def test_request_concurrency(make_application, mocker):
                 TxTime=1,
                 DstAddrMode=req.DstAddrMode,
             ))
-            await asyncio.sleep(0.01)
-            await zboss_server.send(
-                c.APS.DataIndication.Ind(
-                    ParamLength=21, PayloadLength=None, FrameFC=None,
-                    SrcAddr=None, DstAddr=None, GrpAddr=None, DstEndpoint=1,
-                    SrcEndpoint=1, ClusterId=6, ProfileId=260,
-                    PacketCounter=None, SrcMACAddr=None, DstMACAddr=None,
-                    LQI=None,
-                    RSSI=None, KeySrcAndAttr=None, Payload=None, partial=True
-                )
-            )
             await asyncio.sleep(0)
 
             in_flight_requests -= 1
@@ -336,7 +330,9 @@ async def test_request_concurrency(make_application, mocker):
         asyncio.create_task(callback(req))
 
     zboss_server.reply_to(
-        request=c.APS.DataReq.Req(partial=True), responses=[make_response]
+        request=c.APS.DataReq.Req(
+            partial=True), responses=[make_response]
+
     )
 
     # We create a whole bunch at once
