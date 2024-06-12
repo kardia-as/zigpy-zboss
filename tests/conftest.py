@@ -560,13 +560,13 @@ class BaseZStackDevice(BaseServerZBOSS):
 
         return c.APS.DataReq.Rsp(
             TSN=req.TSN,
-            StatusCat=t.StatusCategory(4),
-            StatusCode=20,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=0,
             DstAddr=req.DstAddr,
             DstEndpoint=req.DstEndpoint,
             SrcEndpoint=req.SrcEndpoint,
             TxTime=1,
-            DstAddrMode=zigpy.types.AddrMode.NWK
+            DstAddrMode=req.DstAddrMode,
         )
 
     @reply_to(c.NcpConfig.GetLocalIEEE.Req(partial=True))
