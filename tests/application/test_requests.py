@@ -1,11 +1,9 @@
 import asyncio
-
 import pytest
 from unittest.mock import AsyncMock as CoroutineMock
 import zigpy.types as zigpy_t
 import zigpy.endpoint
 import zigpy.profiles
-import zigpy.zdo.types as zdo_t
 from zigpy.exceptions import DeliveryError
 
 import zigpy_zboss.types as t
@@ -13,8 +11,6 @@ import zigpy_zboss.config as conf
 import zigpy_zboss.commands as c
 
 from ..conftest import (
-    zdo_request_matcher,
-    serialize_zdo_command,
     BaseZStackDevice
 )
 
@@ -356,642 +352,168 @@ async def test_request_concurrency(make_application, mocker):
 
     await app.shutdown()
 
+@pytest.mark.asyncio
+async def test_request_cancellation_shielding(
+    make_application, mocker, event_loop
+):
+    app, zboss_server = make_application(server_cls=BaseZStackDevice)
 
-# @pytest.mark.parametrize("device", FORMED_DEVICES)
-# async def test_nonstandard_profile(device, make_application):
-#     app, zboss_server = make_application(server_cls=device)
-#     await app.startup(auto_form=False)
-#
-#     device = app.add_initialized_device(ieee=t.EUI64(range(8)), nwk=0xFA9E)
-#
-#     ep = device.add_endpoint(2)
-#     ep.status = zigpy.endpoint.Status.ZDO_INIT
-#     ep.profile_id = 0x9876  # non-standard profile
-#     ep.add_input_cluster(0x0006)
-#
-#     # Respond to a light turn on request
-#     data_req = zboss_server.reply_once_to(
-#         request=c.AF.DataRequestExt.Req(
-#             DstAddrModeAddress=t.AddrModeAddress(
-#                 mode=t.AddrMode.NWK, address=device.nwk
-#             ),
-#             DstEndpoint=2,
-#             SrcEndpoint=1,  # we default to endpoint 1 for unknown profiles
-#             ClusterId=0x0006,
-#             partial=True,
-#         ),
-#         responses=[
-#             c.AF.DataRequestExt.Rsp(Status=t.Status.SUCCESS),
-#             lambda req: c.AF.DataConfirm.Callback(
-#                 Status=t.Status.SUCCESS,
-#                 Endpoint=2,
-#                 TSN=req.TSN,
-#             ),
-#             lambda req: c.AF.IncomingMsg.Callback(
-#                 GroupId=0x0000,
-#                 ClusterId=0x0006,
-#                 SrcAddr=device.nwk,
-#                 SrcEndpoint=2,
-#                 DstEndpoint=1,
-#                 WasBroadcast=t.Bool(False),
-#                 LQI=63,
-#                 SecurityUse=t.Bool(False),
-#                 TimeStamp=12345678,
-#                 TSN=0,
-#                 Data=b"\x08" + bytes([req.TSN]) + b"\x0B\x00\x00",
-#                 MacSrcAddr=device.nwk,
-#                 MsgResultRadius=29,
-#             ),
-#         ],
-#     )
-#
-#     await device.endpoints[2].on_off.off()
-#
-#     await data_req
-#
-#     await app.shutdown()
-#
-#
-# @pytest.mark.parametrize("device", FORMED_DEVICES)
-# async def test_request_cancellation_shielding(
-#     device, make_application, mocker, event_loop
-# ):
-#     app, zboss_server = make_application(server_cls=device)
-#
-#     await app.startup(auto_form=False)
-#
-#     # The data confirm timeout must be shorter than the ARSP timeout
-#     mocker.spy(app._api, "_unhandled_command")
-#     mocker.patch("zigpy_zboss.zigbee.application.DATA_CONFIRM_TIMEOUT", new=0.1)
-#     app._api._config[conf.CONF_ZBOSS_CONFIG][conf.CONF_ARSP_TIMEOUT] = 1
-#
-#     device = app.add_initialized_device(ieee=t.EUI64(range(8)), nwk=0xABCD)
-#
-#     delayed_reply_sent = event_loop.create_future()
-#
-#     def delayed_reply(req):
-#         async def inner():
-#             # Happens after DATA_CONFIRM_TIMEOUT expires but before ARSP_TIMEOUT
-#             await asyncio.sleep(0.5)
-#             zboss_server.send(
-#                 c.AF.DataConfirm.Callback(
-#                     Status=t.Status.SUCCESS, Endpoint=1, TSN=req.TSN
-#                 )
-#             )
-#             delayed_reply_sent.set_result(True)
-#
-#         asyncio.create_task(inner())
-#
-#     data_req = zboss_server.reply_once_to(
-#         c.AF.DataRequestExt.Req(partial=True),
-#         responses=[
-#             c.AF.DataRequestExt.Rsp(Status=t.Status.SUCCESS),
-#             delayed_reply,
-#         ],
-#     )
-#
-#     with pytest.raises(asyncio.TimeoutError):
-#         await app.request(
-#             device=device,
-#             profile=260,
-#             cluster=1,
-#             src_ep=1,
-#             dst_ep=1,
-#             sequence=1,
-#             data=b"\x00",
-#         )
-#
-#     await data_req
-#     await delayed_reply_sent
-#
-#     assert app._api._unhandled_command.call_count == 0
-#
-#     await app.shutdown()
-#
-#
-# @pytest.mark.parametrize("device", [FormedLaunchpadCC26X2R1])
-# async def test_request_recovery_route_rediscovery_zdo(device, make_application, mocker):
-#     TSN = 1
-#
-#     app, zboss_server = make_application(server_cls=device)
-#
-#     await app.startup(auto_form=False)
-#
-#     # The data confirm timeout must be shorter than the ARSP timeout
-#     mocker.patch("zigpy_zboss.zigbee.application.DATA_CONFIRM_TIMEOUT", new=0.1)
-#     app._api._config[conf.CONF_ZBOSS_CONFIG][conf.CONF_ARSP_TIMEOUT] = 1
-#
-#     device = app.add_initialized_device(ieee=t.EUI64(range(8)), nwk=0xABCD)
-#
-#     # Fail the first time
-#     route_discovered = False
-#
-#     def route_replier(req):
-#         nonlocal route_discovered
-#
-#         if not route_discovered:
-#             return c.ZDO.ExtRouteChk.Rsp(Status=c.zdo.RoutingStatus.FAIL)
-#         else:
-#             return c.ZDO.ExtRouteChk.Rsp(Status=c.zdo.RoutingStatus.SUCCESS)
-#
-#     def set_route_discovered(req):
-#         nonlocal route_discovered
-#         route_discovered = True
-#
-#         return c.ZDO.ExtRouteDisc.Rsp(Status=t.Status.SUCCESS)
-#
-#     zboss_server.reply_to(
-#         request=c.ZDO.ExtRouteChk.Req(Dst=device.nwk, partial=True),
-#         responses=[route_replier],
-#         override=True,
-#     )
-#
-#     was_route_discovered = zboss_server.reply_once_to(
-#         request=c.ZDO.ExtRouteDisc.Req(
-#             Dst=device.nwk, Options=c.zdo.RouteDiscoveryOptions.UNICAST, partial=True
-#         ),
-#         responses=[set_route_discovered],
-#     )
-#
-#     zdo_req = zboss_server.reply_once_to(
-#         request=zdo_request_matcher(
-#             dst_addr=t.AddrModeAddress(t.AddrMode.NWK, device.nwk),
-#             command_id=zdo_t.ZDOCmd.Active_EP_req,
-#             TSN=TSN,
-#             zdo_NWKAddrOfInterest=device.nwk,
-#         ),
-#         responses=[
-#             c.ZDO.ActiveEpRsp.Callback(
-#                 Src=device.nwk,
-#                 Status=t.ZDOStatus.SUCCESS,
-#                 NWK=device.nwk,
-#                 ActiveEndpoints=[],
-#             ),
-#             c.ZDO.MsgCbIncoming.Callback(
-#                 Src=device.nwk,
-#                 IsBroadcast=t.Bool.false,
-#                 ClusterId=zdo_t.ZDOCmd.Active_EP_rsp,
-#                 SecurityUse=0,
-#                 TSN=TSN,
-#                 MacDst=device.nwk,
-#                 Data=serialize_zdo_command(
-#                     command_id=zdo_t.ZDOCmd.Active_EP_rsp,
-#                     Status=t.ZDOStatus.SUCCESS,
-#                     NWKAddrOfInterest=device.nwk,
-#                     ActiveEPList=[],
-#                 ),
-#             ),
-#         ],
-#     )
-#
-#     await device.zdo.Active_EP_req(device.nwk)
-#
-#     await was_route_discovered
-#     await zdo_req
-#
-#     # 6 accounts for the loopback requests
-#     assert sum(c.value for c in app.state.counters["Retry_NONE"].values()) == 6 + 1
-#
-#     await app.shutdown()
-#
-#
-# @pytest.mark.parametrize("device", [FormedLaunchpadCC26X2R1])
-# async def test_request_recovery_route_rediscovery_af(device, make_application, mocker):
-#     app, zboss_server = make_application(server_cls=device)
-#
-#     await app.startup(auto_form=False)
-#
-#     # The data confirm timeout must be shorter than the ARSP timeout
-#     mocker.patch("zigpy_zboss.zigbee.application.DATA_CONFIRM_TIMEOUT", new=0.1)
-#     app._api._config[conf.CONF_ZBOSS_CONFIG][conf.CONF_ARSP_TIMEOUT] = 1
-#
-#     device = app.add_initialized_device(ieee=t.EUI64(range(8)), nwk=0xABCD)
-#
-#     # Fail the first time
-#     route_discovered = False
-#
-#     def data_confirm_replier(req):
-#         nonlocal route_discovered
-#
-#         return c.AF.DataConfirm.Callback(
-#             Status=t.Status.SUCCESS if route_discovered else t.Status.NWK_NO_ROUTE,
-#             Endpoint=1,
-#             TSN=1,
-#         )
-#
-#     def set_route_discovered(req):
-#         nonlocal route_discovered
-#         route_discovered = True
-#
-#         return c.ZDO.ExtRouteDisc.Rsp(Status=t.Status.SUCCESS)
-#
-#     was_route_discovered = zboss_server.reply_once_to(
-#         c.ZDO.ExtRouteDisc.Req(
-#             Dst=device.nwk, Options=c.zdo.RouteDiscoveryOptions.UNICAST, partial=True
-#         ),
-#         responses=[set_route_discovered],
-#     )
-#
-#     zboss_server.reply_to(
-#         c.AF.DataRequestExt.Req(partial=True),
-#         responses=[
-#             c.AF.DataRequestExt.Rsp(Status=t.Status.SUCCESS),
-#             data_confirm_replier,
-#         ],
-#     )
-#
-#     # Ignore the source routing request as well
-#     zboss_server.reply_to(
-#         c.AF.DataRequestSrcRtg.Req(partial=True),
-#         responses=[
-#             c.AF.DataRequestSrcRtg.Rsp(Status=t.Status.SUCCESS),
-#             data_confirm_replier,
-#         ],
-#     )
-#
-#     await app.request(
-#         device=device,
-#         profile=260,
-#         cluster=1,
-#         src_ep=1,
-#         dst_ep=1,
-#         sequence=1,
-#         data=b"\x00",
-#     )
-#
-#     await was_route_discovered
-#     assert (
-#         sum(c.value for c in app.state.counters["Retry_RouteDiscovery"].values()) == 1
-#     )
-#
-#     await app.shutdown()
-#
-#
-# @pytest.mark.parametrize("device", [FormedLaunchpadCC26X2R1])
-# async def test_request_recovery_use_ieee_addr(device, make_application, mocker):
-#     app, zboss_server = make_application(server_cls=device)
-#
-#     await app.startup(auto_form=False)
-#
-#     # The data confirm timeout must be shorter than the ARSP timeout
-#     mocker.patch("zigpy_zboss.zigbee.application.DATA_CONFIRM_TIMEOUT", new=0.1)
-#     app._api._config[conf.CONF_ZBOSS_CONFIG][conf.CONF_ARSP_TIMEOUT] = 1
-#
-#     device = app.add_initialized_device(ieee=t.EUI64(range(8)), nwk=0xABCD)
-#
-#     was_ieee_addr_used = False
-#
-#     def data_confirm_replier(req):
-#         nonlocal was_ieee_addr_used
-#
-#         if req.DstAddrModeAddress.mode == t.AddrMode.IEEE:
-#             status = t.Status.SUCCESS
-#             was_ieee_addr_used = True
-#         else:
-#             status = t.Status.MAC_NO_ACK
-#
-#         return c.AF.DataConfirm.Callback(Status=status, Endpoint=1, TSN=1)
-#
-#     zboss_server.reply_once_to(
-#         c.ZDO.ExtRouteDisc.Req(
-#             Dst=device.nwk, Options=c.zdo.RouteDiscoveryOptions.UNICAST, partial=True
-#         ),
-#         responses=[c.ZDO.ExtRouteDisc.Rsp(Status=t.Status.SUCCESS)],
-#     )
-#
-#     zboss_server.reply_to(
-#         c.AF.DataRequestExt.Req(partial=True),
-#         responses=[
-#             c.AF.DataRequestExt.Rsp(Status=t.Status.SUCCESS),
-#             data_confirm_replier,
-#         ],
-#     )
-#
-#     # Ignore the source routing request as well
-#     zboss_server.reply_to(
-#         c.AF.DataRequestSrcRtg.Req(partial=True),
-#         responses=[
-#             c.AF.DataRequestSrcRtg.Rsp(Status=t.Status.SUCCESS),
-#             c.AF.DataConfirm.Callback(Status=t.Status.MAC_NO_ACK, Endpoint=1, TSN=1),
-#         ],
-#     )
-#
-#     await app.request(
-#         device=device,
-#         profile=260,
-#         cluster=1,
-#         src_ep=1,
-#         dst_ep=1,
-#         sequence=1,
-#         data=b"\x00",
-#     )
-#
-#     assert was_ieee_addr_used
-#     assert sum(c.value for c in app.state.counters["Retry_IEEEAddress"].values()) == 1
-#
-#     await app.shutdown()
-#
-#
-# @pytest.mark.parametrize("device_cls", FORMED_DEVICES)
-# @pytest.mark.parametrize("fw_assoc_remove", [True, False])
-# @pytest.mark.parametrize("final_status", [t.Status.SUCCESS, t.Status.APS_NO_ACK])
-# async def test_request_recovery_assoc_remove(
-#     device_cls, fw_assoc_remove, final_status, make_application, mocker
-# ):
-#     app, zboss_server = make_application(server_cls=device_cls)
-#
-#     await app.startup(auto_form=False)
-#
-#     mocker.patch("zigpy_zboss.zigbee.application.DATA_CONFIRM_TIMEOUT", new=0.1)
-#     mocker.patch("zigpy_zboss.zigbee.application.REQUEST_ERROR_RETRY_DELAY", new=0)
-#
-#     app._api._config[conf.CONF_ZBOSS_CONFIG][conf.CONF_ARSP_TIMEOUT] = 1
-#
-#     device = app.add_initialized_device(ieee=t.EUI64(range(8)), nwk=0xABCD)
-#
-#     assoc_device, _ = c.util.Device.deserialize(b"\xFF" * 100)
-#     assoc_device.shortAddr = device.nwk
-#     assoc_device.nodeRelation = c.util.NodeRelation.CHILD_FFD_RX_IDLE
-#
-#     def data_confirm_replier(req):
-#         bad_assoc = assoc_device
-#
-#         return c.AF.DataConfirm.Callback(
-#             Status=t.Status.MAC_TRANSACTION_EXPIRED if bad_assoc else final_status,
-#             Endpoint=1,
-#             TSN=1,
-#         )
-#
-#     zboss_server.reply_to(
-#         c.AF.DataRequestExt.Req(partial=True),
-#         responses=[
-#             c.AF.DataRequestExt.Rsp(Status=t.Status.SUCCESS),
-#             data_confirm_replier,
-#         ],
-#     )
-#
-#     zboss_server.reply_to(
-#         c.AF.DataRequestSrcRtg.Req(partial=True),
-#         responses=[
-#             c.AF.DataRequestSrcRtg.Rsp(Status=t.Status.SUCCESS),
-#             data_confirm_replier,
-#         ],
-#     )
-#
-#     def assoc_get_with_addr(req):
-#         nonlocal assoc_device
-#
-#         if assoc_device is None:
-#             dev, _ = c.util.Device.deserialize(b"\xFF" * 100)
-#             return c.UTIL.AssocGetWithAddress.Rsp(Device=dev)
-#
-#         return c.UTIL.AssocGetWithAddress.Rsp(Device=assoc_device)
-#
-#     did_assoc_get = zboss_server.reply_once_to(
-#         c.UTIL.AssocGetWithAddress.Req(IEEE=device.ieee, partial=True),
-#         responses=[assoc_get_with_addr],
-#     )
-#
-#     if not issubclass(device_cls, FormedLaunchpadCC26X2R1):
-#         fw_assoc_remove = False
-#
-#     # Not all firmwares support Add/Remove
-#     if fw_assoc_remove:
-#
-#         def assoc_remove(req):
-#             nonlocal assoc_device
-#
-#             if assoc_device is None:
-#                 return c.UTIL.AssocRemove.Rsp(Status=t.Status.FAILURE)
-#
-#             assoc_device = None
-#             return c.UTIL.AssocRemove.Rsp(Status=t.Status.SUCCESS)
-#
-#         did_assoc_remove = zboss_server.reply_once_to(
-#             c.UTIL.AssocRemove.Req(IEEE=device.ieee),
-#             responses=[assoc_remove],
-#         )
-#
-#         did_assoc_add = zboss_server.reply_once_to(
-#             c.UTIL.AssocAdd.Req(
-#                 NWK=device.nwk,
-#                 IEEE=device.ieee,
-#                 NodeRelation=c.util.NodeRelation.CHILD_FFD_RX_IDLE,
-#             ),
-#             responses=[c.UTIL.AssocAdd.Rsp(Status=t.Status.SUCCESS)],
-#         )
-#     else:
-#         did_assoc_remove = None
-#         did_assoc_add = None
-#
-#     was_route_discovered = zboss_server.reply_to(
-#         c.ZDO.ExtRouteDisc.Req(
-#             Dst=device.nwk, Options=c.zdo.RouteDiscoveryOptions.UNICAST, partial=True
-#         ),
-#         responses=[c.ZDO.ExtRouteDisc.Rsp(Status=t.Status.SUCCESS)],
-#     )
-#
-#     req = app.request(
-#         device=device,
-#         profile=260,
-#         cluster=1,
-#         src_ep=1,
-#         dst_ep=1,
-#         sequence=1,
-#         data=b"\x00",
-#     )
-#
-#     if fw_assoc_remove and final_status == t.Status.SUCCESS:
-#         await req
-#     else:
-#         with pytest.raises(DeliveryError):
-#             await req
-#
-#     if fw_assoc_remove:
-#         await did_assoc_remove
-#
-#         if final_status != t.Status.SUCCESS:
-#             # The association is re-added on failure
-#             await did_assoc_add
-#         else:
-#             assert not did_assoc_add.done()
-#     elif issubclass(device_cls, FormedLaunchpadCC26X2R1):
-#         await did_assoc_get
-#         assert was_route_discovered.call_count >= 1
-#     else:
-#         # Don't even attempt this with older firmwares
-#         assert not did_assoc_get.done()
-#         assert was_route_discovered.call_count == 0
-#
-#     await app.shutdown()
-#
-#
-# @pytest.mark.parametrize("device", [FormedLaunchpadCC26X2R1])
-# @pytest.mark.parametrize("succeed", [True, False])
-# @pytest.mark.parametrize("relays", [[0x1111, 0x2222, 0x3333], []])
-# async def test_request_recovery_manual_source_route(
-#     device, succeed, relays, make_application, mocker
-# ):
-#     app, zboss_server = make_application(server_cls=device)
-#
-#     await app.startup(auto_form=False)
-#
-#     mocker.patch("zigpy_zboss.zigbee.application.DATA_CONFIRM_TIMEOUT", new=0.1)
-#     mocker.patch("zigpy_zboss.zigbee.application.REQUEST_ERROR_RETRY_DELAY", new=0)
-#
-#     app._api._config[conf.CONF_ZBOSS_CONFIG][conf.CONF_ARSP_TIMEOUT] = 1
-#
-#     device = app.add_initialized_device(ieee=t.EUI64(range(8)), nwk=0xABCD)
-#     device.relays = relays
-#
-#     def data_confirm_replier(req):
-#         if isinstance(req, c.AF.DataRequestExt.Req) or not succeed:
-#             return c.AF.DataConfirm.Callback(
-#                 Status=t.Status.MAC_NO_ACK,
-#                 Endpoint=1,
-#                 TSN=1,
-#             )
-#         else:
-#             return c.AF.DataConfirm.Callback(
-#                 Status=t.Status.SUCCESS,
-#                 Endpoint=1,
-#                 TSN=1,
-#             )
-#
-#     normal_data_request = zboss_server.reply_to(
-#         c.AF.DataRequestExt.Req(partial=True),
-#         responses=[
-#             c.AF.DataRequestExt.Rsp(Status=t.Status.SUCCESS),
-#             data_confirm_replier,
-#         ],
-#     )
-#
-#     source_routing_data_request = zboss_server.reply_to(
-#         c.AF.DataRequestSrcRtg.Req(partial=True),
-#         responses=[
-#             c.AF.DataRequestSrcRtg.Rsp(Status=t.Status.SUCCESS),
-#             data_confirm_replier,
-#         ],
-#     )
-#
-#     zboss_server.reply_to(
-#         c.ZDO.ExtRouteDisc.Req(
-#             Dst=device.nwk, Options=c.zdo.RouteDiscoveryOptions.UNICAST, partial=True
-#         ),
-#         responses=[c.ZDO.ExtRouteDisc.Rsp(Status=t.Status.SUCCESS)],
-#     )
-#
-#     req = app.request(
-#         device=device,
-#         profile=260,
-#         cluster=1,
-#         src_ep=1,
-#         dst_ep=1,
-#         sequence=1,
-#         data=b"\x00",
-#     )
-#
-#     if succeed:
-#         await req
-#     else:
-#         with pytest.raises(DeliveryError):
-#             await req
-#
-#     # In either case only one source routing attempt is performed
-#     assert source_routing_data_request.call_count == 1
-#     assert normal_data_request.call_count >= 1
-#
-#     await app.shutdown()
-#
-#
-# @pytest.mark.parametrize("device", [FormedLaunchpadCC26X2R1])
-# async def test_route_discovery_concurrency(device, make_application):
-#     app, zboss_server = make_application(server_cls=device)
-#
-#     await app.startup(auto_form=False)
-#
-#     route_discovery1 = zboss_server.reply_to(
-#         c.ZDO.ExtRouteDisc.Req(Dst=0x1234, partial=True),
-#         responses=[c.ZDO.ExtRouteDisc.Rsp(Status=t.Status.SUCCESS)],
-#     )
-#
-#     route_discovery2 = zboss_server.reply_to(
-#         c.ZDO.ExtRouteDisc.Req(Dst=0x5678, partial=True),
-#         responses=[c.ZDO.ExtRouteDisc.Rsp(Status=t.Status.SUCCESS)],
-#     )
-#
-#     await asyncio.gather(
-#         app._discover_route(0x1234),
-#         app._discover_route(0x5678),
-#         app._discover_route(0x1234),
-#         app._discover_route(0x5678),
-#         app._discover_route(0x5678),
-#         app._discover_route(0x5678),
-#         app._discover_route(0x1234),
-#     )
-#
-#     assert route_discovery1.call_count == 1
-#     assert route_discovery2.call_count == 1
-#
-#     await app._discover_route(0x5678)
-#
-#     assert route_discovery1.call_count == 1
-#     assert route_discovery2.call_count == 2
-#
-#     await app.shutdown()
-#
-#
-# @pytest.mark.parametrize("device", FORMED_DEVICES)
-# async def test_send_security_and_packet_source_route(device, make_application, mocker):
-#     app, zboss_server = make_application(server_cls=device)
-#     await app.startup(auto_form=False)
-#
-#     packet = zigpy_t.ZigbeePacket(
-#         src=zigpy_t.AddrModeAddress(
-#             addr_mode=zigpy_t.AddrMode.NWK, address=app.state.node_info.nwk
-#         ),
-#         src_ep=0x9A,
-#         dst=zigpy_t.AddrModeAddress(addr_mode=zigpy_t.AddrMode.NWK, address=0xEEFF),
-#         dst_ep=0xBC,
-#         tsn=0xDE,
-#         profile_id=0x1234,
-#         cluster_id=0x0006,
-#         data=zigpy_t.SerializableBytes(b"test data"),
-#         extended_timeout=False,
-#         tx_options=(
-#             zigpy_t.TransmitOptions.ACK | zigpy_t.TransmitOptions.APS_Encryption
-#         ),
-#         source_route=[0xAABB, 0xCCDD],
-#     )
-#
-#     data_req = zboss_server.reply_once_to(
-#         request=c.AF.DataRequestSrcRtg.Req(
-#             DstAddr=packet.dst.address,
-#             DstEndpoint=packet.dst_ep,
-#             # SrcEndpoint=packet.src_ep,
-#             ClusterId=packet.cluster_id,
-#             TSN=packet.tsn,
-#             Data=packet.data.serialize(),
-#             SourceRoute=packet.source_route,
-#             partial=True,
-#         ),
-#         responses=[
-#             c.AF.DataRequestSrcRtg.Rsp(Status=t.Status.SUCCESS),
-#             c.AF.DataConfirm.Callback(
-#                 Status=t.Status.SUCCESS,
-#                 Endpoint=packet.dst_ep,
-#                 TSN=packet.tsn,
-#             ),
-#         ],
-#     )
-#
-#     await app.send_packet(packet)
-#     req = await data_req
-#     assert c.af.TransmitOptions.ENABLE_SECURITY in req.Options
-#
-#     await app.shutdown()
-#
-#
+    await app.startup(auto_form=False)
+
+    device = app.add_initialized_device(ieee=t.EUI64(range(8)), nwk=0xAABB)
+
+    ep = device.add_endpoint(1)
+    ep.status = zigpy.endpoint.Status.ZDO_INIT
+    ep.profile_id = 260
+    ep.add_input_cluster(6)
+
+    frame_control_byte = 0x18
+    tsn = 0x01
+    command_id = 0x01
+
+    payload = [frame_control_byte, tsn, command_id]
+    payload_length = len(payload)
+
+    # The data confirm timeout must be shorter than the ARSP timeout
+    mocker.spy(app._api, "_unhandled_command")
+
+    delayed_reply_sent = event_loop.create_future()
+
+    def delayed_reply(req):
+        async def inner():
+            await asyncio.sleep(0.5)
+            await zboss_server.send(
+                c.APS.DataIndication.Ind(
+                    ParamLength=21,
+                    PayloadLength=payload_length,
+                    FrameFC=t.APSFrameFC(0x01),
+                    SrcAddr=t.NWK(0xAABB),
+                    DstAddr=t.NWK(0x1234),
+                    GrpAddr=t.NWK(0x5678),
+                    DstEndpoint=1,
+                    SrcEndpoint=1,
+                    ClusterId=6,
+                    ProfileId=260,
+                    PacketCounter=10,
+                    SrcMACAddr=t.NWK(0xAABB),
+                    DstMACAddr=t.NWK(0x1234),
+                    LQI=255,
+                    RSSI=-70,
+                    KeySrcAndAttr=t.ApsAttributes(0x01),
+                    Payload=t.Payload(payload)
+                )
+            )
+            delayed_reply_sent.set_result(True)
+
+        asyncio.create_task(inner())
+
+    data_req = zboss_server.reply_once_to(
+        c.APS.DataReq.Req(
+            TSN=1, ParamLength=21, DataLength=3,
+            DstAddr=t.EUI64.convert("00:00:00:00:00:00:aa:bb"),
+            ProfileID=260, ClusterId=6, DstEndpoint=1, SrcEndpoint=1, Radius=0,
+            DstAddrMode=zigpy_t.AddrMode.NWK,
+            TxOptions=c.aps.TransmitOptions.NONE,
+            UseAlias=t.Bool.false, AliasSrcAddr=0x0000, AliasSeqNbr=0,
+            Payload=[1, 1, 1]),
+        responses=[
+            c.APS.DataReq.Rsp(
+                TSN=1,
+                StatusCat=t.StatusCategory(4),
+                StatusCode=1,
+                DstAddr=t.EUI64.convert("00:00:00:00:00:00:aa:bb"),
+                DstEndpoint=1,
+                SrcEndpoint=1,
+                TxTime=1,
+                DstAddrMode=zigpy_t.AddrMode.NWK
+            ),
+            delayed_reply,
+        ],
+    )
+
+    with pytest.raises(asyncio.TimeoutError):
+        # Turn on the light
+        await device.request(
+            260,
+            6,
+            1,
+            1,
+            1,
+            b'\x01\x01\x01',
+            expect_reply=True,
+            timeout=0.1,
+        )
+
+    await data_req
+    await delayed_reply_sent
+
+    assert app._api._unhandled_command.call_count == 0
+
+    await app.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_send_security_and_packet_source_route(make_application, mocker):
+    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    await app.startup(auto_form=False)
+
+    packet = zigpy_t.ZigbeePacket(
+        src=zigpy_t.AddrModeAddress(
+            addr_mode=zigpy_t.AddrMode.NWK, address=app.state.node_info.nwk
+        ),
+        src_ep=0x9A,
+        dst=zigpy.types.AddrModeAddress(
+            addr_mode=zigpy_t.AddrMode.NWK, address=0xEEFF
+        ),
+        dst_ep=0xBC,
+        tsn=0xDE,
+        profile_id=0x1234,
+        cluster_id=0x0006,
+        data=zigpy_t.SerializableBytes(b"test data"),
+        extended_timeout=False,
+        tx_options=(
+            zigpy_t.TransmitOptions.ACK |
+            zigpy_t.TransmitOptions.APS_Encryption
+        ),
+        source_route=[0xAABB, 0xCCDD],
+    )
+
+    data_req = zboss_server.reply_once_to(
+        request=c.APS.DataReq.Req(
+            TSN=222, ParamLength=21, DataLength=9,
+            DstAddr=t.EUI64.convert("00:00:00:00:00:00:ee:ff"),
+            ProfileID=4660, ClusterId=6, DstEndpoint=188, SrcEndpoint=154,
+            Radius=0, DstAddrMode=zigpy_t.AddrMode.NWK,
+            TxOptions=(
+                    c.aps.TransmitOptions.SECURITY_ENABLED |
+                    c.aps.TransmitOptions.ACK_ENABLED
+            ),
+            UseAlias=t.Bool.false, AliasSrcAddr=0x0000, AliasSeqNbr=0,
+            Payload=[116, 101, 115, 116, 32, 100, 97, 116, 97]),
+        responses=[
+            c.APS.DataReq.Rsp(
+                TSN=1,
+                StatusCat=t.StatusCategory(4),
+                StatusCode=1,
+                DstAddr=t.EUI64.convert("00:00:00:00:00:00:aa:bb"),
+                DstEndpoint=1,
+                SrcEndpoint=1,
+                TxTime=1,
+                DstAddrMode=zigpy_t.AddrMode.NWK
+            ),
+        ],
+    )
+
+    await app.send_packet(packet)
+    req = await data_req
+    assert (
+            c.aps.TransmitOptions.SECURITY_ENABLED
+            in c.aps.TransmitOptions(req.TxOptions)
+    )
+
+    await app.shutdown()
+
+
 
 
 @pytest.mark.asyncio
