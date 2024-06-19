@@ -368,6 +368,7 @@ def make_application(make_zboss_server):
             server_cls,
             client_config=None,
             server_config=None,
+            active_sequence=False,
             **kwargs,
     ):
         default = config_for_port_path(FAKE_SERIAL_PORT)
@@ -462,7 +463,10 @@ def make_application(make_zboss_server):
 
         app.device_initialized = Mock(wraps=app.device_initialized)
         app.listener_event = Mock(wraps=app.listener_event)
-        app.get_sequence = MagicMock(wraps=app.get_sequence, return_value=123)
+        if not active_sequence:
+            app.get_sequence = MagicMock(
+                wraps=app.get_sequence, return_value=123
+            )
         app.send_packet = AsyncMock(wraps=app.send_packet)
         app.write_network_info = AsyncMock(wraps=app.write_network_info)
         # app.add_initialized_device(ieee=t.EUI64(range(8)), nwk=0xAABB)
@@ -828,6 +832,173 @@ class BaseZStackDevice(BaseServerZBOSS):
             StatusCat=t.StatusCategory(1),
             StatusCode=20,
             CoordinatorVersion=1  # Example coordinator version
+        )
+
+    def on_zdo_node_desc_req(self, req, NWKAddrOfInterest):
+        if NWKAddrOfInterest != 0x0000:
+            return
+
+        responses = [
+            c.ZDO.NodeDescRsp.Callback(
+                Src=0x0000,
+                Status=t.ZDOStatus.SUCCESS,
+                NWK=0x0000,
+                NodeDescriptor=c.zdo.NullableNodeDescriptor(
+                    byte1=0,
+                    byte2=64,
+                    mac_capability_flags=143,
+                    manufacturer_code=0,
+                    maximum_buffer_size=80,
+                    maximum_incoming_transfer_size=160,
+                    server_mask=1,  # this differs
+                    maximum_outgoing_transfer_size=160,
+                    descriptor_capability_field=0,
+                ),
+            ),
+        ]
+
+        if zdo_t.ZDOCmd.Node_Desc_rsp in self.zdo_callbacks:
+            responses.append(
+                c.ZDO.NodeDescReq.Callback(
+                    Src=0x0000,
+                    IsBroadcast=t.Bool.false,
+                    ClusterId=zdo_t.ZDOCmd.Node_Desc_rsp,
+                    SecurityUse=0,
+                    TSN=req.TSN,
+                    MacDst=0x0000,
+                    Data=serialize_zdo_command(
+                        command_id=zdo_t.ZDOCmd.Node_Desc_rsp,
+                        Status=t.ZDOStatus.SUCCESS,
+                        NWKAddrOfInterest=0x0000,
+                        NodeDescriptor=zdo_t.NodeDescriptor(
+                            **responses[0].NodeDescriptor.as_dict()
+                        ),
+                    ),
+                )
+            )
+
+        return responses
+
+class BaseZStackGenericDevice(BaseServerZBOSS):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.active_endpoints = []
+        self._nvram = {}
+        self._orig_nvram = {}
+        self.device_state = 0x00
+        self.zdo_callbacks = set()
+        for name in dir(self):
+            func = getattr(self, name)
+            for req in getattr(func, "_reply_to", []):
+                self.reply_to(request=req, responses=[func])
+
+    def connection_lost(self, exc):
+        self.active_endpoints.clear()
+        return super().connection_lost(exc)
+
+    @reply_to(c.NcpConfig.ReadNVRAM.Req(partial=True))
+    def read_nvram(self, request):
+        status_code = 1
+        if request.DatasetId == t.DatasetId.ZB_NVRAM_COMMON_DATA:
+            status_code = 0
+            dataset = t.DSCommonData(
+                byte_count=100,
+                bitfield=1,
+                depth=1,
+                nwk_manager_addr=0x0000,
+                panid=0x1234,
+                network_addr=0x5678,
+                channel_mask=t.Channels(14),
+                aps_extended_panid=t.EUI64.convert("00:11:22:33:44:55:66:77"),
+                nwk_extended_panid=t.EUI64.convert("00:11:22:33:44:55:66:77"),
+                parent_addr=t.EUI64.convert("00:11:22:33:44:55:66:77"),
+                tc_addr=t.EUI64.convert("00:11:22:33:44:55:66:77"),
+                nwk_key=t.KeyData(b'\x01' * 16),
+                nwk_key_seq=0,
+                tc_standard_key=t.KeyData(b'\x02' * 16),
+                channel=15,
+                page=0,
+                mac_interface_table=t.MacInterfaceTable(
+                    bitfield_0=0,
+                    bitfield_1=1,
+                    link_pwr_data_rate=250,
+                    channel_in_use=11,
+                    supported_channels=t.Channels(15)
+                ),
+                reserved=0
+            )
+            nvram_version = 3
+            dataset_version = 1
+        elif request.DatasetId == t.DatasetId.ZB_IB_COUNTERS:
+            status_code = 0
+            dataset = t.DSIbCounters(
+                byte_count=8,
+                nib_counter=100,  # Example counter value
+                aib_counter=50  # Example counter value
+            )
+            nvram_version = 1
+            dataset_version = 1
+        elif request.DatasetId == t.DatasetId.ZB_NVRAM_ADDR_MAP:
+            status_code = 0
+            dataset = t.DSNwkAddrMap(
+                header=t.NwkAddrMapHeader(
+                    byte_count=100,
+                    entry_count=2,
+                    _align=0
+                ),
+                items=[
+                    t.NwkAddrMapRecord(
+                        ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:77"),
+                        nwk_addr=0x1234,
+                        index=1,
+                        redirect_type=0,
+                        redirect_ref=0,
+                        _align=0
+                    ),
+                    t.NwkAddrMapRecord(
+                        ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:78"),
+                        nwk_addr=0x5678,
+                        index=2,
+                        redirect_type=0,
+                        redirect_ref=0,
+                        _align=0
+                    )
+                ]
+            )
+            nvram_version = 2
+            dataset_version = 1
+        elif request.DatasetId == t.DatasetId.ZB_NVRAM_APS_SECURE_DATA:
+            status_code = 0
+            dataset = t.DSApsSecureKeys(
+                header=10,
+                items=[
+                    t.ApsSecureEntry(
+                        ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:77"),
+                        key=t.KeyData(b'\x03' * 16),
+                        _unknown_1=0
+                    ),
+                    t.ApsSecureEntry(
+                        ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:78"),
+                        key=t.KeyData(b'\x04' * 16),
+                        _unknown_1=0
+                    )
+                ]
+            )
+            nvram_version = 1
+            dataset_version = 1
+        else:
+            dataset = t.NVRAMDataset(b'')
+            nvram_version = 1
+            dataset_version = 1
+
+        return c.NcpConfig.ReadNVRAM.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=status_code,
+            NVRAMVersion=nvram_version,
+            DatasetId=t.DatasetId(request.DatasetId),
+            DatasetVersion=dataset_version,
+            Dataset=t.NVRAMDataset(dataset.serialize())
         )
 
     def on_zdo_node_desc_req(self, req, NWKAddrOfInterest):
