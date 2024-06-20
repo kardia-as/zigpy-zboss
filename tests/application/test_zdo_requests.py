@@ -23,10 +23,11 @@ async def test_mgmt_nwk_update_req(
     app, zboss_server = make_application(server_cls=BaseZStackDevice)
 
     new_channel = 11
+    old_channel = 1
 
     async def update_channel(req):
         # Wait a bit before updating
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.1)
         zboss_server.new_channel = new_channel
 
         yield
@@ -71,6 +72,8 @@ async def test_mgmt_nwk_update_req(
     )
 
     await app.startup(auto_form=False)
+
+    assert app.state.network_info.channel == old_channel
 
     await app.move_network_to_channel(new_channel=new_channel)
 
