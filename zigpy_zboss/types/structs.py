@@ -1,5 +1,6 @@
 """Module defining struct types."""
 import zigpy.types as t
+
 from . import basic
 
 

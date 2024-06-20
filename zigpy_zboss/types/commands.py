@@ -1,8 +1,9 @@
 """Module defining types used for commands."""
 from __future__ import annotations
+
+import dataclasses
 import enum
 import logging
-import dataclasses
 
 import zigpy.zdo.types
 
@@ -455,9 +456,7 @@ class CommandBase:
         if self._partial:
             raise ValueError(f"Cannot serialize a partial frame: {self}")
 
-        from zigpy_zboss.frames import HLPacket
-        from zigpy_zboss.frames import LLHeader
-        from zigpy_zboss.frames import Frame
+        from zigpy_zboss.frames import Frame, HLPacket, LLHeader
 
         chunks = []
 

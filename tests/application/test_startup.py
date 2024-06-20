@@ -1,16 +1,15 @@
 import pytest
 from unittest.mock import AsyncMock as CoroutineMock
 
+import pytest
+import voluptuous as vol
 from zigpy.exceptions import NetworkNotFormed
 
-import zigpy_zboss.types as t
 import zigpy_zboss.commands as c
+import zigpy_zboss.types as t
 from zigpy_zboss.api import ZBOSS
 
-from ..conftest import (
-    BaseZStackDevice, BaseZStackGenericDevice
-)
-
+from ..conftest import BaseZStackDevice, BaseZStackGenericDevice
 
 @pytest.mark.asyncio
 async def test_info(

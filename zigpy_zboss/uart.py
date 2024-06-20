@@ -1,16 +1,18 @@
 """Module that connects and sends/receives bytes from the nRF52 SoC."""
-import typing
 import asyncio
 import logging
-import zigpy.serial
+import typing
+
 import async_timeout
 import serial  # type: ignore
+import zigpy.serial
+
 import zigpy_zboss.config as conf
 from zigpy_zboss import types as t
-from zigpy_zboss.frames import Frame
 from zigpy_zboss.checksum import CRC8
-from zigpy_zboss.logger import SERIAL_LOGGER
 from zigpy_zboss.exceptions import InvalidFrame
+from zigpy_zboss.frames import Frame
+from zigpy_zboss.logger import SERIAL_LOGGER
 
 LOGGER = logging.getLogger(__name__)
 ACK_TIMEOUT = 1

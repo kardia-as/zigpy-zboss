@@ -1,10 +1,11 @@
 """Module setting up a debugging serial connection with the NCP."""
-import serial
 import asyncio
 import logging
-import async_timeout
-import serial_asyncio
 import logging.handlers
+
+import async_timeout
+import serial
+import serial_asyncio
 
 from zigpy_zboss import types as t
 

@@ -1,14 +1,13 @@
 import asyncio
 import logging
 
-import pytest
 import async_timeout
+import pytest
 
-import zigpy_zboss.types as t
 import zigpy_zboss.commands as c
-from zigpy_zboss.frames import (
-    Frame, HLPacket, ZBNCP_LL_BODY_SIZE_MAX, LLHeader
-)
+import zigpy_zboss.types as t
+from zigpy_zboss.frames import (ZBNCP_LL_BODY_SIZE_MAX, Frame, HLPacket,
+                                LLHeader)
 
 
 @pytest.mark.asyncio

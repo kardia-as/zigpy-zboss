@@ -1,9 +1,8 @@
 import pytest
+
 import zigpy_zboss.types as t
-from zigpy_zboss.frames import (
-    Frame, InvalidFrame, CRC8,
-    HLPacket, ZBNCP_LL_BODY_SIZE_MAX, LLHeader
-)
+from zigpy_zboss.frames import (CRC8, ZBNCP_LL_BODY_SIZE_MAX, Frame, HLPacket,
+                                InvalidFrame, LLHeader)
 
 
 def test_frame_deserialization():

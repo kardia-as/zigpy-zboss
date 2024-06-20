@@ -3,9 +3,9 @@ from unittest.mock import call
 
 import pytest
 
-import zigpy_zboss.types as t
 import zigpy_zboss.commands as c
-from zigpy_zboss.api import OneShotResponseListener, IndicationListener
+import zigpy_zboss.types as t
+from zigpy_zboss.api import IndicationListener, OneShotResponseListener
 
 
 @pytest.mark.asyncio

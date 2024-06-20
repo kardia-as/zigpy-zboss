@@ -1,15 +1,13 @@
 import asyncio
 
 import pytest
-import zigpy.zdo.types as zdo_t
 import zigpy.types as z_types
+import zigpy.zdo.types as zdo_t
 
-import zigpy_zboss.types as t
 import zigpy_zboss.commands as c
+import zigpy_zboss.types as t
 
-from ..conftest import (
-    BaseZStackDevice
-)
+from ..conftest import BaseZStackDevice
 
 
 @pytest.mark.asyncio

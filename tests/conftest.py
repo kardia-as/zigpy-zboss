@@ -1,22 +1,21 @@
 """Shared fixtures and utilities for testing zigpy-zboss."""
 import asyncio
-import sys
-import inspect
-import pytest
-import typing
 import gc
+import inspect
 import logging
+import sys
+import typing
+from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 
-from unittest.mock import Mock, PropertyMock, patch, MagicMock, AsyncMock
-
-from zigpy.zdo import types as zdo_t
+import pytest
 import zigpy
+from zigpy.zdo import types as zdo_t
 
-import zigpy_zboss.config as conf
-from zigpy_zboss.uart import ZbossNcpProtocol
-import zigpy_zboss.types as t
 import zigpy_zboss.commands as c
+import zigpy_zboss.config as conf
+import zigpy_zboss.types as t
 from zigpy_zboss.api import ZBOSS
+from zigpy_zboss.uart import ZbossNcpProtocol
 from zigpy_zboss.zigbee.application import ControllerApplication
 
 LOGGER = logging.getLogger(__name__)

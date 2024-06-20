@@ -1,10 +1,10 @@
 import asyncio
 
-import pytest
 import async_timeout
+import pytest
 
-import zigpy_zboss.types as t
 import zigpy_zboss.commands as c
+import zigpy_zboss.types as t
 from zigpy_zboss.utils import deduplicate_commands
 
 

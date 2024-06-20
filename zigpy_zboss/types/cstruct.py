@@ -1,9 +1,9 @@
 """Module defining cstruct types."""
 from __future__ import annotations
 
-import typing
-import inspect
 import dataclasses
+import inspect
+import typing
 
 import zigpy.types as zigpy_t
 

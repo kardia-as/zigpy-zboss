@@ -1,12 +1,12 @@
 import pytest
 from serial_asyncio import SerialTransport
 
-import zigpy_zboss.config as conf
 import zigpy_zboss.commands as c
+import zigpy_zboss.config as conf
 import zigpy_zboss.types as t
 from zigpy_zboss import uart as znp_uart
-from zigpy_zboss.frames import Frame
 from zigpy_zboss.checksum import CRC8
+from zigpy_zboss.frames import Frame
 
 
 @pytest.fixture

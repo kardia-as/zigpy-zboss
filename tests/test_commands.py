@@ -1,6 +1,5 @@
-import keyword
 import dataclasses
-
+import keyword
 from collections import defaultdict
 
 import pytest

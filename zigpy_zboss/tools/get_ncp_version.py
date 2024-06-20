@@ -1,9 +1,9 @@
 """Script to print the NCP firmware version."""
-import serial
 import asyncio
 
-from zigpy_zboss.api import ZBOSS
+import serial
 
+from zigpy_zboss.api import ZBOSS
 from zigpy_zboss.tools.config import get_config
 
 

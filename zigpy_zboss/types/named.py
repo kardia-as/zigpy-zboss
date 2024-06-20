@@ -1,24 +1,13 @@
 """Module defining named types."""
 from __future__ import annotations
 
-import typing
-import logging
 import dataclasses
+import logging
+import typing
 
-from zigpy.types import (  # noqa: F401
-    NWK,
-    List,
-    Bool,
-    PanId,
-    EUI64,
-    Struct,
-    bitmap8,
-    KeyData,
-    Channels,
-    ClusterId,
-    ExtendedPanId,
-    CharacterString,
-)
+from zigpy.types import (EUI64, NWK, Bool, Channels,  # noqa: F401
+                         CharacterString, ClusterId, ExtendedPanId, KeyData,
+                         List, PanId, Struct, bitmap8)
 
 from . import basic
 

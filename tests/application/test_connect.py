@@ -3,12 +3,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+import zigpy_zboss.commands as c
 import zigpy_zboss.config as conf
+import zigpy_zboss.types as t
 from zigpy_zboss.uart import connect as uart_connect
 from zigpy_zboss.zigbee.application import ControllerApplication
-
-import zigpy_zboss.types as t
-import zigpy_zboss.commands as c
 
 from ..conftest import BaseServerZBOSS, BaseZStackDevice
 

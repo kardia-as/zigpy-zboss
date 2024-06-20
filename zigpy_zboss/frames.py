@@ -4,10 +4,8 @@ from __future__ import annotations
 import dataclasses
 
 import zigpy_zboss.types as t
+from zigpy_zboss.checksum import CRC8, CRC16
 from zigpy_zboss.exceptions import InvalidFrame
-from zigpy_zboss.checksum import CRC8
-from zigpy_zboss.checksum import CRC16
-
 
 ZBNCP_LL_BODY_SIZE_MAX = 247  # Check zbncp_ll_pkt.h in ZBOSS NCP host src
 

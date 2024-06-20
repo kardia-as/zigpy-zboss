@@ -1,8 +1,9 @@
 """Test cases for zigpy-zboss API connect/close methods."""
 import pytest
-from ..conftest import config_for_port_path, BaseServerZBOSS
 
 from zigpy_zboss.api import ZBOSS
+
+from ..conftest import BaseServerZBOSS, config_for_port_path
 
 
 @pytest.mark.asyncio
