@@ -510,6 +510,7 @@ class BaseZStackDevice(BaseServerZBOSS):
         self.active_endpoints = []
         self._nvram = {}
         self._orig_nvram = {}
+        self.new_channel = 0
         self.device_state = 0x00
         self.zdo_callbacks = set()
         for name in dir(self):
@@ -549,19 +550,6 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.APS.DataReq.Req(partial=True, DstEndpoint=0))
     def on_zdo_request(self, req):
-        # kwargs = deserialize_zdo_command(req.ClusterId, req.Payload)
-        # handler_name = f"on_zdo_{zdo_t.ZDOCmd(req.ClusterId).name.lower()}"
-        # handler = getattr(self, handler_name, None)
-        #
-        # if handler is None:
-        #     LOGGER.warning(
-        #         "No ZDO handler %s, kwargs: %s",
-        #         handler_name, kwargs
-        #     )
-        #     return
-        #
-        # responses = handler(req=req, **kwargs) or []
-
         return c.APS.DataReq.Rsp(
             TSN=req.TSN,
             StatusCat=t.StatusCategory(1),
@@ -620,12 +608,17 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.NcpConfig.GetCurrentChannel.Req(partial=True))
     def get_current_channel(self, request):
+        if self.new_channel != 0:
+            channel = self.new_channel
+        else:
+            channel = 1
+
         return c.NcpConfig.GetCurrentChannel.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
             StatusCode=20,
             Page=0,
-            Channel=t.Channels(1)  # Example channel
+            Channel=t.Channels(channel)
         )
 
     @reply_to(c.NcpConfig.GetChannelMask.Req(partial=True))

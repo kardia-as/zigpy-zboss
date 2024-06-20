@@ -263,18 +263,19 @@ async def test_not_configured(make_application):
         await app.startup(auto_form=False)
 
 
-# @pytest.mark.asyncio
-# async def test_reset(make_application, mocker):
-#     app, zboss_server = make_application(server_cls=BaseZStackDevice)
-#
-#     # `_reset` should be called at least once
-#     # to put the radio into a consistent state
-#     mocker.spy(ZBOSS, "reset")
-#     assert ZBOSS.reset.call_count == 0
-#     await app.startup()
-#     assert ZBOSS.reset.call_count >= 1
-#
-#     await app.shutdown()
+@pytest.mark.asyncio
+async def test_reset(make_application, mocker):
+    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+
+    # `_reset` should be called at least once
+    # to put the radio into a consistent state
+    mocker.spy(ZBOSS, "reset")
+    assert ZBOSS.reset.call_count == 0
+
+    await app.startup()
+    await app.shutdown()
+
+    assert ZBOSS.reset.call_count >= 1
 
 
 @pytest.mark.asyncio
