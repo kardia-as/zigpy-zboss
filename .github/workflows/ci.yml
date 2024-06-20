@@ -10,13 +10,8 @@ on:
 env:
   CODE_FOLDER: zigpy_zboss
   CACHE_VERSION: 2
-  DEFAULT_PYTHON: 3.8
+  DEFAULT_PYTHON: 3.10.8
   PRE_COMMIT_CACHE_PATH: ~/.cache/pre-commit
-  PYTHON_MATRIX:
-    description: 'Comma-separated list of Python versions e.g. "3.11","3.12"'
-    default: '"3.8.14", "3.9.15", "3.10.8", "3.11.0", "3.12"'
-    required: false
-    type: string
 
 jobs:
   # Separate job to pre-populate the base dependency cache
@@ -26,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ${{ fromJSON(format('[{0}]', env.PYTHON_MATRIX)) }}
+        python-version: ["3.8.14", "3.9.15", "3.10.8", "3.11.0", "3.12"]
     steps:
       - name: Check out code from GitHub
         uses: actions/checkout@v2
@@ -155,7 +150,7 @@ jobs:
     needs: prepare-base
     strategy:
       matrix:
-        python-version: ${{ fromJSON(format('[{0}]', env.PYTHON_MATRIX )) }}
+        python-version: ["3.8.14", "3.9.15", "3.10.8", "3.11.0", "3.12"]
     name: >-
       Run tests Python ${{ matrix.python-version }}
     steps:
