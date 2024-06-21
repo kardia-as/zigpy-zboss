@@ -7,7 +7,8 @@ import logging
 
 import zigpy.zdo.types
 
-import zigpy_zboss.types as t
+import zigpy_zboss.types.basic as t
+import zigpy_zboss.types.named as t_named
 
 LOGGER = logging.getLogger(__name__)
 TYPE_ZBOSS_NCP_API_HL = t.uint8_t(0x06)
@@ -719,7 +720,7 @@ class Relationship(t.enum8):
 
 
 STATUS_SCHEMA = (
-    t.Param("TSN", t.uint8_t, "Transmit Sequence Number"),
-    t.Param("StatusCat", StatusCategory, "Status category code"),
-    t.Param("StatusCode", t.uint8_t, "Status code inside category"),
+    t_named.Param("TSN", t.uint8_t, "Transmit Sequence Number"),
+    t_named.Param("StatusCat", StatusCategory, "Status category code"),
+    t_named.Param("StatusCode", t.uint8_t, "Status code inside category"),
 )
