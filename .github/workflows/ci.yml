@@ -3,9 +3,7 @@ name: CI
 # yamllint disable-line rule:truthy
 on:
   push:
-    branches:
-      - add-unit-tests
-  # pull_request: ~
+  pull_request: ~
 
 env:
   CODE_FOLDER: zigpy_zboss
