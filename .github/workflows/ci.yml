@@ -157,21 +157,24 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v2
         id: python
         with:
           python-version: ${{ matrix.python-version }}
-          allow-prereleases: true
       - name: Restore base Python virtual environment
         id: cache-venv
         uses: actions/cache@v2
         with:
-          fail-on-cache-miss: true
           path: venv
           key: >-
             ${{ env.CACHE_VERSION}}-${{ runner.os }}-base-venv-${{
             steps.python.outputs.python-version }}-${{
-            hashFiles('setup.py', 'requirements_test.txt', 'requirements.txt', 'pyproject.toml', 'setup.cfg') }}
+            hashFiles('pyproject.toml') }}
+      - name: Fail job if Python cache restore failed
+        if: steps.cache-venv.outputs.cache-hit != 'true'
+        run: |
+          echo "Failed to restore Python virtual environment from cache"
+          exit 1
       - name: Register Python problem matcher
         run: |
           echo "::add-matcher::.github/workflows/matchers/python.json"
