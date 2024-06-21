@@ -47,6 +47,7 @@ jobs:
           python -m venv venv
           . venv/bin/activate
           pip install -U pip setuptools pre-commit
+          pip install -r requirements_test.txt
           pip install -e .
 
   pre-commit:
