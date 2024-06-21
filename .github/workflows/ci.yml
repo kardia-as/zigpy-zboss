@@ -155,7 +155,7 @@ jobs:
       Run tests Python ${{ matrix.python-version }}
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         id: python
@@ -164,7 +164,7 @@ jobs:
           allow-prereleases: true
       - name: Restore base Python virtual environment
         id: cache-venv
-        uses: actions/cache/restore@v3
+        uses: actions/cache@v2
         with:
           fail-on-cache-miss: true
           path: venv
