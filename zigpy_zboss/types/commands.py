@@ -423,7 +423,8 @@ class CommandBase:
                     issubclass(param.type, (t.ShortBytes, t.LongBytes)),
 
                     isinstance(value, list) and issubclass(param.type, list),
-                    isinstance(value, bool) and issubclass(param.type, t.Bool),
+                    isinstance(
+                        value, bool) and issubclass(param.type, t_named.Bool),
                 ]
                 # fmt: on
 

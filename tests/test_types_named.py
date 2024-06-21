@@ -31,7 +31,7 @@ def test_channel_entry():
     assert channel_entry != t.ChannelEntry(page=0, channel_mask=0x0200)
 
     # Test __repr__
-    expected_repr = "ChannelEntry(page=1, channels=<Channels: 256>)"
+    expected_repr = "ChannelEntry(page=1, channels=<Channels.256: 256>)"
     assert repr(channel_entry) == expected_repr
 
     # Test handling of None types for page or channel_mask
