@@ -1,3 +1,4 @@
+"""Test application connect."""
 import asyncio
 from unittest.mock import AsyncMock, patch
 
@@ -9,11 +10,12 @@ import zigpy_zboss.types as t
 from zigpy_zboss.uart import connect as uart_connect
 from zigpy_zboss.zigbee.application import ControllerApplication
 
-from ..conftest import BaseServerZBOSS, BaseZStackDevice
+from ..conftest import BaseServerZBOSS, BaseZbossDevice
 
 
 @pytest.mark.asyncio
 async def test_no_double_connect(make_zboss_server, mocker):
+    """Test no multiple connection."""
     zboss_server = make_zboss_server(server_cls=BaseServerZBOSS)
 
     app = mocker.Mock()
@@ -32,6 +34,7 @@ async def test_no_double_connect(make_zboss_server, mocker):
 
 @pytest.mark.asyncio
 async def test_leak_detection(make_zboss_server, mocker):
+    """Test leak detection."""
     zboss_server = make_zboss_server(server_cls=BaseServerZBOSS)
 
     def count_connected():
@@ -60,6 +63,7 @@ async def test_leak_detection(make_zboss_server, mocker):
 
 @pytest.mark.asyncio
 async def test_probe_unsuccessful_slow(make_zboss_server, mocker):
+    """Test unsuccessful probe."""
     zboss_server = make_zboss_server(
         server_cls=BaseServerZBOSS, shorten_delays=False
     )
@@ -82,6 +86,7 @@ async def test_probe_unsuccessful_slow(make_zboss_server, mocker):
 
 @pytest.mark.asyncio
 async def test_probe_successful(make_zboss_server, event_loop):
+    """Test successful probe."""
     zboss_server = make_zboss_server(
         server_cls=BaseServerZBOSS, shorten_delays=False
     )
@@ -107,8 +112,9 @@ async def test_probe_successful(make_zboss_server, event_loop):
 
 @pytest.mark.asyncio
 async def test_probe_multiple(make_application):
+    """Test multiple probe."""
     # Make sure that our listeners don't get cleaned up after each probe
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
 
     app.close = lambda: None
 
@@ -126,7 +132,8 @@ async def test_probe_multiple(make_application):
 
 @pytest.mark.asyncio
 async def test_shutdown_from_app(mocker, make_application, event_loop):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test shutdown from application."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
 
     await app.startup(auto_form=False)
 
@@ -143,7 +150,8 @@ async def test_shutdown_from_app(mocker, make_application, event_loop):
 
 @pytest.mark.asyncio
 async def test_clean_shutdown(make_application):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test clean shutdown."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
     await app.startup(auto_form=False)
 
     # This should not throw
@@ -154,7 +162,8 @@ async def test_clean_shutdown(make_application):
 
 @pytest.mark.asyncio
 async def test_multiple_shutdown(make_application):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test multiple shutdown."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
     await app.startup(auto_form=False)
 
     await app.shutdown()
@@ -168,7 +177,8 @@ async def test_multiple_shutdown(make_application):
     new=0.1
 )
 async def test_watchdog(make_application):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test the watchdog."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
     app._watchdog_feed = AsyncMock(wraps=app._watchdog_feed)
 
     await app.startup(auto_form=False)

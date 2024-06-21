@@ -1,3 +1,4 @@
+"""Test NVIDS."""
 from struct import pack
 
 import zigpy_zboss.types as t

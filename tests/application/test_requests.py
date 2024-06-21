@@ -1,20 +1,23 @@
+"""Test application requests."""
 import asyncio
 from unittest.mock import AsyncMock as CoroutineMock
 
 import pytest
 import zigpy.endpoint
 import zigpy.profiles
+import zigpy.types as zigpy_t
 
 import zigpy_zboss.commands as c
 import zigpy_zboss.config as conf
 import zigpy_zboss.types as t
 
-from ..conftest import BaseZStackDevice
+from ..conftest import BaseZbossDevice
 
 
 @pytest.mark.asyncio
 async def test_zigpy_request(make_application):
-    app, zboss_server = make_application(BaseZStackDevice)
+    """Test zigpy request."""
+    app, zboss_server = make_application(BaseZbossDevice)
     await app.startup(auto_form=False)
 
     device = app.add_initialized_device(ieee=t.EUI64(range(8)), nwk=0xAABB)
@@ -130,14 +133,15 @@ async def test_zigpy_request(make_application):
 @pytest.mark.parametrize(
     "addr",
     [
-        zigpy.types.AddrModeAddress(addr_mode=zigpy.types.AddrMode.IEEE,
-                                    address=t.EUI64(range(8))),
-        zigpy.types.AddrModeAddress(addr_mode=zigpy.types.AddrMode.NWK,
-                                    address=t.NWK(0xAABB)),
+        zigpy.types.AddrModeAddress(
+            addr_mode=zigpy.types.AddrMode.IEEE, address=t.EUI64(range(8))),
+        zigpy.types.AddrModeAddress(
+            addr_mode=zigpy.types.AddrMode.NWK, address=t.NWK(0xAABB)),
     ],
 )
 async def test_request_addr_mode(addr, make_application, mocker):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test address mode request."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
 
     await app.startup(auto_form=False)
 
@@ -164,7 +168,8 @@ async def test_request_addr_mode(addr, make_application, mocker):
 
 @pytest.mark.asyncio
 async def test_mrequest(make_application, mocker):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test multicast request."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
 
     mocker.patch.object(app, "send_packet", new=CoroutineMock())
     group = app.groups.add_group(0x1234, "test group")
@@ -173,20 +178,20 @@ async def test_mrequest(make_application, mocker):
 
     assert app.send_packet.call_count == 1
     assert (
-            app.send_packet.mock_calls[0].args[0].dst
-            == zigpy.types.AddrModeAddress(
-                addr_mode=zigpy.types.AddrMode.Group, address=0x1234
-            )
+        app.send_packet.mock_calls[0].args[0].dst ==
+        zigpy.types.AddrModeAddress(
+            addr_mode=zigpy.types.AddrMode.Group, address=0x1234)
     )
-    assert app.send_packet.mock_calls[0].args[
-               0].data.serialize() == b"\x01\x01\x01"
+    assert app.send_packet.mock_calls[0].args[0].data.serialize() == \
+        b"\x01\x01\x01"
 
     await app.shutdown()
 
 
 @pytest.mark.asyncio
 async def test_mrequest_doesnt_block(make_application, event_loop):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test non blocking multicast request."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
 
     zboss_server.reply_once_to(
         request=c.APS.DataReq.Req(
@@ -239,7 +244,8 @@ async def test_mrequest_doesnt_block(make_application, event_loop):
 
 @pytest.mark.asyncio
 async def test_broadcast(make_application, mocker):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test broadcast request."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
     await app.startup()
     zboss_server.reply_once_to(
         request=c.APS.DataReq.Req(TSN=1, ParamLength=21, DataLength=3,
@@ -283,8 +289,9 @@ async def test_broadcast(make_application, mocker):
 
 @pytest.mark.asyncio
 async def test_request_concurrency(make_application, mocker):
+    """Test request concurency."""
     app, zboss_server = make_application(
-        server_cls=BaseZStackDevice,
+        server_cls=BaseZbossDevice,
         client_config={conf.CONF_MAX_CONCURRENT_REQUESTS: 2},
     )
 
@@ -360,9 +367,9 @@ async def test_request_concurrency(make_application, mocker):
 
 @pytest.mark.asyncio
 async def test_request_cancellation_shielding(
-        make_application, mocker, event_loop
-):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+        make_application, mocker, event_loop):
+    """Test request cancellation shielding."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
 
     await app.startup(auto_form=False)
 
@@ -460,7 +467,8 @@ async def test_request_cancellation_shielding(
 
 @pytest.mark.asyncio
 async def test_send_security_and_packet_source_route(make_application, mocker):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test sending security and packet source route."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
     await app.startup(auto_form=False)
 
     packet = zigpy_t.ZigbeePacket(
@@ -522,17 +530,18 @@ async def test_send_security_and_packet_source_route(make_application, mocker):
 
 @pytest.mark.asyncio
 async def test_send_packet_failure_disconnected(make_application, mocker):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test sending packet failure at disconnect."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
     await app.startup(auto_form=False)
 
     app._api = None
 
     packet = zigpy_t.ZigbeePacket(
-        src=zigpy_t.AddrModeAddress(addr_mode=zigpy_t.AddrMode.NWK,
-                                    address=0x0000),
+        src=zigpy_t.AddrModeAddress(
+            addr_mode=zigpy_t.AddrMode.NWK, address=0x0000),
         src_ep=0x9A,
-        dst=zigpy_t.AddrModeAddress(addr_mode=zigpy_t.AddrMode.NWK,
-                                    address=0xEEFF),
+        dst=zigpy_t.AddrModeAddress(
+            addr_mode=zigpy_t.AddrMode.NWK, address=0xEEFF),
         dst_ep=0xBC,
         tsn=0xDE,
         profile_id=0x1234,

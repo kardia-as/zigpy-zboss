@@ -1,3 +1,4 @@
+"""Test commands."""
 import dataclasses
 import keyword
 from collections import defaultdict
@@ -9,6 +10,7 @@ from zigpy_zboss import types as t
 
 
 def _validate_schema(schema):
+    """Validate the schema for command parameters."""
     for index, param in enumerate(schema):
         assert isinstance(param.name, str)
         assert param.name.isidentifier()
@@ -22,6 +24,7 @@ def _validate_schema(schema):
 
 
 def test_commands_schema():
+    """Test the schema of all commands."""
     commands_by_id = defaultdict(list)
 
     for commands in c.ALL_COMMANDS:
@@ -69,6 +72,7 @@ def test_commands_schema():
 
 
 def test_command_param_binding():
+    """Test if commands match correctly."""
     # Example for GetModuleVersion which only requires TSN
     c.NcpConfig.GetModuleVersion.Req(TSN=1)
 
@@ -137,6 +141,7 @@ def test_command_param_binding():
 
 
 def test_command_optional_params():
+    """Test optional parameters."""
     # Basic response with required parameters only
     basic_ieee_addr_rsp = c.ZDO.IeeeAddrReq.Rsp(
         TSN=10,
@@ -180,6 +185,7 @@ def test_command_optional_params():
 
 
 def test_command_optional_params_failures():
+    """Test optional parameters failures."""
     with pytest.raises(KeyError):
         # Optional params cannot be skipped over
         c.ZDO.IeeeAddrReq.Rsp(
@@ -212,6 +218,7 @@ def test_command_optional_params_failures():
 
 
 def test_simple_descriptor():
+    """Test simple descriptor."""
     lvlist16_type = t.LVList[t.uint16_t]
 
     simple_descriptor = t.SimpleDescriptor()

@@ -1,3 +1,4 @@
+"""Test response."""
 import asyncio
 
 import async_timeout
@@ -10,6 +11,7 @@ from zigpy_zboss.utils import deduplicate_commands
 
 @pytest.mark.asyncio
 async def test_responses(connected_zboss):
+    """Test responses."""
     zboss, zboss_server = connected_zboss
 
     assert not any(zboss._listeners.values())
@@ -41,6 +43,7 @@ async def test_responses(connected_zboss):
 
 @pytest.mark.asyncio
 async def test_responses_multiple(connected_zboss):
+    """Test multiple responses."""
     zboss, _ = connected_zboss
 
     assert not any(zboss._listeners.values())
@@ -85,6 +88,7 @@ async def test_responses_multiple(connected_zboss):
 
 @pytest.mark.asyncio
 async def test_response_timeouts(connected_zboss):
+    """Test future response timeouts."""
     zboss, _ = connected_zboss
 
     response = c.NcpConfig.GetZigbeeRole.Rsp(
@@ -134,6 +138,7 @@ async def test_response_timeouts(connected_zboss):
 
 @pytest.mark.asyncio
 async def test_response_matching_partial(connected_zboss):
+    """Test partial response matching."""
     zboss, _ = connected_zboss
 
     future = zboss.wait_for_response(
@@ -174,6 +179,7 @@ async def test_response_matching_partial(connected_zboss):
 
 @pytest.mark.asyncio
 async def test_response_matching_exact(connected_zboss):
+    """Test exact response matching."""
     zboss, _ = connected_zboss
 
     response1 = c.NcpConfig.GetZigbeeRole.Rsp(
@@ -208,6 +214,7 @@ async def test_response_matching_exact(connected_zboss):
 
 @pytest.mark.asyncio
 async def test_response_not_matching_out_of_order(connected_zboss):
+    """Test not matching response."""
     zboss, _ = connected_zboss
 
     response = c.NcpConfig.GetZigbeeRole.Rsp(
@@ -227,6 +234,7 @@ async def test_response_not_matching_out_of_order(connected_zboss):
 
 @pytest.mark.asyncio
 async def test_wait_responses_empty(connected_zboss):
+    """Test wait empty response."""
     zboss, _ = connected_zboss
 
     # You shouldn't be able to wait for an empty list of responses
@@ -236,6 +244,7 @@ async def test_wait_responses_empty(connected_zboss):
 
 @pytest.mark.asyncio
 async def test_response_callback_simple(connected_zboss, event_loop, mocker):
+    """Test simple response callback."""
     zboss, _ = connected_zboss
 
     sync_callback = mocker.Mock()
@@ -264,6 +273,7 @@ async def test_response_callback_simple(connected_zboss, event_loop, mocker):
 
 @pytest.mark.asyncio
 async def test_response_callbacks(connected_zboss, event_loop, mocker):
+    """Test response callbacks."""
     zboss, _ = connected_zboss
 
     sync_callback = mocker.Mock()
@@ -398,6 +408,7 @@ async def test_response_callbacks(connected_zboss, event_loop, mocker):
 
 @pytest.mark.asyncio
 async def test_wait_for_responses(connected_zboss, event_loop):
+    """Test wait for responses."""
     zboss, _ = connected_zboss
 
     response1 = c.NcpConfig.GetZigbeeRole.Rsp(

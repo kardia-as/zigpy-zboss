@@ -4,8 +4,8 @@ import pytest
 import zigpy.types as zigpy_t
 import zigpy.zdo.types as zdo_t
 
-import zigpy_zboss.types as t
 import zigpy_zboss.commands as c
+import zigpy_zboss.types as t
 
 from ..conftest import BaseZStackDevice, serialize_zdo_command
 

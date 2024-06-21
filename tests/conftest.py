@@ -25,6 +25,7 @@ FAKE_SERIAL_PORT = "/dev/ttyFAKE0"
 
 # Globally handle async tests and error on unawaited coroutines
 def pytest_collection_modifyitems(session, config, items):
+    """Modify collection items."""
     for item in items:
         item.add_marker(
             pytest.mark.filterwarnings(
@@ -36,7 +37,7 @@ def pytest_collection_modifyitems(session, config, items):
 
 @pytest.hookimpl(trylast=True)
 def pytest_fixture_post_finalizer(fixturedef, request) -> None:
-    """Called after fixture teardown"""
+    """Post fixture teardown."""
     if fixturedef.argname != "event_loop":
         return
 
@@ -75,11 +76,10 @@ def event_loop(
 
 
 class ForwardingSerialTransport:
-    """
-    Serial transport that hooks directly into a protocol
-    """
+    """Serial transport that hooks directly into a protocol."""
 
     def __init__(self, protocol):
+        """Initailize."""
         self.protocol = protocol
         self._is_connected = False
         self.other = None
@@ -100,12 +100,14 @@ class ForwardingSerialTransport:
         self.other.protocol.connection_made(self)
 
     def write(self, data):
+        """Write."""
         assert self._is_connected
         self.protocol.data_received(data)
 
     def close(
             self, *, error=ValueError("Connection was closed")  # noqa: B008
     ):
+        """Close."""
         LOGGER.debug("Closing %s", self)
 
         if not self._is_connected:
@@ -120,10 +122,12 @@ class ForwardingSerialTransport:
         self.protocol.connection_lost(error)
 
     def __repr__(self):
+        """Representation."""
         return f"<{type(self).__name__} to {self.protocol}>"
 
 
 def config_for_port_path(path):
+    """Port path configuration."""
     return conf.CONFIG_SCHEMA(
         {
             conf.CONF_DEVICE: {conf.CONF_DEVICE_PATH: path},
@@ -135,6 +139,7 @@ def config_for_port_path(path):
 
 @pytest.fixture
 def make_zboss_server(mocker):
+    """Instantiate a zboss server."""
     transports = []
 
     def inner(server_cls, config=None, shorten_delays=True):
@@ -208,6 +213,7 @@ def make_zboss_server(mocker):
 
 @pytest.fixture
 def make_connected_zboss(make_zboss_server, mocker):
+    """Make a connection fixture."""
     async def inner(server_cls):
         config = conf.CONFIG_SCHEMA(
             {
@@ -230,6 +236,7 @@ def make_connected_zboss(make_zboss_server, mocker):
 
 @pytest.fixture
 def connected_zboss(event_loop, make_connected_zboss):
+    """Zboss connected fixture."""
     zboss, zboss_server = event_loop.run_until_complete(
         make_connected_zboss(BaseServerZBOSS)
     )
@@ -238,6 +245,7 @@ def connected_zboss(event_loop, make_connected_zboss):
 
 
 def reply_to(request):
+    """Reply to decorator."""
     def inner(function):
         if not hasattr(function, "_reply_to"):
             function._reply_to = []
@@ -250,12 +258,14 @@ def reply_to(request):
 
 
 def serialize_zdo_command(command_id, **kwargs):
+    """ZDO command serialization."""
     field_names, field_types = zdo_t.CLUSTERS[command_id]
 
     return t.Bytes(zigpy.types.serialize(kwargs.values(), field_types))
 
 
 def deserialize_zdo_command(command_id, data):
+    """ZDO command deserialization."""
     field_names, field_types = zdo_t.CLUSTERS[command_id]
     args, data = zigpy.types.deserialize(data, field_types)
 
@@ -263,6 +273,8 @@ def deserialize_zdo_command(command_id, data):
 
 
 class BaseServerZBOSS(ZBOSS):
+    """Base ZBOSS server."""
+
     align_structs = False
     version = None
 
@@ -296,6 +308,7 @@ class BaseServerZBOSS(ZBOSS):
             await self.send(response)
 
     def reply_once_to(self, request, responses, *, override=False):
+        """Reply once to."""
         if override:
             self._listeners[request.header].clear()
 
@@ -310,6 +323,7 @@ class BaseServerZBOSS(ZBOSS):
         return asyncio.create_task(replier())
 
     def reply_to(self, request, responses, *, override=False):
+        """Reply to."""
         if override:
             self._listeners[request.header].clear()
 
@@ -326,16 +340,19 @@ class BaseServerZBOSS(ZBOSS):
         return callback
 
     async def send(self, response):
+        """Send."""
         if response is not None and self._uart is not None:
             await self._uart.send(response.to_frame(align=self.align_structs))
 
     def close(self):
+        """Close."""
         # We don't clear listeners on shutdown
         with patch.object(self, "_listeners", {}):
             return super().close()
 
 
 def simple_deepcopy(d):
+    """Get a deepcopy."""
     if not hasattr(d, "copy"):
         return d
 
@@ -350,6 +367,7 @@ def simple_deepcopy(d):
 
 
 def merge_dicts(a, b):
+    """Merge dicts."""
     c = simple_deepcopy(a)
 
     for key, value in b.items():
@@ -363,6 +381,7 @@ def merge_dicts(a, b):
 
 @pytest.fixture
 def make_application(make_zboss_server):
+    """Application fixture."""
     def inner(
             server_cls,
             client_config=None,
@@ -447,8 +466,8 @@ def make_application(make_zboss_server):
 
 
 def zdo_request_matcher(
-        dst_addr, command_id: t.uint16_t, **kwargs
-):
+        dst_addr, command_id: t.uint16_t, **kwargs):
+    """Request matcher."""
     zdo_kwargs = {k: v for k, v in kwargs.items() if k.startswith("zdo_")}
 
     kwargs = {k: v for k, v in kwargs.items() if not k.startswith("zdo_")}
@@ -468,8 +487,11 @@ def zdo_request_matcher(
     )
 
 
-class BaseZStackDevice(BaseServerZBOSS):
+class BaseZbossDevice(BaseServerZBOSS):
+    """Base ZBOSS Device."""
+
     def __init__(self, *args, **kwargs):
+        """Initialize."""
         super().__init__(*args, **kwargs)
         self.active_endpoints = []
         self._nvram = {}
@@ -483,11 +505,13 @@ class BaseZStackDevice(BaseServerZBOSS):
                 self.reply_to(request=req, responses=[func])
 
     def connection_lost(self, exc):
+        """Lost connection."""
         self.active_endpoints.clear()
         return super().connection_lost(exc)
 
     @reply_to(c.NcpConfig.GetJoinStatus.Req(partial=True))
     def get_join_status(self, request):
+        """Handle get join status."""
         return c.NcpConfig.GetJoinStatus.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
@@ -497,6 +521,7 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.NcpConfig.NCPModuleReset.Req(partial=True))
     def get_ncp_reset(self, request):
+        """Handle NCP reset."""
         return c.NcpConfig.NCPModuleReset.Rsp(
             TSN=0xFF,
             StatusCat=t.StatusCategory(1),
@@ -505,6 +530,7 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.NcpConfig.GetShortAddr.Req(partial=True))
     def get_short_addr(self, request):
+        """Handle get short address."""
         return c.NcpConfig.GetShortAddr.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
@@ -514,6 +540,7 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.APS.DataReq.Req(partial=True, DstEndpoint=0))
     def on_zdo_request(self, req):
+        """Handle APS Data request."""
         return c.APS.DataReq.Rsp(
             TSN=req.TSN,
             StatusCat=t.StatusCategory(1),
@@ -527,6 +554,7 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.NcpConfig.GetLocalIEEE.Req(partial=True))
     def get_local_ieee(self, request):
+        """Handle get local IEEE."""
         return c.NcpConfig.GetLocalIEEE.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
@@ -537,6 +565,7 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.NcpConfig.GetZigbeeRole.Req(partial=True))
     def get_zigbee_role(self, request):
+        """Handle get zigbee role."""
         return c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
@@ -546,6 +575,7 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.NcpConfig.GetExtendedPANID.Req(partial=True))
     def get_extended_panid(self, request):
+        """Handle get extended PANID."""
         return c.NcpConfig.GetExtendedPANID.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
@@ -555,6 +585,7 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.ZDO.PermitJoin.Req(partial=True))
     def get_permit_join(self, request):
+        """Handle get permit join."""
         return c.ZDO.PermitJoin.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
@@ -563,6 +594,7 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.NcpConfig.GetShortPANID.Req(partial=True))
     def get_short_panid(self, request):
+        """Handle get short PANID."""
         return c.NcpConfig.GetShortPANID.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
@@ -572,6 +604,7 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.NcpConfig.GetCurrentChannel.Req(partial=True))
     def get_current_channel(self, request):
+        """Handle get current channel."""
         if self.new_channel != 0:
             channel = self.new_channel
         else:
@@ -587,6 +620,7 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.NcpConfig.GetChannelMask.Req(partial=True))
     def get_channel_mask(self, request):
+        """Handle get channel mask."""
         return c.NcpConfig.GetChannelMask.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
@@ -597,6 +631,7 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.NcpConfig.ReadNVRAM.Req(partial=True))
     def read_nvram(self, request):
+        """Handle NVRAM read."""
         status_code = 1
         if request.DatasetId == t.DatasetId.ZB_NVRAM_COMMON_DATA:
             status_code = 0
@@ -702,6 +737,7 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.NcpConfig.GetTrustCenterAddr.Req(partial=True))
     def get_trust_center_addr(self, request):
+        """Handle get trust center address."""
         return c.NcpConfig.GetTrustCenterAddr.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
@@ -712,6 +748,7 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.NcpConfig.GetRxOnWhenIdle.Req(partial=True))
     def get_rx_on_when_idle(self, request):
+        """Handle get RX on when idle."""
         return c.NcpConfig.GetRxOnWhenIdle.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
@@ -721,6 +758,7 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.NWK.StartWithoutFormation.Req(partial=True))
     def start_without_formation(self, request):
+        """Handle start without formation."""
         return c.NWK.StartWithoutFormation.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
@@ -729,6 +767,7 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.NcpConfig.GetModuleVersion.Req(partial=True))
     def get_module_version(self, request):
+        """Handle get module version."""
         return c.NcpConfig.GetModuleVersion.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
@@ -740,6 +779,7 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.AF.SetSimpleDesc.Req(partial=True))
     def set_simple_desc(self, request):
+        """Handle set simple descriptor."""
         return c.AF.SetSimpleDesc.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
@@ -748,6 +788,7 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.NcpConfig.GetEDTimeout.Req(partial=True))
     def get_ed_timeout(self, request):
+        """Handle get EndDevice timeout."""
         return c.NcpConfig.GetEDTimeout.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
@@ -757,6 +798,7 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.NcpConfig.GetMaxChildren.Req(partial=True))
     def get_max_children(self, request):
+        """Handle get max children."""
         return c.NcpConfig.GetMaxChildren.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
@@ -766,6 +808,7 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.NcpConfig.GetAuthenticationStatus.Req(partial=True))
     def get_authentication_status(self, request):
+        """Handle get authentication status."""
         return c.NcpConfig.GetAuthenticationStatus.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
@@ -775,6 +818,7 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.NcpConfig.GetParentAddr.Req(partial=True))
     def get_parent_addr(self, request):
+        """Handle get parent address."""
         return c.NcpConfig.GetParentAddr.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
@@ -784,6 +828,7 @@ class BaseZStackDevice(BaseServerZBOSS):
 
     @reply_to(c.NcpConfig.GetCoordinatorVersion.Req(partial=True))
     def get_coordinator_version(self, request):
+        """Handle get coordinator version."""
         return c.NcpConfig.GetCoordinatorVersion.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
@@ -792,6 +837,7 @@ class BaseZStackDevice(BaseServerZBOSS):
         )
 
     def on_zdo_node_desc_req(self, req, NWKAddrOfInterest):
+        """Handle node description request."""
         if NWKAddrOfInterest != 0x0000:
             return
 
@@ -837,8 +883,11 @@ class BaseZStackDevice(BaseServerZBOSS):
         return responses
 
 
-class BaseZStackGenericDevice(BaseServerZBOSS):
+class BaseZbossGenericDevice(BaseServerZBOSS):
+    """Base ZBOSS generic device."""
+
     def __init__(self, *args, **kwargs):
+        """Init method."""
         super().__init__(*args, **kwargs)
         self.active_endpoints = []
         self._nvram = {}
@@ -851,11 +900,13 @@ class BaseZStackGenericDevice(BaseServerZBOSS):
                 self.reply_to(request=req, responses=[func])
 
     def connection_lost(self, exc):
+        """Lost connection."""
         self.active_endpoints.clear()
         return super().connection_lost(exc)
 
     @reply_to(c.NcpConfig.ReadNVRAM.Req(partial=True))
     def read_nvram(self, request):
+        """Handle NVRAM read."""
         status_code = 1
         if request.DatasetId == t.DatasetId.ZB_NVRAM_COMMON_DATA:
             status_code = 0
@@ -960,6 +1011,7 @@ class BaseZStackGenericDevice(BaseServerZBOSS):
         )
 
     def on_zdo_node_desc_req(self, req, NWKAddrOfInterest):
+        """Handle node description request."""
         if NWKAddrOfInterest != 0x0000:
             return
 

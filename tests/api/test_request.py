@@ -1,3 +1,4 @@
+"""Test api requests."""
 import asyncio
 import logging
 
@@ -12,6 +13,7 @@ from zigpy_zboss.frames import (ZBNCP_LL_BODY_SIZE_MAX, Frame, HLPacket,
 
 @pytest.mark.asyncio
 async def test_cleanup_timeout_internal(connected_zboss):
+    """Test internal cleanup timeout."""
     zboss, zboss_server = connected_zboss
 
     assert not any(zboss._listeners.values())
@@ -25,6 +27,7 @@ async def test_cleanup_timeout_internal(connected_zboss):
 
 @pytest.mark.asyncio
 async def test_cleanup_timeout_external(connected_zboss):
+    """Test external cleanup timeout."""
     zboss, zboss_server = connected_zboss
 
     assert not any(zboss._listeners.values())
@@ -40,6 +43,7 @@ async def test_cleanup_timeout_external(connected_zboss):
 
 @pytest.mark.asyncio
 async def test_zboss_request_kwargs(connected_zboss, event_loop):
+    """Test zboss request."""
     zboss, zboss_server = connected_zboss
 
     # Invalid format
@@ -86,7 +90,8 @@ async def test_zboss_request_kwargs(connected_zboss, event_loop):
 
 
 @pytest.mark.asyncio
-async def test_zboss_sreq_srsp(connected_zboss, event_loop):
+async def test_zboss_req_rsp(connected_zboss, event_loop):
+    """Test zboss request/response."""
     zboss, zboss_server = connected_zboss
 
     # Each SREQ must have a corresponding SRSP, so this will fail
@@ -114,6 +119,7 @@ async def test_zboss_sreq_srsp(connected_zboss, event_loop):
 
 @pytest.mark.asyncio
 async def test_zboss_unknown_frame(connected_zboss, caplog):
+    """Test zboss unknown frame."""
     zboss, _ = connected_zboss
     hl_header = t.HLCommonHeader(
         version=0x0121, type=0xFFFF, id=0x123421
@@ -131,6 +137,7 @@ async def test_zboss_unknown_frame(connected_zboss, caplog):
 
 @pytest.mark.asyncio
 async def test_send_failure_when_disconnected(connected_zboss):
+    """Test send failure when disconnected."""
     zboss, _ = connected_zboss
     zboss._uart = None
 
@@ -143,6 +150,7 @@ async def test_send_failure_when_disconnected(connected_zboss):
 
 @pytest.mark.asyncio
 async def test_frame_merge(connected_zboss, mocker):
+    """Test frame fragmentation."""
     zboss, zboss_server = connected_zboss
 
     large_data = b"a" * (ZBNCP_LL_BODY_SIZE_MAX * 2 + 50)

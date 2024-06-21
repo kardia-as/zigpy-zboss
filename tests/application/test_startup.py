@@ -1,23 +1,21 @@
-import pytest
+"""Test application startup."""
 from unittest.mock import AsyncMock as CoroutineMock
 
 import pytest
-import voluptuous as vol
 from zigpy.exceptions import NetworkNotFormed
 
 import zigpy_zboss.commands as c
 import zigpy_zboss.types as t
 from zigpy_zboss.api import ZBOSS
 
-from ..conftest import BaseZStackDevice, BaseZStackGenericDevice
+from ..conftest import BaseZbossDevice, BaseZbossGenericDevice
+
 
 @pytest.mark.asyncio
-async def test_info(
-        make_application,
-        caplog,
-):
+async def test_info(make_application, caplog):
+    """Test network information."""
     app, zboss_server = make_application(
-        server_cls=BaseZStackGenericDevice, active_sequence=True
+        server_cls=BaseZbossGenericDevice, active_sequence=True
     )
 
     pan_id = 0x5679
@@ -200,7 +198,8 @@ async def test_info(
 
 @pytest.mark.asyncio
 async def test_endpoints(make_application):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test endpoints."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
 
     endpoints = []
     zboss_server.register_indication_listener(
@@ -218,8 +217,9 @@ async def test_endpoints(make_application):
 
 @pytest.mark.asyncio
 async def test_not_configured(make_application):
+    """Test device not configured."""
     app, zboss_server = make_application(
-        server_cls=BaseZStackGenericDevice, active_sequence=True
+        server_cls=BaseZbossGenericDevice, active_sequence=True
     )
 
     # Simulate responses for each request in load_network_info
@@ -261,7 +261,8 @@ async def test_not_configured(make_application):
 
 @pytest.mark.asyncio
 async def test_reset(make_application, mocker):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test application reset."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
 
     # `_reset` should be called at least once
     # to put the radio into a consistent state
@@ -276,7 +277,8 @@ async def test_reset(make_application, mocker):
 
 @pytest.mark.asyncio
 async def test_auto_form_unnecessary(make_application, mocker):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test unnecessary auto form."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
     mocker.patch.object(app, "form_network", new=CoroutineMock())
 
     await app.startup(auto_form=True)
@@ -288,7 +290,8 @@ async def test_auto_form_unnecessary(make_application, mocker):
 
 @pytest.mark.asyncio
 async def test_auto_form_necessary(make_application, mocker):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test necessary auto form."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
 
     assert app.state.network_info.channel == 0
     assert app.state.network_info.channel_mask == t.Channels.NO_CHANNELS
@@ -303,7 +306,8 @@ async def test_auto_form_necessary(make_application, mocker):
 
 @pytest.mark.asyncio
 async def test_concurrency_auto_config(make_application):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test auto config concurrency."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
     await app.connect()
     await app.start_network()
 

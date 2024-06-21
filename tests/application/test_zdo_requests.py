@@ -1,3 +1,4 @@
+"""Test application ZDO request."""
 import asyncio
 
 import pytest
@@ -7,18 +8,17 @@ import zigpy.zdo.types as zdo_t
 import zigpy_zboss.commands as c
 import zigpy_zboss.types as t
 
-from ..conftest import BaseZStackDevice
+from ..conftest import BaseZbossDevice
 
 
 @pytest.mark.asyncio
-async def test_mgmt_nwk_update_req(
-        make_application, mocker
-):
+async def test_mgmt_nwk_update_req(make_application, mocker):
+    """Test ZDO_MGMT_NWK_UPDATE_REQ request."""
     mocker.patch(
         "zigpy.application.CHANNEL_CHANGE_SETTINGS_RELOAD_DELAY_S", 0.1
     )
 
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
 
     new_channel = 11
     old_channel = 1
@@ -32,9 +32,14 @@ async def test_mgmt_nwk_update_req(
 
     zboss_server.reply_once_to(
         request=c.APS.DataReq.Req(
-            TSN=123, ParamLength=21, DataLength=3,
-            ProfileID=260, ClusterId=zdo_t.ZDOCmd.Mgmt_NWK_Update_req,
-            DstEndpoint=0, partial=True),
+            TSN=123,
+            ParamLength=21,
+            DataLength=3,
+            ProfileID=260,
+            ClusterId=zdo_t.ZDOCmd.Mgmt_NWK_Update_req,
+            DstEndpoint=0,
+            partial=True
+        ),
         responses=[c.APS.DataReq.Rsp(
             TSN=123,
             StatusCat=t.StatusCategory(1),

@@ -1,9 +1,11 @@
+"""Test cstruct types."""
 import pytest
 
 import zigpy_zboss.types as t
 
 
 def test_struct_fields():
+    """Test struct fields."""
     class TestStruct(t.CStruct):
         a: t.uint8_t
         b: t.uint16_t
@@ -18,6 +20,7 @@ def test_struct_fields():
 
 
 def test_struct_field_values():
+    """Test struct field values."""
     class TestStruct(t.CStruct):
         a: t.uint8_t
         b: t.uint16_t
@@ -42,6 +45,7 @@ def test_struct_field_values():
 
 
 def test_struct_methods_and_constants():
+    """Test struct methods and constants."""
     class TestStruct(t.CStruct):
         a: t.uint8_t
         b: t.uint16_t
@@ -68,6 +72,7 @@ def test_struct_methods_and_constants():
 
 
 def test_struct_nesting():
+    """Test struct nesting."""
     class Outer(t.CStruct):
         e: t.uint32_t
 
@@ -98,6 +103,7 @@ def test_struct_nesting():
 
 
 def test_struct_aligned_serialization_deserialization():
+    """Test struct aligned serialization/deserialization."""
     class TestStruct(t.CStruct):
         a: t.uint8_t
         # One padding byte here
@@ -138,6 +144,7 @@ def test_struct_aligned_serialization_deserialization():
 
 
 def test_struct_aligned_nested_serialization_deserialization():
+    """Test structed alined nested serialization/deserialization."""
     class Inner(t.CStruct):
         _padding_byte = b"\xCD"
 
@@ -173,6 +180,7 @@ def test_struct_aligned_nested_serialization_deserialization():
 
 
 def test_struct_unaligned_serialization_deserialization():
+    """Test struct unaligned serialization/deserialization."""
     class TestStruct(t.CStruct):
         a: t.uint8_t
         b: t.uint16_t
@@ -204,6 +212,7 @@ def test_struct_unaligned_serialization_deserialization():
 
 
 def test_struct_equality():
+    """Test struct equality."""
     class InnerStruct(t.CStruct):
         c: t.EUI64
 
@@ -243,6 +252,7 @@ def test_struct_equality():
 
 
 def test_struct_repr():
+    """Test struct representation."""
     class TestStruct(t.CStruct):
         a: t.uint8_t
         b: t.uint32_t
@@ -252,6 +262,7 @@ def test_struct_repr():
 
 
 def test_struct_bad_fields():
+    """Test struct bad fields."""
     with pytest.raises(TypeError):
 
         class TestStruct(t.CStruct):
@@ -260,6 +271,7 @@ def test_struct_bad_fields():
 
 
 def test_struct_incomplete_serialization():
+    """Test struct incomplete serialization."""
     class TestStruct(t.CStruct):
         a: t.uint8_t
         b: t.uint8_t

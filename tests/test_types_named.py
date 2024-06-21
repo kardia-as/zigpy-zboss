@@ -1,11 +1,15 @@
+"""Test named types."""
 import pytest
 
 import zigpy_zboss.types as t
 
 
 def test_channel_entry():
-    """Test ChannelEntry class for proper serialization,
-     deserialization, equality, and representation."""
+    """Test channel entry.
+
+    ChannelEntry class for proper serialization,
+    deserialization, equality, and representation.
+    """
     # Sample data for testing
     page_data = b"\x01"  # Page number as bytes
     channel_mask_data = b"\x00\x01\x00\x00"  # Sample channel mask as bytes

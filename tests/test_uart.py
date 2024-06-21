@@ -1,3 +1,4 @@
+"""Test uart."""
 import pytest
 from serial_asyncio import SerialTransport
 
@@ -11,6 +12,7 @@ from zigpy_zboss.frames import Frame
 
 @pytest.fixture
 def connected_uart(mocker):
+    """Uart connected fixture."""
     zboss = mocker.Mock()
     config = {
         conf.CONF_DEVICE_PATH: "/dev/ttyACM0",
@@ -32,6 +34,7 @@ def ll_checksum(frame):
 
 @pytest.fixture
 def dummy_serial_conn(event_loop, mocker):
+    """Connect serial dummy."""
     device = "/dev/ttyACM0"
 
     serial_interface = mocker.Mock()
@@ -65,6 +68,7 @@ def dummy_serial_conn(event_loop, mocker):
 
 
 def test_uart_rx_basic(connected_uart):
+    """Test UART basic receive."""
     znp, uart = connected_uart
 
     test_command = c.NcpConfig.GetZigbeeRole.Rsp(
@@ -85,6 +89,7 @@ def test_uart_rx_basic(connected_uart):
 
 
 def test_uart_str_repr(connected_uart):
+    """Test uart representation."""
     znp, uart = connected_uart
 
     str(uart)
@@ -92,6 +97,7 @@ def test_uart_str_repr(connected_uart):
 
 
 def test_uart_rx_byte_by_byte(connected_uart):
+    """Test uart RX byte by byte."""
     znp, uart = connected_uart
 
     test_command = c.NcpConfig.GetZigbeeRole.Rsp(
@@ -113,6 +119,7 @@ def test_uart_rx_byte_by_byte(connected_uart):
 
 
 def test_uart_rx_byte_by_byte_garbage(connected_uart):
+    """Test uart RX byte by byte garbage."""
     znp, uart = connected_uart
 
     test_command = c.NcpConfig.GetZigbeeRole.Rsp(
@@ -144,6 +151,7 @@ def test_uart_rx_byte_by_byte_garbage(connected_uart):
 
 
 def test_uart_rx_big_garbage(connected_uart):
+    """Test uart RX big garbage."""
     znp, uart = connected_uart
 
     test_command = c.NcpConfig.GetZigbeeRole.Rsp(
@@ -174,6 +182,7 @@ def test_uart_rx_big_garbage(connected_uart):
 
 
 def test_uart_rx_corrupted_fcs(connected_uart):
+    """Test uart RX corrupted."""
     znp, uart = connected_uart
 
     test_command = c.NcpConfig.GetZigbeeRole.Rsp(
@@ -196,6 +205,7 @@ def test_uart_rx_corrupted_fcs(connected_uart):
 
 
 def test_uart_rx_sof_stress(connected_uart):
+    """Test uart RX signature stress."""
     znp, uart = connected_uart
 
     test_command = c.NcpConfig.GetZigbeeRole.Rsp(
@@ -224,6 +234,7 @@ def test_uart_rx_sof_stress(connected_uart):
 
 
 def test_uart_frame_received_error(connected_uart, mocker):
+    """Test uart frame received error."""
     znp, uart = connected_uart
     znp.frame_received = mocker.Mock(side_effect=RuntimeError("An error"))
 
@@ -249,6 +260,7 @@ def test_uart_frame_received_error(connected_uart, mocker):
 
 @pytest.mark.asyncio
 async def test_connection_lost(dummy_serial_conn, mocker, event_loop):
+    """Test connection lost."""
     device, _ = dummy_serial_conn
 
     znp = mocker.Mock()
@@ -268,6 +280,7 @@ async def test_connection_lost(dummy_serial_conn, mocker, event_loop):
 
 @pytest.mark.asyncio
 async def test_connection_made(dummy_serial_conn, mocker):
+    """Test connection made."""
     device, _ = dummy_serial_conn
     znp = mocker.Mock()
 

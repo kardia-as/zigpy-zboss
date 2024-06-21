@@ -1,9 +1,11 @@
+"""Test basic types."""
 import pytest
 
 import zigpy_zboss.types as t
 
 
 def test_enum():
+    """Test enum."""
     class TestEnum(t.bitmap16):
         ALL = 0xFFFF
         CH_1 = 0x0001
@@ -26,6 +28,7 @@ def test_enum():
 
 
 def test_int_too_short():
+    """Test int too short."""
     with pytest.raises(ValueError):
         t.uint8_t.deserialize(b"")
 
@@ -34,6 +37,7 @@ def test_int_too_short():
 
 
 def test_int_out_of_bounds():
+    """Test int out of bounds."""
     with pytest.raises(ValueError):
         t.uint8_t(-1)
 
@@ -42,6 +46,7 @@ def test_int_out_of_bounds():
 
 
 def test_bytes():
+    """Test bytes."""
     data = b"abcde\x00\xff"
 
     r, rest = t.Bytes.deserialize(data)
@@ -76,6 +81,7 @@ def test_bytes():
 
 
 def test_longbytes():
+    """Test long bytes."""
     data = b"abcde\x00\xff" * 50
     extra = b"\xffrest of the data\x00"
 
@@ -102,6 +108,7 @@ def test_longbytes():
 
 
 def test_lvlist():
+    """Test lvlist."""
     class TestList(t.LVList, item_type=t.uint8_t, length_type=t.uint8_t):
         pass
 
@@ -117,6 +124,7 @@ def test_lvlist():
 
 
 def test_lvlist_too_short():
+    """Test lvlist too short."""
     class TestList(t.LVList, item_type=t.uint8_t, length_type=t.uint8_t):
         pass
 
@@ -128,6 +136,7 @@ def test_lvlist_too_short():
 
 
 def test_fixed_list():
+    """Test fixed list."""
     class TestList(t.FixedList, item_type=t.uint16_t, length=3):
         pass
 
@@ -145,6 +154,7 @@ def test_fixed_list():
 
 
 def test_fixed_list_deserialize():
+    """Test fixed list deserialize."""
     class TestList(t.FixedList, length=3, item_type=t.uint16_t):
         pass
 
@@ -159,6 +169,7 @@ def test_fixed_list_deserialize():
 
 
 def test_enum_instance_types():
+    """Test enum instance."""
     class TestEnum(t.enum8):
         Member = 0x00
 

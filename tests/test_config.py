@@ -1,3 +1,4 @@
+"""Test config."""
 import pytest
 from voluptuous import Invalid
 
@@ -5,6 +6,7 @@ import zigpy_zboss.config as conf
 
 
 def test_pin_states_same_lengths():
+    """Test same lengths pin states."""
     # Bare schema works
     conf.CONFIG_SCHEMA(
         {
@@ -44,6 +46,7 @@ def test_pin_states_same_lengths():
 
 
 def test_pin_states_different_lengths():
+    """Test different lengths pin states."""
     # They must be the same length
     with pytest.raises(Invalid):
         conf.CONFIG_SCHEMA(

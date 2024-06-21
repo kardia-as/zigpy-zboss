@@ -1,3 +1,4 @@
+"""Test frame."""
 import pytest
 
 import zigpy_zboss.types as t

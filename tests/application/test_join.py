@@ -1,3 +1,4 @@
+"""Test application device joining."""
 import asyncio
 
 import pytest
@@ -8,12 +9,13 @@ import zigpy.util
 import zigpy_zboss.commands as c
 import zigpy_zboss.types as t
 
-from ..conftest import BaseZStackDevice
+from ..conftest import BaseZbossDevice
 
 
 @pytest.mark.asyncio
 async def test_permit_join(mocker, make_application):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test permit join."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
 
     permit_join_coordinator = zboss_server.reply_once_to(
         request=c.ZDO.PermitJoin.Req(
@@ -43,7 +45,8 @@ async def test_permit_join(mocker, make_application):
 
 @pytest.mark.asyncio
 async def test_join_coordinator(make_application):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test coordinator join."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
 
     # Handle us opening joins on the coordinator
     permit_join_coordinator = zboss_server.reply_once_to(
@@ -73,10 +76,11 @@ async def test_join_coordinator(make_application):
 
 @pytest.mark.asyncio
 async def test_join_device(make_application):
+    """Test device join."""
     ieee = t.EUI64.convert("EC:1B:BD:FF:FE:54:4F:40")
     nwk = 0x1234
 
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
     app.add_initialized_device(ieee=ieee, nwk=nwk)
 
     permit_join = zboss_server.reply_once_to(
@@ -105,7 +109,8 @@ async def test_join_device(make_application):
 
 @pytest.mark.asyncio
 async def test_on_zdo_device_join(make_application, mocker):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test ZDO device join indication listener."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
     await app.startup(auto_form=False)
 
     mocker.patch.object(app, "handle_join", wraps=app.handle_join)

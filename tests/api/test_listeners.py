@@ -1,3 +1,4 @@
+"""Test listeners."""
 import asyncio
 from unittest.mock import call
 
@@ -10,6 +11,7 @@ from zigpy_zboss.api import IndicationListener, OneShotResponseListener
 
 @pytest.mark.asyncio
 async def test_resolve(event_loop, mocker):
+    """Test listener resolution."""
     callback = mocker.Mock()
     callback_listener = IndicationListener(
         [c.NcpConfig.GetZigbeeRole.Rsp(
@@ -67,6 +69,7 @@ async def test_resolve(event_loop, mocker):
 
 @pytest.mark.asyncio
 async def test_cancel(event_loop):
+    """Test cancelling one-shot listener."""
     # Cancelling a one-shot listener prevents it from being fired
     future = event_loop.create_future()
     one_shot_listener = OneShotResponseListener([c.NcpConfig.GetZigbeeRole.Rsp(
@@ -91,6 +94,7 @@ async def test_cancel(event_loop):
 
 @pytest.mark.asyncio
 async def test_multi_cancel(event_loop, mocker):
+    """Test cancelling indication listener."""
     callback = mocker.Mock()
     callback_listener = IndicationListener(
         [c.NcpConfig.GetZigbeeRole.Rsp(
@@ -136,6 +140,7 @@ async def test_multi_cancel(event_loop, mocker):
 
 @pytest.mark.asyncio
 async def test_api_cancel_listeners(connected_zboss, mocker):
+    """Test cancel listeners from api."""
     zboss, zboss_server = connected_zboss
 
     callback = mocker.Mock()
