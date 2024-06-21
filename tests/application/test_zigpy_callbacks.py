@@ -1,3 +1,4 @@
+"""Test zigpy callbacks."""
 import asyncio
 
 import pytest
@@ -7,12 +8,13 @@ import zigpy.zdo.types as zdo_t
 import zigpy_zboss.commands as c
 import zigpy_zboss.types as t
 
-from ..conftest import BaseZStackDevice, serialize_zdo_command
+from ..conftest import BaseZbossDevice, serialize_zdo_command
 
 
 @pytest.mark.asyncio
 async def test_on_zdo_device_announce_nwk_change(make_application, mocker):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test device announce network address change."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
     await app.startup(auto_form=False)
 
     mocker.spy(app, "handle_join")
@@ -67,7 +69,8 @@ async def test_on_zdo_device_announce_nwk_change(make_application, mocker):
 
 @pytest.mark.asyncio
 async def test_on_zdo_device_leave_callback(make_application, mocker):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test ZDO device leave indication."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
     await app.startup(auto_form=False)
 
     mocker.patch.object(app, "handle_leave")
@@ -87,7 +90,8 @@ async def test_on_zdo_device_leave_callback(make_application, mocker):
 
 @pytest.mark.asyncio
 async def test_on_af_message_callback(make_application, mocker):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test AF message indication."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
     await app.startup(auto_form=False)
 
     mocker.patch.object(app, "packet_received")
@@ -199,7 +203,8 @@ async def test_on_af_message_callback(make_application, mocker):
 
 @pytest.mark.asyncio
 async def test_receive_zdo_broadcast(make_application, mocker):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test receive ZDO broadcast."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
     await app.startup(auto_form=False)
 
     mocker.patch.object(app, "packet_received")
@@ -237,7 +242,8 @@ async def test_receive_zdo_broadcast(make_application, mocker):
 
 @pytest.mark.asyncio
 async def test_receive_af_broadcast(make_application, mocker):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test receive AF broadcast."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
     await app.startup(auto_form=False)
 
     mocker.patch.object(app, "packet_received")
@@ -279,7 +285,8 @@ async def test_receive_af_broadcast(make_application, mocker):
 
 @pytest.mark.asyncio
 async def test_receive_af_group(make_application, mocker):
-    app, zboss_server = make_application(server_cls=BaseZStackDevice)
+    """Test receive AF group."""
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
     await app.startup(auto_form=False)
 
     mocker.patch.object(app, "packet_received")
