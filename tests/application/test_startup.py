@@ -1,5 +1,4 @@
 import pytest
-import voluptuous as vol
 from unittest.mock import AsyncMock as CoroutineMock
 
 from zigpy.exceptions import NetworkNotFormed
@@ -13,11 +12,10 @@ from ..conftest import (
 )
 
 
-
 @pytest.mark.asyncio
 async def test_info(
-    make_application,
-    caplog,
+        make_application,
+        caplog,
 ):
     app, zboss_server = make_application(
         server_cls=BaseZStackGenericDevice, active_sequence=True
@@ -158,14 +156,14 @@ async def test_info(
 
     zboss_server.reply_once_to(
         request=c.ZDO.PermitJoin.Req(
-                TSN=20,
-                DestNWK=t.NWK(0x0000),
-                PermitDuration=t.uint8_t(0),
-                TCSignificance=t.uint8_t(0x01),
-            ),
+            TSN=20,
+            DestNWK=t.NWK(0x0000),
+            PermitDuration=t.uint8_t(0),
+            TCSignificance=t.uint8_t(0x01),
+        ),
         responses=[c.ZDO.PermitJoin.Rsp(
-                TSN=20, StatusCat=t.StatusCategory(4), StatusCode=1,
-            )]
+            TSN=20, StatusCat=t.StatusCategory(4), StatusCode=1,
+        )]
     )
 
     zboss_server.reply_once_to(
@@ -177,24 +175,23 @@ async def test_info(
         )]
     )
 
-
     await app.startup(auto_form=False)
 
     assert app.state.network_info.pan_id == 0x5679
     assert app.state.network_info.extended_pan_id == t.EUI64(
-            ext_pan_id.serialize()[::-1])
+        ext_pan_id.serialize()[::-1])
     assert app.state.network_info.channel == channel
     assert app.state.network_info.channel_mask == channel_mask
     assert app.state.network_info.network_key.seq == 1
     assert app.state.network_info.stack_specific[
-            "parent_nwk"
-        ] == parent_address
+               "parent_nwk"
+           ] == parent_address
     assert app.state.network_info.stack_specific[
-            "authenticated"
-        ] == 1
+               "authenticated"
+           ] == 1
     assert app.state.network_info.stack_specific[
-            "coordinator_version"
-        ] == coordinator_version
+               "coordinator_version"
+           ] == coordinator_version
 
     # Anything to make sure it's set
     assert app._device.node_desc.maximum_outgoing_transfer_size == 82

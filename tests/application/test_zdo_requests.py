@@ -14,7 +14,7 @@ from ..conftest import (
 
 @pytest.mark.asyncio
 async def test_mgmt_nwk_update_req(
-    make_application, mocker
+        make_application, mocker
 ):
     mocker.patch(
         "zigpy.application.CHANNEL_CHANGE_SETTINGS_RELOAD_DELAY_S", 0.1
@@ -34,19 +34,19 @@ async def test_mgmt_nwk_update_req(
 
     zboss_server.reply_once_to(
         request=c.APS.DataReq.Req(
-        TSN=123, ParamLength=21, DataLength=3,
-        ProfileID=260, ClusterId=zdo_t.ZDOCmd.Mgmt_NWK_Update_req,
-        DstEndpoint=0, partial=True),
+            TSN=123, ParamLength=21, DataLength=3,
+            ProfileID=260, ClusterId=zdo_t.ZDOCmd.Mgmt_NWK_Update_req,
+            DstEndpoint=0, partial=True),
         responses=[c.APS.DataReq.Rsp(
-                TSN=123,
-                StatusCat=t.StatusCategory(1),
-                StatusCode=0,
-                DstAddr=t.EUI64.convert("00:00:00:00:00:00:aa:bb"),
-                DstEndpoint=1,
-                SrcEndpoint=1,
-                TxTime=1,
-                DstAddrMode=z_types.AddrMode.Group,
-            )],
+            TSN=123,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=0,
+            DstAddr=t.EUI64.convert("00:00:00:00:00:00:aa:bb"),
+            DstEndpoint=1,
+            SrcEndpoint=1,
+            TxTime=1,
+            DstAddrMode=z_types.AddrMode.Group,
+        )],
     )
     nwk_update_req = zboss_server.reply_once_to(
         request=c.ZDO.MgmtNwkUpdate.Req(

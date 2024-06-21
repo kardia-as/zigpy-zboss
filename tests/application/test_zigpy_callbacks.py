@@ -1,5 +1,4 @@
 import asyncio
-from unittest.mock import MagicMock
 
 import pytest
 import zigpy.types as zigpy_t
@@ -23,12 +22,12 @@ async def test_on_zdo_device_announce_nwk_change(make_application, mocker):
     new_nwk = device.nwk + 1
 
     payload = bytearray(serialize_zdo_command(
-                command_id=zdo_t.ZDOCmd.Device_annce,
-                NWKAddr=new_nwk,
-                IEEEAddr=device.ieee,
-                Capability=t.MACCapability.DeviceType,
-                Status=t.DeviceUpdateStatus.tc_rejoin,
-            ))
+        command_id=zdo_t.ZDOCmd.Device_annce,
+        NWKAddr=new_nwk,
+        IEEEAddr=device.ieee,
+        Capability=t.MACCapability.DeviceType,
+        Status=t.DeviceUpdateStatus.tc_rejoin,
+    ))
     payload_length = len(payload)
 
     # Assume its NWK changed and we're just finding out
@@ -110,13 +109,12 @@ async def test_on_af_message_callback(make_application, mocker):
     await zboss_server.send(af_message)
     await asyncio.sleep(0.1)
 
-
     assert app.packet_received.call_count == 1
     _call = app.packet_received.call_args[0][0]
     assert _call.src == zigpy_t.AddrModeAddress(
-                addr_mode=zigpy_t.AddrMode.NWK,
-                address=device.nwk,
-            )
+        addr_mode=zigpy_t.AddrMode.NWK,
+        address=device.nwk,
+    )
     assert _call.src_ep == 4
     assert _call.dst == zigpy_t.AddrModeAddress(
         zigpy_t.AddrMode.NWK, app.state.node_info.nwk
@@ -292,7 +290,7 @@ async def test_receive_af_group(make_application, mocker):
         ParamLength=21, PayloadLength=len(payload),
         FrameFC=t.APSFrameFC.Group,
         SrcAddr=t.NWK(0x1234), DstAddr=t.NWK(0x0000),
-        GrpAddr=t.NWK(0x1234) , DstEndpoint=0,
+        GrpAddr=t.NWK(0x1234), DstEndpoint=0,
         SrcEndpoint=254, ClusterId=4096, ProfileId=260,
         PacketCounter=10, SrcMACAddr=t.NWK(0x0000),
         DstMACAddr=t.NWK(0xFFFF),

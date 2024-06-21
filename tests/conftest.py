@@ -422,44 +422,12 @@ def make_application(make_zboss_server):
                 ]
             )
 
-        async def permit(self, dev):
-            pass
-
         async def energy_scan(self, channels, duration_exp, count):
             return {self.state.network_info.channel: 0x1234}
 
-        async def force_remove(self, dev):
-            pass
-
-        async def add_endpoint(self, descriptor):
-            pass
-
-        async def permit_ncp(self, time_s=60):
-            pass
-
-        async def permit_with_link_key(self, node, link_key, time_s=60):
-            pass
-
-        async def reset_network_info(self):
-            pass
-
-        async def write_network_info(self, *, network_info, node_info):
-            pass
-
-        async def load_network_info(self, *, load_devices=False):
-            self.state.network_info.channel = 15
-
         app.add_initialized_device = add_initialized_device.__get__(app)
         app.start_network = start_network.__get__(app)
-        # app.permit = permit.__get__(app)
         app.energy_scan = energy_scan.__get__(app)
-        # app.force_remove = force_remove.__get__(app)
-        # app.add_endpoint = add_endpoint.__get__(app)
-        # app.permit_ncp = permit_ncp.__get__(app)
-        # app.permit_with_link_key = permit_with_link_key.__get__(app)
-        # app.reset_network_info = reset_network_info.__get__(app)
-        # app.write_network_info = write_network_info.__get__(app)
-        # app.load_network_info = load_network_info.__get__(app)
 
         app.device_initialized = Mock(wraps=app.device_initialized)
         app.listener_event = Mock(wraps=app.listener_event)
@@ -469,7 +437,6 @@ def make_application(make_zboss_server):
             )
         app.send_packet = AsyncMock(wraps=app.send_packet)
         app.write_network_info = AsyncMock(wraps=app.write_network_info)
-        # app.add_initialized_device(ieee=t.EUI64(range(8)), nwk=0xAABB)
 
         server = make_zboss_server(
             server_cls=server_cls, config=server_config, **kwargs
@@ -487,10 +454,8 @@ def zdo_request_matcher(
 
     kwargs = {k: v for k, v in kwargs.items() if not k.startswith("zdo_")}
     kwargs.setdefault("DstEndpoint", 0x00)
-    # kwargs.setdefault("DstPanId", 0x0000)
     kwargs.setdefault("SrcEndpoint", 0x00)
     kwargs.setdefault("Radius", None)
-    # kwargs.setdefault("Options", None)
 
     return c.APS.DataReq.Req(
         DstAddr=t.EUI64.convert("00124b0001ab89cd"),
@@ -871,6 +836,7 @@ class BaseZStackDevice(BaseServerZBOSS):
             )
 
         return responses
+
 
 class BaseZStackGenericDevice(BaseServerZBOSS):
     def __init__(self, *args, **kwargs):

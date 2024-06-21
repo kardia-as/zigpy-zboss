@@ -4,7 +4,6 @@ from unittest.mock import AsyncMock as CoroutineMock
 import zigpy.types as zigpy_t
 import zigpy.endpoint
 import zigpy.profiles
-from zigpy.exceptions import DeliveryError
 
 import zigpy_zboss.types as t
 import zigpy_zboss.config as conf
@@ -133,8 +132,10 @@ async def test_zigpy_request(make_application):
 @pytest.mark.parametrize(
     "addr",
     [
-        zigpy.types.AddrModeAddress(addr_mode=zigpy.types.AddrMode.IEEE, address=t.EUI64(range(8))),
-        zigpy.types.AddrModeAddress(addr_mode=zigpy.types.AddrMode.NWK, address=t.NWK(0xAABB)),
+        zigpy.types.AddrModeAddress(addr_mode=zigpy.types.AddrMode.IEEE,
+                                    address=t.EUI64(range(8))),
+        zigpy.types.AddrModeAddress(addr_mode=zigpy.types.AddrMode.NWK,
+                                    address=t.NWK(0xAABB)),
     ],
 )
 async def test_request_addr_mode(addr, make_application, mocker):
@@ -162,6 +163,7 @@ async def test_request_addr_mode(addr, make_application, mocker):
 
     await app.shutdown()
 
+
 @pytest.mark.asyncio
 async def test_mrequest(make_application, mocker):
     app, zboss_server = make_application(server_cls=BaseZStackDevice)
@@ -173,14 +175,16 @@ async def test_mrequest(make_application, mocker):
 
     assert app.send_packet.call_count == 1
     assert (
-        app.send_packet.mock_calls[0].args[0].dst
-        == zigpy.types.AddrModeAddress(
-        addr_mode=zigpy.types.AddrMode.Group, address=0x1234
-        )
+            app.send_packet.mock_calls[0].args[0].dst
+            == zigpy.types.AddrModeAddress(
+                addr_mode=zigpy.types.AddrMode.Group, address=0x1234
+            )
     )
-    assert app.send_packet.mock_calls[0].args[0].data.serialize() == b"\x01\x01\x01"
+    assert app.send_packet.mock_calls[0].args[
+               0].data.serialize() == b"\x01\x01\x01"
 
     await app.shutdown()
+
 
 @pytest.mark.asyncio
 async def test_mrequest_doesnt_block(make_application, event_loop):
@@ -218,6 +222,7 @@ async def test_mrequest_doesnt_block(make_application, event_loop):
     )
 
     request_sent = event_loop.create_future()
+
     async def on_request_sent():
         await zboss_server.send(data_confirm_rsp)
 
@@ -232,6 +237,7 @@ async def test_mrequest_doesnt_block(make_application, event_loop):
     request_sent.set_result(True)
 
     await app.shutdown()
+
 
 @pytest.mark.asyncio
 async def test_broadcast(make_application, mocker):
@@ -275,6 +281,7 @@ async def test_broadcast(make_application, mocker):
     )
 
     await app.shutdown()
+
 
 @pytest.mark.asyncio
 async def test_request_concurrency(make_application, mocker):
@@ -352,9 +359,10 @@ async def test_request_concurrency(make_application, mocker):
 
     await app.shutdown()
 
+
 @pytest.mark.asyncio
 async def test_request_cancellation_shielding(
-    make_application, mocker, event_loop
+        make_application, mocker, event_loop
 ):
     app, zboss_server = make_application(server_cls=BaseZStackDevice)
 
@@ -472,8 +480,8 @@ async def test_send_security_and_packet_source_route(make_application, mocker):
         data=zigpy_t.SerializableBytes(b"test data"),
         extended_timeout=False,
         tx_options=(
-            zigpy_t.TransmitOptions.ACK |
-            zigpy_t.TransmitOptions.APS_Encryption
+                zigpy_t.TransmitOptions.ACK |
+                zigpy_t.TransmitOptions.APS_Encryption
         ),
         source_route=[0xAABB, 0xCCDD],
     )
@@ -514,8 +522,6 @@ async def test_send_security_and_packet_source_route(make_application, mocker):
     await app.shutdown()
 
 
-
-
 @pytest.mark.asyncio
 async def test_send_packet_failure_disconnected(make_application, mocker):
     app, zboss_server = make_application(server_cls=BaseZStackDevice)
@@ -524,9 +530,11 @@ async def test_send_packet_failure_disconnected(make_application, mocker):
     app._api = None
 
     packet = zigpy_t.ZigbeePacket(
-        src=zigpy_t.AddrModeAddress(addr_mode=zigpy_t.AddrMode.NWK, address=0x0000),
+        src=zigpy_t.AddrModeAddress(addr_mode=zigpy_t.AddrMode.NWK,
+                                    address=0x0000),
         src_ep=0x9A,
-        dst=zigpy_t.AddrModeAddress(addr_mode=zigpy_t.AddrMode.NWK, address=0xEEFF),
+        dst=zigpy_t.AddrModeAddress(addr_mode=zigpy_t.AddrMode.NWK,
+                                    address=0xEEFF),
         dst_ep=0xBC,
         tsn=0xDE,
         profile_id=0x1234,

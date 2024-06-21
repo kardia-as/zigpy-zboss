@@ -37,6 +37,8 @@ async def test_permit_join(mocker, make_application):
     await app.startup(auto_form=False)
     await app.permit(time_s=10)
 
+    await asyncio.sleep(0.1)
+
     assert permit_join_coordinator.done()
 
     await app.shutdown()
