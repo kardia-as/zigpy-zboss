@@ -61,7 +61,8 @@ def dummy_serial_conn(event_loop, mocker):
         return fut
 
     mocker.patch(
-        "serial_asyncio.create_serial_connection", new=create_serial_conn
+        "zigpy.serial.pyserial_asyncio.create_serial_connection",
+        new=create_serial_conn
     )
 
     return device, serial_interface
