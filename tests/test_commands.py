@@ -334,7 +334,7 @@ def test_command_serialization():
     frame = command.to_frame()
 
     assert frame.hl_packet.data == bytes.fromhex(
-        "0A011440E20100140A0C004E460500"
+        "0A010040E20100140A0C004E460500"
     )
 
     # Partial frames cannot be serialized

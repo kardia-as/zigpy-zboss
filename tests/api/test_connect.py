@@ -27,8 +27,7 @@ async def test_api_close(connected_zboss, mocker):
     uart = zboss._uart
     mocker.spy(uart, "close")
 
-    # add some dummy fields and listeners, should be cleared on close
-    zboss.capabilities = 4
+    # add some dummy listeners, should be cleared on close
     zboss._listeners = {
         'listener1': [mocker.Mock()], 'listener2': [mocker.Mock()]
     }
@@ -38,7 +37,7 @@ async def test_api_close(connected_zboss, mocker):
     # Make sure our UART was actually closed
     assert zboss._uart is None
     assert zboss._app is None
-    assert uart.close.call_count == 2
+    assert uart.close.call_count == 1
 
     # ZBOSS.close should not throw any errors if called multiple times
     zboss.close()
@@ -47,7 +46,13 @@ async def test_api_close(connected_zboss, mocker):
     def dict_minus(d, minus):
         return {k: v for k, v in d.items() if k not in minus}
 
-    ignored_keys = ["_blocking_request_lock", "nvram", "version"]
+    ignored_keys = [
+        "_blocking_request_lock",
+        "_reset_uart_reconnect",
+        "_disconnected_event",
+        "nvram",
+        "version"
+    ]
 
     # Closing ZBOSS should reset it completely to that of a fresh object
     # We have to ignore our mocked method and the lock

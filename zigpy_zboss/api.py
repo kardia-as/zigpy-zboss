@@ -322,10 +322,7 @@ class ZBOSS:
 
     async def version(self):
         """Get NCP module version."""
-        if self._app is not None:
-            tsn = self._app.get_sequence()
-        else:
-            tsn = 0
+        tsn = self._app.get_sequence() if self._app is not None else 0
         req = c.NcpConfig.GetModuleVersion.Req(TSN=tsn)
         res = await self.request(req)
         if res.StatusCode:

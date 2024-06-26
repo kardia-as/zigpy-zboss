@@ -258,7 +258,7 @@ async def test_response_callback_simple(connected_zboss, event_loop, mocker):
     bad_response = c.NcpConfig.GetZigbeeRole.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=0,
+        StatusCode=t.StatusCodeGeneric.ERROR,
         DeviceRole=t.DeviceRole(1)
     )
 
