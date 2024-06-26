@@ -907,9 +907,9 @@ class BaseZbossGenericDevice(BaseServerZBOSS):
     @reply_to(c.NcpConfig.ReadNVRAM.Req(partial=True))
     def read_nvram(self, request):
         """Handle NVRAM read."""
-        status_code = 1
+        status_code = t.StatusCodeGeneric.ERROR
         if request.DatasetId == t.DatasetId.ZB_NVRAM_COMMON_DATA:
-            status_code = 0
+            status_code = t.StatusCodeGeneric.OK
             dataset = t.DSCommonData(
                 byte_count=100,
                 bitfield=1,
@@ -939,7 +939,7 @@ class BaseZbossGenericDevice(BaseServerZBOSS):
             nvram_version = 3
             dataset_version = 1
         elif request.DatasetId == t.DatasetId.ZB_IB_COUNTERS:
-            status_code = 0
+            status_code = t.StatusCodeGeneric.OK
             dataset = t.DSIbCounters(
                 byte_count=8,
                 nib_counter=100,  # Example counter value
@@ -948,7 +948,7 @@ class BaseZbossGenericDevice(BaseServerZBOSS):
             nvram_version = 1
             dataset_version = 1
         elif request.DatasetId == t.DatasetId.ZB_NVRAM_ADDR_MAP:
-            status_code = 0
+            status_code = t.StatusCodeGeneric.OK
             dataset = t.DSNwkAddrMap(
                 header=t.NwkAddrMapHeader(
                     byte_count=100,
@@ -977,7 +977,7 @@ class BaseZbossGenericDevice(BaseServerZBOSS):
             nvram_version = 2
             dataset_version = 1
         elif request.DatasetId == t.DatasetId.ZB_NVRAM_APS_SECURE_DATA:
-            status_code = 0
+            status_code = t.StatusCodeGeneric.OK
             dataset = t.DSApsSecureKeys(
                 header=10,
                 items=[
