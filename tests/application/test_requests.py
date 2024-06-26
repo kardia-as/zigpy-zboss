@@ -239,6 +239,8 @@ async def test_mrequest_doesnt_block(make_application, event_loop):
     await group.endpoint.on_off.on()
     request_sent.set_result(True)
 
+    await asyncio.sleep(0.01)
+
     await app.shutdown()
 
 
