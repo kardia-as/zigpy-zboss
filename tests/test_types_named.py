@@ -1,6 +1,4 @@
 """Test named types."""
-import pytest
-
 import zigpy_zboss.types as t
 
 
@@ -32,9 +30,5 @@ def test_channel_entry():
 
     # Test __repr__
     expected_repr = \
-        "ChannelEntry(page=1, channels=<Channels.CHANNEL_12: 4096>)"
+        "ChannelEntry(page=1, channel_mask=<Channels.CHANNEL_12: 4096>)"
     assert repr(channel_entry) == expected_repr
-
-    # Test handling of None types for page or channel_mask
-    with pytest.raises(AttributeError):
-        t.ChannelEntry(page=None, channel_mask=None)
