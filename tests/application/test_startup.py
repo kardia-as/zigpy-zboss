@@ -81,36 +81,48 @@ async def test_info(make_application, caplog):
     )
 
     zboss_server.reply_once_to(
-        request=c.NcpConfig.GetExtendedPANID.Req(TSN=6),
-        responses=[c.NcpConfig.GetExtendedPANID.Rsp(
+        request=c.NcpConfig.GetModuleVersion.Req(TSN=6),
+        responses=[c.NcpConfig.GetModuleVersion.Rsp(
             TSN=6,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=t.StatusCodeGeneric.OK,  # Example status code
+            FWVersion=1,  # Example firmware version
+            StackVersion=2,  # Example stack version
+            ProtocolVersion=3  # Example protocol version
+        )]
+    )
+
+    zboss_server.reply_once_to(
+        request=c.NcpConfig.GetExtendedPANID.Req(TSN=7),
+        responses=[c.NcpConfig.GetExtendedPANID.Rsp(
+            TSN=7,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK,
             ExtendedPANID=ext_pan_id)]
     )
 
     zboss_server.reply_once_to(
-        request=c.NcpConfig.GetShortPANID.Req(TSN=7),
+        request=c.NcpConfig.GetShortPANID.Req(TSN=8),
         responses=[c.NcpConfig.GetShortPANID.Rsp(
-            TSN=7,
+            TSN=8,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK,
             PANID=t.PanId(pan_id))]
     )
 
     zboss_server.reply_once_to(
-        request=c.NcpConfig.GetCurrentChannel.Req(TSN=8),
+        request=c.NcpConfig.GetCurrentChannel.Req(TSN=9),
         responses=[c.NcpConfig.GetCurrentChannel.Rsp(
-            TSN=8,
+            TSN=9,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK,
             Channel=channel, Page=0)]
     )
 
     zboss_server.reply_once_to(
-        request=c.NcpConfig.GetChannelMask.Req(TSN=9),
+        request=c.NcpConfig.GetChannelMask.Req(TSN=10),
         responses=[c.NcpConfig.GetChannelMask.Rsp(
-            TSN=9,
+            TSN=10,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK,
             ChannelList=[t.ChannelEntry(page=1, channel_mask=channel_mask)])]
@@ -118,10 +130,10 @@ async def test_info(make_application, caplog):
 
     zboss_server.reply_once_to(
         request=c.NcpConfig.GetTrustCenterAddr.Req(
-            TSN=12
+            TSN=13
         ),
         responses=[c.NcpConfig.GetTrustCenterAddr.Rsp(
-            TSN=12,
+            TSN=13,
             StatusCat=t.StatusCategory(1),
             StatusCode=t.StatusCodeGeneric.OK,
             TCIEEE=t.EUI64.convert("00:11:22:33:44:55:66:77")
@@ -130,54 +142,54 @@ async def test_info(make_application, caplog):
     )
 
     zboss_server.reply_once_to(
-        request=c.NcpConfig.GetRxOnWhenIdle.Req(TSN=13),
+        request=c.NcpConfig.GetRxOnWhenIdle.Req(TSN=14),
         responses=[c.NcpConfig.GetRxOnWhenIdle.Rsp(
-            TSN=13,
+            TSN=14,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK,
             RxOnWhenIdle=1)]
     )
 
     zboss_server.reply_once_to(
-        request=c.NcpConfig.GetEDTimeout.Req(TSN=14),
+        request=c.NcpConfig.GetEDTimeout.Req(TSN=15),
         responses=[c.NcpConfig.GetEDTimeout.Rsp(
-            TSN=14,
+            TSN=15,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK,
             Timeout=t.TimeoutIndex(0x00))]
     )
 
     zboss_server.reply_once_to(
-        request=c.NcpConfig.GetMaxChildren.Req(TSN=15),
+        request=c.NcpConfig.GetMaxChildren.Req(TSN=16),
         responses=[c.NcpConfig.GetMaxChildren.Rsp(
-            TSN=15,
+            TSN=16,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK,
             ChildrenNbr=10)]
     )
 
     zboss_server.reply_once_to(
-        request=c.NcpConfig.GetAuthenticationStatus.Req(TSN=16),
+        request=c.NcpConfig.GetAuthenticationStatus.Req(TSN=17),
         responses=[c.NcpConfig.GetAuthenticationStatus.Rsp(
-            TSN=16,
+            TSN=17,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK,
             Authenticated=True)]
     )
 
     zboss_server.reply_once_to(
-        request=c.NcpConfig.GetParentAddr.Req(TSN=17),
+        request=c.NcpConfig.GetParentAddr.Req(TSN=18),
         responses=[c.NcpConfig.GetParentAddr.Rsp(
-            TSN=17,
+            TSN=18,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK,
             NWKParentAddr=parent_address)]
     )
 
     zboss_server.reply_once_to(
-        request=c.NcpConfig.GetCoordinatorVersion.Req(TSN=18),
+        request=c.NcpConfig.GetCoordinatorVersion.Req(TSN=19),
         responses=[c.NcpConfig.GetCoordinatorVersion.Rsp(
-            TSN=18,
+            TSN=19,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK,
             CoordinatorVersion=coordinator_version)]
@@ -185,13 +197,13 @@ async def test_info(make_application, caplog):
 
     zboss_server.reply_once_to(
         request=c.ZDO.PermitJoin.Req(
-            TSN=20,
+            TSN=21,
             DestNWK=t.NWK(0x0000),
             PermitDuration=t.uint8_t(0),
             TCSignificance=t.uint8_t(0x01),
         ),
         responses=[c.ZDO.PermitJoin.Rsp(
-            TSN=20,
+            TSN=21,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK,
         )]
@@ -199,10 +211,10 @@ async def test_info(make_application, caplog):
 
     zboss_server.reply_once_to(
         request=c.NcpConfig.NCPModuleReset.Req(
-            TSN=21, Option=t.ResetOptions(0)
+            TSN=22, Option=t.ResetOptions(0)
         ),
         responses=[c.NcpConfig.NCPModuleReset.Rsp(
-            TSN=21,
+            TSN=22,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK
         )]
