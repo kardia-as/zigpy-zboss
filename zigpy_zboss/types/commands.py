@@ -717,5 +717,5 @@ class Relationship(t.enum8):
 STATUS_SCHEMA = (
     t.Param("TSN", t.uint8_t, "Transmit Sequence Number"),
     t.Param("StatusCat", StatusCategory, "Status category code"),
-    t.Param("StatusCode", t.uint8_t, "Status code inside category"),
+    t.Param("StatusCode", StatusCodeGeneric, "Status code inside category"),
 )

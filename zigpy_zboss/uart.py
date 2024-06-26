@@ -4,7 +4,6 @@ import asyncio
 import logging
 import zigpy.serial
 import async_timeout
-import serial  # type: ignore
 import zigpy_zboss.config as conf
 from zigpy_zboss import types as t
 from zigpy_zboss.frames import Frame
@@ -82,48 +81,17 @@ class ZbossNcpProtocol(asyncio.Protocol):
 
     def connection_lost(self, exc: typing.Optional[Exception]) -> None:
         """Lost connection."""
+        LOGGER.debug("Connection has been lost: %r", exc)
+
         if self._api is not None:
             self._api.connection_lost(exc)
-        self.close()
-
-        # Do not try to reconnect if no exception occured.
-        if exc is None:
-            return
-
-        if not self._reset_flag:
-            SERIAL_LOGGER.warning(
-                f"Unexpected connection lost... {exc}")
-        self._reconnect_task = asyncio.create_task(self._reconnect())
-
-    async def _reconnect(self, timeout=RECONNECT_TIMEOUT):
-        """Try to reconnect the disconnected serial port."""
-        SERIAL_LOGGER.info("Trying to reconnect to the NCP module!")
-        assert self._api is not None
-        loop = asyncio.get_running_loop()
-        async with async_timeout.timeout(timeout):
-            while True:
-                try:
-                    _, proto = await zigpy.serial.create_serial_connection(
-                        loop=loop,
-                        protocol_factory=lambda: self,
-                        url=self._port,
-                        baudrate=self._baudrate,
-                        xonxoff=(self._flow_control == "software"),
-                        rtscts=(self._flow_control == "hardware"),
-                    )
-                    self._api._uart = proto
-                    break
-                except serial.serialutil.SerialException:
-                    await asyncio.sleep(0.1)
 
     def close(self) -> None:
         """Close serial connection."""
         self._buffer.clear()
         self._ack_seq = 0
         self._pack_seq = 0
-        if self._reconnect_task is not None:
-            self._reconnect_task.cancel()
-            self._reconnect_task = None
+
         # Reset transport
         if self._transport:
             message = "Closing serial port"
@@ -274,8 +242,6 @@ async def connect(config: conf.ConfigType, api) -> ZbossNcpProtocol:
     port = config[conf.CONF_DEVICE_PATH]
     baudrate = config[conf.CONF_DEVICE_BAUDRATE]
     flow_control = config[conf.CONF_DEVICE_FLOW_CONTROL]
-
-    LOGGER.debug("Connecting to %s at %s baud", port, baudrate)
 
     _, protocol = await zigpy.serial.create_serial_connection(
         loop=loop,

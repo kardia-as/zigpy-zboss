@@ -1,12 +1,13 @@
 """ControllerApplication for ZBOSS NCP protocol based adapters."""
-import asyncio
+from __future__ import annotations
+
 import logging
+import asyncio
 import zigpy.util
 import zigpy.state
 import zigpy.appdb
 import zigpy.config
 import zigpy.device
-import async_timeout
 import zigpy.endpoint
 import zigpy.exceptions
 import zigpy.types as t
@@ -20,7 +21,6 @@ from zigpy_zboss.api import ZBOSS
 from zigpy_zboss import commands as c
 from zigpy.exceptions import DeliveryError
 from .device import ZbossCoordinator, ZbossDevice
-from zigpy_zboss.exceptions import ZbossResponseError
 from zigpy_zboss.config import CONFIG_SCHEMA, SCHEMA_DEVICE
 
 LOGGER = logging.getLogger(__name__)
@@ -41,27 +41,36 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         """Initialize instance."""
         super().__init__(config=zigpy.config.ZIGPY_SCHEMA(config))
         self._api: ZBOSS | None = None
-        self._reset_task = None
-        self.version = None
 
     async def connect(self):
         """Connect to the zigbee module."""
         assert self._api is None
-        is_responsive = await self.probe(self.config.get(conf.CONF_DEVICE, {}))
-        if not is_responsive:
-            raise ZbossResponseError
+
         zboss = ZBOSS(self.config)
-        await zboss.connect()
+
+        try:
+            await zboss.connect()
+            await zboss.request(
+                c.NcpConfig.GetZigbeeRole.Req(TSN=1), timeout=1
+            )
+        except Exception:
+            zboss.close()
+            raise
+
         self._api = zboss
         self._api.set_application(self)
         self._bind_callbacks()
 
     async def disconnect(self):
         """Disconnect from the zigbee module."""
-        if self._reset_task and not self._reset_task.done():
-            self._reset_task.cancel()
         if self._api is not None:
-            await self._api.reset()
+            try:
+                await self._api.reset(wait_for_reset=False)
+            except Exception:
+                LOGGER.debug(
+                    "Failed to reset API during disconnect", exc_info=True
+                )
+
             self._api.close()
             self._api = None
 
@@ -72,15 +81,16 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
         await self.start_without_formation()
 
-        self.version = await self._api.version()
-
         await self.register_endpoints()
 
         self.devices[self.state.node_info.ieee] = ZbossCoordinator(
             self, self.state.node_info.ieee, self.state.node_info.nwk
         )
-
         await self._device.schedule_initialize()
+
+        # We can only read the coordinator info after the network is formed
+        self.state.node_info.model = self._device.model
+        self.state.node_info.manufacturer = self._device.manufacturer
 
     async def force_remove(self, dev: zigpy.device.Device) -> None:
         """Send a lower-level leave command to the device."""
@@ -117,15 +127,13 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             "authenticated": t.Bool.false,
             "parent_nwk": None,
             "coordinator_version": None,
-            "tc_policy": {
-                "unique_tclk_required": t.Bool.false,
-                "ic_required": t.Bool.false,
-                "tc_rejoin_enabled": t.Bool.true,
-                "unsecured_tc_rejoin_enabled": t.Bool.false,
-                "tc_rejoin_ignored": t.Bool.false,
-                "aps_insecure_join_enabled": t.Bool.false,
-                "mgmt_channel_update_disabled": t.Bool.false,
-            },
+            "tc_policy_unique_tclk_required": t.Bool.false,
+            "tc_policy_ic_required": t.Bool.false,
+            "tc_policy_tc_rejoin_enabled": t.Bool.true,
+            "tc_policy_unsecured_tc_rejoin_enabled": t.Bool.false,
+            "tc_policy_tc_rejoin_ignored": t.Bool.false,
+            "tc_policy_aps_insecure_join_enabled": t.Bool.false,
+            "tc_policy_mgmt_channel_update_disabled": t.Bool.false,
         }
 
     async def write_network_info(self, *, network_info, node_info):
@@ -133,9 +141,15 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         if not network_info.stack_specific.get("form_quickly", False):
             await self.reset_network_info()
 
-        network_info.stack_specific.update(
-            self.get_default_stack_specific_formation_settings()
+        # Prefer the existing stack-specific settings to the defaults
+        zboss_stack_specific = network_info.stack_specific.setdefault(
+            "zboss", {}
         )
+        zboss_stack_specific.update({
+            **self.get_default_stack_specific_formation_settings(),
+            **zboss_stack_specific
+        })
+
         if node_info.ieee != t.EUI64.UNKNOWN:
             await self._api.request(
                 c.NcpConfig.SetLocalIEEE.Req(
@@ -179,82 +193,33 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             )
         )
 
-        # Write stack-specific parameters.
-        await self._api.request(
-            request=c.NcpConfig.SetRxOnWhenIdle.Req(
-                TSN=self.get_sequence(),
-                RxOnWhenIdle=network_info.stack_specific["rx_on_when_idle"]
+        for policy_type, policy_value in {
+            t_zboss.PolicyType.TC_Link_Keys_Required: (
+                zboss_stack_specific["tc_policy_unique_tclk_required"]
+            ),
+            t_zboss.PolicyType.IC_Required: (
+                zboss_stack_specific["tc_policy_ic_required"]
+            ),
+            t_zboss.PolicyType.TC_Rejoin_Enabled: (
+                zboss_stack_specific["tc_policy_tc_rejoin_enabled"]
+            ),
+            t_zboss.PolicyType.Ignore_TC_Rejoin: (
+                zboss_stack_specific["tc_policy_tc_rejoin_ignored"]
+            ),
+            t_zboss.PolicyType.APS_Insecure_Join: (
+                zboss_stack_specific["tc_policy_aps_insecure_join_enabled"]
+            ),
+            t_zboss.PolicyType.Disable_NWK_MGMT_Channel_Update: (
+                zboss_stack_specific["tc_policy_mgmt_channel_update_disabled"]
+            ),
+        }.items():
+            await self._api.request(
+                request=c.NcpConfig.SetTCPolicy.Req(
+                    TSN=self.get_sequence(),
+                    PolicyType=policy_type,
+                    PolicyValue=policy_value,
+                )
             )
-        )
-
-        await self._api.request(
-            request=c.NcpConfig.SetEDTimeout.Req(
-                TSN=self.get_sequence(),
-                Timeout=network_info.stack_specific["end_device_timeout"]
-            )
-        )
-
-        await self._api.request(
-            request=c.NcpConfig.SetMaxChildren.Req(
-                TSN=self.get_sequence(),
-                ChildrenNbr=network_info.stack_specific[
-                    "max_children"]
-            )
-        )
-
-        await self._api.request(
-            request=c.NcpConfig.SetTCPolicy.Req(
-                TSN=self.get_sequence(),
-                PolicyType=t_zboss.PolicyType.TC_Link_Keys_Required,
-                PolicyValue=network_info.stack_specific[
-                    "tc_policy"]["unique_tclk_required"]
-            )
-        )
-
-        await self._api.request(
-            request=c.NcpConfig.SetTCPolicy.Req(
-                TSN=self.get_sequence(),
-                PolicyType=t_zboss.PolicyType.IC_Required,
-                PolicyValue=network_info.stack_specific[
-                    "tc_policy"]["ic_required"]
-            )
-        )
-
-        await self._api.request(
-            request=c.NcpConfig.SetTCPolicy.Req(
-                TSN=self.get_sequence(),
-                PolicyType=t_zboss.PolicyType.TC_Rejoin_Enabled,
-                PolicyValue=network_info.stack_specific[
-                    "tc_policy"]["tc_rejoin_enabled"]
-            )
-        )
-
-        await self._api.request(
-            request=c.NcpConfig.SetTCPolicy.Req(
-                TSN=self.get_sequence(),
-                PolicyType=t_zboss.PolicyType.Ignore_TC_Rejoin,
-                PolicyValue=network_info.stack_specific[
-                    "tc_policy"]["tc_rejoin_ignored"]
-            )
-        )
-
-        await self._api.request(
-            request=c.NcpConfig.SetTCPolicy.Req(
-                TSN=self.get_sequence(),
-                PolicyType=t_zboss.PolicyType.APS_Insecure_Join,
-                PolicyValue=network_info.stack_specific[
-                    "tc_policy"]["aps_insecure_join_enabled"]
-            )
-        )
-
-        await self._api.request(
-            request=c.NcpConfig.SetTCPolicy.Req(
-                TSN=self.get_sequence(),
-                PolicyType=t_zboss.PolicyType.Disable_NWK_MGMT_Channel_Update,
-                PolicyValue=network_info.stack_specific[
-                    "tc_policy"]["mgmt_channel_update_disabled"]
-            )
-        )
 
         await self._form_network(network_info, node_info)
 
@@ -266,14 +231,43 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             )
         )
 
+        # Write stack-specific parameters.
+        await self._api.request(
+            request=c.NcpConfig.SetRxOnWhenIdle.Req(
+                TSN=self.get_sequence(),
+                RxOnWhenIdle=zboss_stack_specific["rx_on_when_idle"]
+            )
+        )
+
+        await self._api.request(
+            request=c.NcpConfig.SetEDTimeout.Req(
+                TSN=self.get_sequence(),
+                Timeout=t_zboss.TimeoutIndex(
+                    zboss_stack_specific["end_device_timeout"]
+                )
+            )
+        )
+
+        await self._api.request(
+            request=c.NcpConfig.SetMaxChildren.Req(
+                TSN=self.get_sequence(),
+                ChildrenNbr=zboss_stack_specific["max_children"]
+            )
+        )
+
+        # XXX: We must wait a moment after setting the PAN ID, otherwise the
+        # setting does not persist
+        await asyncio.sleep(1)
+
     async def _form_network(self, network_info, node_info):
         """Clear the current config and forms a new network."""
+        channel_mask = t.Channels.from_channel_list([network_info.channel])
+
         await self._api.request(
             request=c.NWK.Formation.Req(
                 TSN=self.get_sequence(),
                 ChannelList=t_zboss.ChannelEntryList([
-                    t_zboss.ChannelEntry(
-                        page=0, channel_mask=network_info.channel_mask)
+                    t_zboss.ChannelEntry(page=0, channel_mask=channel_mask)
                 ]),
                 ScanDuration=0x05,
                 DistributedNetFlag=0x00,
@@ -300,9 +294,14 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         """Populate state.node_info and state.network_info."""
         res = await self._api.request(
             c.NcpConfig.GetJoinStatus.Req(TSN=self.get_sequence()))
-        self.state.network_info.stack_specific["joined"] = res.Joined
+
         if not res.Joined & 0x01:
             raise zigpy.exceptions.NetworkNotFormed
+
+        zboss_stack_specific = (
+            self.state.network_info.stack_specific.setdefault("zboss", {})
+        )
+        zboss_stack_specific["joined"] = res.Joined
 
         res = await self._api.request(c.NcpConfig.GetShortAddr.Req(
             TSN=self.get_sequence()
@@ -317,6 +316,20 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         res = await self._api.request(
             c.NcpConfig.GetZigbeeRole.Req(TSN=self.get_sequence()))
         self.state.node_info.logical_type = zdo_t.LogicalType(res.DeviceRole)
+
+        # TODO: it looks like we can't load the device info unless a network is
+        # running, as it is only accessible via ZCL
+        try:
+            self._device
+        except KeyError:
+            self.state.node_info.model = "ZBOSS"
+            self.state.node_info.manufacturer = "DSR"
+        else:
+            self.state.node_info.model = self._device.model
+            self.state.node_info.manufacturer = self._device.manufacturer
+
+        fw_ver, stack_ver, proto_ver = await self._api.version()
+        self.state.node_info.version = f"{fw_ver} (stack {stack_ver})"
 
         res = await self._api.request(
             c.NcpConfig.GetExtendedPANID.Req(TSN=self.get_sequence()))
@@ -349,10 +362,16 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             t_zboss.DatasetId.ZB_IB_COUNTERS,
             t_zboss.DSIbCounters
         )
-        if common and counters:
+
+        # Counters NVRAM dataset can be missing if we don't use the network
+        tx_counter = 0
+        if counters is not None:
+            tx_counter = counters.nib_counter
+
+        if common is not None:
             self.state.network_info.network_key = zigpy.state.Key(
                 key=common.nwk_key,
-                tx_counter=counters.nib_counter,
+                tx_counter=tx_counter,
                 rx_counter=0,
                 seq=common.nwk_key_seq,
                 partner_ieee=self.state.node_info.ieee,
@@ -383,39 +402,27 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
         res = await self._api.request(
             c.NcpConfig.GetRxOnWhenIdle.Req(TSN=self.get_sequence()))
-        self.state.network_info.stack_specific[
-            "rx_on_when_idle"
-        ] = res.RxOnWhenIdle
+        zboss_stack_specific["rx_on_when_idle"] = res.RxOnWhenIdle
 
         res = await self._api.request(
             c.NcpConfig.GetEDTimeout.Req(TSN=self.get_sequence()))
-        self.state.network_info.stack_specific[
-            "end_device_timeout"
-        ] = res.Timeout
+        zboss_stack_specific["end_device_timeout"] = res.Timeout
 
         res = await self._api.request(
             c.NcpConfig.GetMaxChildren.Req(TSN=self.get_sequence()))
-        self.state.network_info.stack_specific[
-            "max_children"
-        ] = res.ChildrenNbr
+        zboss_stack_specific["max_children"] = res.ChildrenNbr
 
         res = await self._api.request(
             c.NcpConfig.GetAuthenticationStatus.Req(TSN=self.get_sequence()))
-        self.state.network_info.stack_specific[
-            "authenticated"
-        ] = res.Authenticated
+        zboss_stack_specific["authenticated"] = res.Authenticated
 
         res = await self._api.request(
             c.NcpConfig.GetParentAddr.Req(TSN=self.get_sequence()))
-        self.state.network_info.stack_specific[
-            "parent_nwk"
-        ] = res.NWKParentAddr
+        zboss_stack_specific["parent_nwk"] = res.NWKParentAddr
 
         res = await self._api.request(
             c.NcpConfig.GetCoordinatorVersion.Req(TSN=self.get_sequence()))
-        self.state.network_info.stack_specific[
-            "coordinator_version"
-        ] = res.CoordinatorVersion
+        zboss_stack_specific["coordinator_version"] = res.CoordinatorVersion
 
         if not load_devices:
             return
@@ -424,7 +431,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
                 t_zboss.DatasetId.ZB_NVRAM_ADDR_MAP,
                 t_zboss.DSNwkAddrMap
             )
-        for rec in map:
+        for rec in (map or []):
             if rec.nwk_addr == 0x0000:
                 continue
             if rec.ieee_addr not in self.state.network_info.children:
@@ -435,7 +442,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             t_zboss.DatasetId.ZB_NVRAM_APS_SECURE_DATA,
             t_zboss.DSApsSecureKeys
         )
-        for key_entry in keys:
+        for key_entry in (keys or []):
             zigpy_key = zigpy.state.Key(
                 key=t.KeyData(key_entry.key),
                 partner_ieee=key_entry.ieee_addr
@@ -465,10 +472,6 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             )
         )
 
-    def permit_with_key(self, node, code, time_s=60):
-        """Permit with key."""
-        raise NotImplementedError
-
     def permit_with_link_key(self, node, link_key, time_s=60):
         """Permit with link key."""
         raise NotImplementedError
@@ -477,28 +480,6 @@ class ControllerApplication(zigpy.application.ControllerApplication):
     def zboss_config(self) -> conf.ConfigType:
         """Shortcut property to access the ZBOSS radio config."""
         return self.config[conf.CONF_ZBOSS_CONFIG]
-
-    @classmethod
-    async def probe(
-            cls, device_config: dict[str, Any]) -> bool | dict[str, Any]:
-        """Probe the NCP.
-
-        Checks whether the NCP device is responding to requests.
-        """
-        config = cls.SCHEMA(
-            {conf.CONF_DEVICE: cls.SCHEMA_DEVICE(device_config)})
-        zboss = ZBOSS(config)
-        try:
-            await zboss.connect()
-            async with async_timeout.timeout(PROBE_TIMEOUT):
-                await zboss.request(
-                    c.NcpConfig.GetZigbeeRole.Req(TSN=1), timeout=1)
-        except asyncio.TimeoutError:
-            return False
-        else:
-            return device_config
-        finally:
-            zboss.close()
 
     async def _watchdog_feed(self):
         """Watchdog loop to periodically test if ZBOSS is still running."""
@@ -618,18 +599,8 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         """NCP_RESET.indication handler."""
         if msg.ResetSrc == t_zboss.ResetSource.RESET_SRC_POWER_ON:
             return
-        LOGGER.debug(
-            f"Resetting ControllerApplication. Source: {msg.ResetSrc}")
-        if self._reset_task:
-            LOGGER.debug("Preempting ControllerApplication reset")
-            self._reset_task.cancel()
 
-        self._reset_task = asyncio.create_task(self._reset_controller())
-
-    async def _reset_controller(self):
-        """Restart the application controller."""
-        await self.disconnect()
-        await self.startup()
+        self.connection_lost(RuntimeError(msg))
 
     async def send_packet(self, packet: t.ZigbeePacket) -> None:
         """Send packets."""

@@ -20,6 +20,8 @@ from zigpy_zboss.utils import BaseResponseListener
 from zigpy_zboss.utils import OneShotResponseListener
 
 LOGGER = logging.getLogger(__name__)
+LISTENER_LOGGER = LOGGER.getChild("listener")
+LISTENER_LOGGER.propagate = False
 
 # All of these are in seconds
 AFTER_BOOTLOADER_SKIP_BYTE_DELAY = 2.5
@@ -29,6 +31,10 @@ CONNECT_PING_TIMEOUT = 0.50
 CONNECT_PROBE_TIMEOUT = 10
 
 DEFAULT_TIMEOUT = 5
+
+EXPECTED_DISCONNECT_TIMEOUT = 5.0
+MAX_RESET_RECONNECT_ATTEMPTS = 5
+RESET_RECONNECT_DELAY = 1.0
 
 
 class ZBOSS:
@@ -52,6 +58,8 @@ class ZBOSS:
         self._rx_fragments = []
 
         self._ncp_debug = None
+        self._reset_uart_reconnect = asyncio.Lock()
+        self._disconnected_event = asyncio.Event()
 
     def set_application(self, app):
         """Set the application using the ZBOSS class."""
@@ -87,13 +95,6 @@ class ZBOSS:
         LOGGER.debug(
             "Connected to %s at %s baud", self._uart.name, self._uart.baudrate)
 
-    def connection_made(self) -> None:
-        """Notify that connection has been made.
-
-        Called by the UART object when a connection has been made.
-        """
-        pass
-
     def connection_lost(self, exc) -> None:
         """Port has been closed.
 
@@ -101,7 +102,11 @@ class ZBOSS:
         Propagates up to the `ControllerApplication` that owns this ZBOSS
         instance.
         """
-        LOGGER.debug("We were disconnected from %s: %s", self._port_path, exc)
+        self._uart = None
+        self._disconnected_event.set()
+
+        if self._app is not None and not self._reset_uart_reconnect.locked():
+            self._app.connection_lost(exc)
 
     def close(self) -> None:
         """Clean up resources, namely the listener queues.
@@ -109,8 +114,9 @@ class ZBOSS:
         Calling this will reset ZBOSS to the same internal state as a fresh
         ZBOSS instance.
         """
-        self._app = None
-        self.version = None
+        if not self._reset_uart_reconnect.locked():
+            self._app = None
+            self.version = None
 
         if self._uart is not None:
             self._uart.close()
@@ -152,11 +158,11 @@ class ZBOSS:
                 continue
 
             if not listener.resolve(command):
-                LOGGER.debug(f"{command} does not match {listener}")
+                LISTENER_LOGGER.debug(f"{command} does not match {listener}")
                 continue
 
             matched = True
-            LOGGER.debug(f"{command} matches {listener}")
+            LISTENER_LOGGER.debug(f"{command} matches {listener}")
 
             if isinstance(listener, OneShotResponseListener):
                 one_shot_matched = True
@@ -181,6 +187,8 @@ class ZBOSS:
             raise ValueError(
                 f"Cannot send a command that isn't a request: {request!r}")
 
+        LOGGER.debug("Sending request: %s", request)
+
         frame = request.to_frame()
         # If the frame is too long, it needs fragmentation.
         fragments = frame.handle_tx_fragmentation()
@@ -199,13 +207,14 @@ class ZBOSS:
             await self._send_to_uart(frag, None)
 
     async def _send_to_uart(
-            self, frame, response_future, timeout=DEFAULT_TIMEOUT):
+            self, frame, response_future=None, timeout=DEFAULT_TIMEOUT):
         """Send the frame and waits for the response."""
         if self._uart is None:
             return
+
         try:
             await self._uart.send(frame)
-            if response_future:
+            if response_future is not None:
                 async with async_timeout.timeout(timeout):
                     return await response_future
         except asyncio.TimeoutError:
@@ -229,7 +238,7 @@ class ZBOSS:
         """
         listener = OneShotResponseListener(responses)
 
-        LOGGER.debug("Creating one-shot listener %s", listener)
+        LISTENER_LOGGER.debug("Creating one-shot listener %s", listener)
 
         for header in listener.matching_headers():
             self._listeners[header].append(listener)
@@ -258,7 +267,7 @@ class ZBOSS:
         if not self._listeners:
             return
 
-        LOGGER.debug("Removing listener %s", listener)
+        LISTENER_LOGGER.debug("Removing listener %s", listener)
 
         for header in listener.matching_headers():
             try:
@@ -267,7 +276,7 @@ class ZBOSS:
                 pass
 
             if not self._listeners[header]:
-                LOGGER.debug(
+                LISTENER_LOGGER.debug(
                     "Cleaning up empty listener list for header %s", header
                 )
                 del self._listeners[header]
@@ -278,7 +287,7 @@ class ZBOSS:
                 self._listeners.values()):
             counts[type(listener)] += 1
 
-        LOGGER.debug(
+        LISTENER_LOGGER.debug(
             f"There are {counts[IndicationListener]} callbacks and"
             f" {counts[OneShotResponseListener]} one-shot listeners remaining"
         )
@@ -291,7 +300,7 @@ class ZBOSS:
         """
         listener = IndicationListener(responses, callback=callback)
 
-        LOGGER.debug(f"Creating callback {listener}")
+        LISTENER_LOGGER.debug(f"Creating callback {listener}")
 
         for header in listener.matching_headers():
             self._listeners[header].append(listener)
@@ -324,20 +333,45 @@ class ZBOSS:
             version[idx] = ".".join([major, minor, revision, commit])
         return tuple(version)
 
-    async def reset(self, option=t.ResetOptions(0)):
+    async def reset(
+        self,
+        option: t.ResetOptions = t.ResetOptions.NoOptions,
+        wait_for_reset: bool = True,
+    ):
         """Reset the NCP module (see ResetOptions)."""
-        if self._app is not None:
-            tsn = self._app.get_sequence()
-        else:
-            tsn = 0
+        LOGGER.debug("Sending a reset: %s", option)
+
+        tsn = self._app.get_sequence() if self._app is not None else 0
         req = c.NcpConfig.NCPModuleReset.Req(TSN=tsn, Option=option)
         self._uart.reset_flag = True
-        res = await self._send_to_uart(
-            req.to_frame(),
-            self.wait_for_response(
-                c.NcpConfig.NCPModuleReset.Rsp(partial=True)
-            ),
-            timeout=10
-        )
-        if not res.TSN == 0xFF:
-            raise ValueError("Should get TSN 0xFF")
+
+        async with self._reset_uart_reconnect:
+            await self._send_to_uart(req.to_frame())
+
+            if not wait_for_reset:
+                return
+
+            LOGGER.debug("Waiting for radio to disconnect")
+
+            try:
+                async with async_timeout.timeout(EXPECTED_DISCONNECT_TIMEOUT):
+                    await self._disconnected_event.wait()
+            except asyncio.TimeoutError:
+                LOGGER.debug(
+                    "Radio did not disconnect, must be using external UART"
+                )
+                return
+
+            LOGGER.debug("Radio has disconnected, reconnecting")
+
+            for attempt in range(MAX_RESET_RECONNECT_ATTEMPTS):
+                await asyncio.sleep(RESET_RECONNECT_DELAY)
+
+                try:
+                    await self.connect()
+                    break
+                except Exception as exc:
+                    if attempt == MAX_RESET_RECONNECT_ATTEMPTS - 1:
+                        raise
+
+                    LOGGER.debug("Failed to reconnect, retrying: %r", exc)

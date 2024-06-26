@@ -36,42 +36,11 @@ class BindAddrMode(basic.enum8):
     IEEE = 0x03
 
 
-class ChannelEntry:
+class ChannelEntry(Struct):
     """Class representing a channel entry."""
 
-    def __new__(cls, page=None, channel_mask=None):
-        """Create a channel entry instance."""
-        instance = super().__new__(cls)
-
-        instance.page = basic.uint8_t(page)
-        instance.channel_mask = channel_mask
-
-        return instance
-
-    @classmethod
-    def deserialize(cls, data: bytes) -> "ChannelEntry":
-        """Deserialize the object."""
-        page, data = basic.uint8_t.deserialize(data)
-        channel_mask, data = Channels.deserialize(data)
-
-        return cls(page=page, channel_mask=channel_mask), data
-
-    def serialize(self) -> bytes:
-        """Serialize the object."""
-        return self.page.serialize() + self.channel_mask.serialize()
-
-    def __eq__(self, other):
-        """Return True if channel_masks and pages are equal."""
-        if not isinstance(other, type(self)):
-            return NotImplemented
-
-        return self.page == other.page and \
-            self.channel_mask == other.channel_mask
-
-    def __repr__(self) -> str:
-        """Return a representation of a channel entry."""
-        return f"{type(self).__name__}(page={self.page!r}," \
-            f" channels={self.channel_mask!r})"
+    page: basic.uint8_t
+    channel_mask: Channels
 
 
 @dataclasses.dataclass(frozen=True)
