@@ -515,7 +515,7 @@ class BaseZbossDevice(BaseServerZBOSS):
         return c.NcpConfig.GetJoinStatus.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             Joined=0x01  # Assume device is joined for this example
         )
 
@@ -525,7 +525,7 @@ class BaseZbossDevice(BaseServerZBOSS):
         return c.NcpConfig.NCPModuleReset.Rsp(
             TSN=0xFF,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20
+            StatusCode=t.StatusCodeGeneric.OK
         )
 
     @reply_to(c.NcpConfig.GetShortAddr.Req(partial=True))
@@ -534,7 +534,7 @@ class BaseZbossDevice(BaseServerZBOSS):
         return c.NcpConfig.GetShortAddr.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             NWKAddr=t.NWK(0x1234)  # Example NWK address
         )
 
@@ -544,7 +544,7 @@ class BaseZbossDevice(BaseServerZBOSS):
         return c.APS.DataReq.Rsp(
             TSN=req.TSN,
             StatusCat=t.StatusCategory(1),
-            StatusCode=0,
+            StatusCode=t.StatusCodeGeneric.OK,
             DstAddr=req.DstAddr,
             DstEndpoint=req.DstEndpoint,
             SrcEndpoint=req.SrcEndpoint,
@@ -558,7 +558,7 @@ class BaseZbossDevice(BaseServerZBOSS):
         return c.NcpConfig.GetLocalIEEE.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             MacInterfaceNum=request.MacInterfaceNum,
             IEEE=t.EUI64([0, 1, 2, 3, 4, 5, 6, 7])  # Example IEEE address
         )
@@ -569,7 +569,7 @@ class BaseZbossDevice(BaseServerZBOSS):
         return c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1)  # Example role
         )
 
@@ -579,7 +579,7 @@ class BaseZbossDevice(BaseServerZBOSS):
         return c.NcpConfig.GetExtendedPANID.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             ExtendedPANID=t.EUI64.convert("00124b0001ab89cd")  # Example PAN ID
         )
 
@@ -589,7 +589,7 @@ class BaseZbossDevice(BaseServerZBOSS):
         return c.ZDO.PermitJoin.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
         )
 
     @reply_to(c.NcpConfig.GetShortPANID.Req(partial=True))
@@ -598,7 +598,7 @@ class BaseZbossDevice(BaseServerZBOSS):
         return c.NcpConfig.GetShortPANID.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             PANID=t.PanId(0x5678)  # Example short PAN ID
         )
 
@@ -613,7 +613,7 @@ class BaseZbossDevice(BaseServerZBOSS):
         return c.NcpConfig.GetCurrentChannel.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             Page=0,
             Channel=t.Channels(channel)
         )
@@ -624,7 +624,7 @@ class BaseZbossDevice(BaseServerZBOSS):
         return c.NcpConfig.GetChannelMask.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             ChannelList=t.ChannelEntryList(
                 [t.ChannelEntry(page=1, channel_mask=0x07fff800)])
         )  # Example mask
@@ -632,9 +632,9 @@ class BaseZbossDevice(BaseServerZBOSS):
     @reply_to(c.NcpConfig.ReadNVRAM.Req(partial=True))
     def read_nvram(self, request):
         """Handle NVRAM read."""
-        status_code = 1
+        status_code = t.StatusCodeGeneric.ERROR
         if request.DatasetId == t.DatasetId.ZB_NVRAM_COMMON_DATA:
-            status_code = 0
+            status_code = t.StatusCodeGeneric.OK
             dataset = t.DSCommonData(
                 byte_count=100,
                 bitfield=1,
@@ -664,7 +664,7 @@ class BaseZbossDevice(BaseServerZBOSS):
             nvram_version = 3
             dataset_version = 1
         elif request.DatasetId == t.DatasetId.ZB_IB_COUNTERS:
-            status_code = 0
+            status_code = t.StatusCodeGeneric.OK
             dataset = t.DSIbCounters(
                 byte_count=8,
                 nib_counter=100,  # Example counter value
@@ -673,7 +673,7 @@ class BaseZbossDevice(BaseServerZBOSS):
             nvram_version = 1
             dataset_version = 1
         elif request.DatasetId == t.DatasetId.ZB_NVRAM_ADDR_MAP:
-            status_code = 0
+            status_code = t.StatusCodeGeneric.OK
             dataset = t.DSNwkAddrMap(
                 header=t.NwkAddrMapHeader(
                     byte_count=100,
@@ -702,7 +702,7 @@ class BaseZbossDevice(BaseServerZBOSS):
             nvram_version = 2
             dataset_version = 1
         elif request.DatasetId == t.DatasetId.ZB_NVRAM_APS_SECURE_DATA:
-            status_code = 0
+            status_code = t.StatusCodeGeneric.OK
             dataset = t.DSApsSecureKeys(
                 header=10,
                 items=[
@@ -741,7 +741,7 @@ class BaseZbossDevice(BaseServerZBOSS):
         return c.NcpConfig.GetTrustCenterAddr.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             TCIEEE=t.EUI64.convert("00:11:22:33:44:55:66:77")
             # Example Trust Center IEEE address
         )
@@ -752,7 +752,7 @@ class BaseZbossDevice(BaseServerZBOSS):
         return c.NcpConfig.GetRxOnWhenIdle.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             RxOnWhenIdle=1  # Example RxOnWhenIdle value
         )
 
@@ -762,7 +762,7 @@ class BaseZbossDevice(BaseServerZBOSS):
         return c.NWK.StartWithoutFormation.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
-            StatusCode=0  # Example status code
+            StatusCode=t.StatusCodeGeneric.OK  # Example status code
         )
 
     @reply_to(c.NcpConfig.GetModuleVersion.Req(partial=True))
@@ -771,7 +771,7 @@ class BaseZbossDevice(BaseServerZBOSS):
         return c.NcpConfig.GetModuleVersion.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,  # Example status code
+            StatusCode=t.StatusCodeGeneric.OK,  # Example status code
             FWVersion=1,  # Example firmware version
             StackVersion=2,  # Example stack version
             ProtocolVersion=3  # Example protocol version
@@ -783,7 +783,7 @@ class BaseZbossDevice(BaseServerZBOSS):
         return c.AF.SetSimpleDesc.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20  # Example status code
+            StatusCode=t.StatusCodeGeneric.OK  # Example status code
         )
 
     @reply_to(c.NcpConfig.GetEDTimeout.Req(partial=True))
@@ -792,7 +792,7 @@ class BaseZbossDevice(BaseServerZBOSS):
         return c.NcpConfig.GetEDTimeout.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             Timeout=t.TimeoutIndex(0x01)  # Example timeout value
         )
 
@@ -802,7 +802,7 @@ class BaseZbossDevice(BaseServerZBOSS):
         return c.NcpConfig.GetMaxChildren.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             ChildrenNbr=5  # Example max children
         )
 
@@ -812,7 +812,7 @@ class BaseZbossDevice(BaseServerZBOSS):
         return c.NcpConfig.GetAuthenticationStatus.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             Authenticated=1  # Example authenticated value
         )
 
@@ -822,7 +822,7 @@ class BaseZbossDevice(BaseServerZBOSS):
         return c.NcpConfig.GetParentAddr.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             NWKParentAddr=t.NWK(0x1234)  # Example parent NWK address
         )
 
@@ -832,7 +832,7 @@ class BaseZbossDevice(BaseServerZBOSS):
         return c.NcpConfig.GetCoordinatorVersion.Rsp(
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             CoordinatorVersion=1  # Example coordinator version
         )
 

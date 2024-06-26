@@ -28,7 +28,7 @@ async def test_permit_join(mocker, make_application):
             c.ZDO.PermitJoin.Rsp(
                 TSN=123,
                 StatusCat=t.StatusCategory(1),
-                StatusCode=20,
+                StatusCode=t.StatusCodeGeneric.OK,
             ),
         ],
     )
@@ -61,7 +61,7 @@ async def test_join_coordinator(make_application):
             c.ZDO.PermitJoin.Rsp(
                 TSN=123,
                 StatusCat=t.StatusCategory(1),
-                StatusCode=20,
+                StatusCode=t.StatusCodeGeneric.OK,
             ),
         ],
     )
@@ -94,7 +94,7 @@ async def test_join_device(make_application):
             c.ZDO.PermitJoin.Rsp(
                 TSN=123,
                 StatusCat=t.StatusCategory(1),
-                StatusCode=20,
+                StatusCode=t.StatusCodeGeneric.OK,
             )
         ],
     )

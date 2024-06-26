@@ -20,7 +20,7 @@ async def test_responses(connected_zboss):
         c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             partial=True
         ))
 
@@ -29,7 +29,7 @@ async def test_responses(connected_zboss):
     response = c.NcpConfig.GetZigbeeRole.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         DeviceRole=t.DeviceRole(1)
     )
     await zboss_server.send(response)
@@ -51,26 +51,26 @@ async def test_responses_multiple(connected_zboss):
     future1 = zboss.wait_for_response(c.NcpConfig.GetZigbeeRole.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         partial=True
     ))
     future2 = zboss.wait_for_response(c.NcpConfig.GetZigbeeRole.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         partial=True
     ))
     future3 = zboss.wait_for_response(c.NcpConfig.GetZigbeeRole.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         partial=True
     ))
 
     response = c.NcpConfig.GetZigbeeRole.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         DeviceRole=t.DeviceRole(1)
     )
     zboss.frame_received(response.to_frame())
@@ -94,7 +94,7 @@ async def test_response_timeouts(connected_zboss):
     response = c.NcpConfig.GetZigbeeRole.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         DeviceRole=t.DeviceRole(1)
     )
 
@@ -108,7 +108,7 @@ async def test_response_timeouts(connected_zboss):
         assert (await zboss.wait_for_response(c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             partial=True
         ))) == response
 
@@ -126,7 +126,7 @@ async def test_response_timeouts(connected_zboss):
                            c.NcpConfig.GetZigbeeRole.Rsp(
                                TSN=10,
                                StatusCat=t.StatusCategory(1),
-                               StatusCode=20,
+                               StatusCode=t.StatusCodeGeneric.OK,
                                partial=True
                            ))
                    ) == response
@@ -145,7 +145,7 @@ async def test_response_matching_partial(connected_zboss):
         c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(2),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             partial=True
         )
     )
@@ -153,19 +153,19 @@ async def test_response_matching_partial(connected_zboss):
     response1 = c.NcpConfig.GetZigbeeRole.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         DeviceRole=t.DeviceRole(1)
     )
     response2 = c.NcpConfig.GetZigbeeRole.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(2),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         DeviceRole=t.DeviceRole(1)
     )
     response3 = c.NcpConfig.GetZigbeeRole.Rsp(
         TSN=11,
         StatusCat=t.StatusCategory(2),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         DeviceRole=t.DeviceRole(1)
     )
 
@@ -185,19 +185,19 @@ async def test_response_matching_exact(connected_zboss):
     response1 = c.NcpConfig.GetZigbeeRole.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         DeviceRole=t.DeviceRole(1)
     )
     response2 = c.NcpConfig.GetZigbeeRole.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         DeviceRole=t.DeviceRole(2)
     )
     response3 = c.NcpConfig.GetZigbeeRole.Rsp(
         TSN=11,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         DeviceRole=t.DeviceRole(1)
     )
 
@@ -220,7 +220,7 @@ async def test_response_not_matching_out_of_order(connected_zboss):
     response = c.NcpConfig.GetZigbeeRole.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         DeviceRole=t.DeviceRole(1)
     )
     zboss.frame_received(response.to_frame())
@@ -252,7 +252,7 @@ async def test_response_callback_simple(connected_zboss, event_loop, mocker):
     good_response = c.NcpConfig.GetZigbeeRole.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         DeviceRole=t.DeviceRole(1)
     )
     bad_response = c.NcpConfig.GetZigbeeRole.Rsp(
@@ -292,26 +292,26 @@ async def test_response_callbacks(connected_zboss, event_loop, mocker):
     good_response1 = c.NcpConfig.GetZigbeeRole.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         DeviceRole=t.DeviceRole(1)
     )
     good_response2 = c.NcpConfig.GetZigbeeRole.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         DeviceRole=t.DeviceRole(2)
     )
     good_response3 = c.NcpConfig.GetModuleVersion.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         FWVersion=1,
         StackVersion=2,
         ProtocolVersion=3
     )
     bad_response1 = c.ZDO.MgtLeave.Rsp(TSN=10,
                                        StatusCat=t.StatusCategory(1),
-                                       StatusCode=20)
+                                       StatusCode=t.StatusCodeGeneric.OK)
     bad_response2 = c.NcpConfig.GetModuleVersion.Req(TSN=1)
 
     responses = [
@@ -319,20 +319,20 @@ async def test_response_callbacks(connected_zboss, event_loop, mocker):
         c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             partial=True
         ),
         c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             partial=True
         ),
         # Matching against different response types should also work
         c.NcpConfig.GetModuleVersion.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             FWVersion=1,
             StackVersion=2,
             ProtocolVersion=3
@@ -340,19 +340,19 @@ async def test_response_callbacks(connected_zboss, event_loop, mocker):
         c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1)
         ),
         c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1)
         ),
         c.NcpConfig.GetModuleVersion.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             FWVersion=1,
             StackVersion=2,
             ProtocolVersion=4
@@ -363,13 +363,13 @@ async def test_response_callbacks(connected_zboss, event_loop, mocker):
         c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             partial=True
         ),
         c.NcpConfig.GetModuleVersion.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             FWVersion=1,
             StackVersion=2,
             ProtocolVersion=3
@@ -377,7 +377,7 @@ async def test_response_callbacks(connected_zboss, event_loop, mocker):
         c.NcpConfig.GetModuleVersion.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             FWVersion=1,
             StackVersion=2,
             ProtocolVersion=4
@@ -414,26 +414,26 @@ async def test_wait_for_responses(connected_zboss, event_loop):
     response1 = c.NcpConfig.GetZigbeeRole.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         DeviceRole=t.DeviceRole(1)
     )
     response2 = c.NcpConfig.GetZigbeeRole.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         DeviceRole=t.DeviceRole(2)
     )
     response3 = c.NcpConfig.GetModuleVersion.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         FWVersion=1,
         StackVersion=2,
         ProtocolVersion=3
     )
     response4 = c.ZDO.MgtLeave.Rsp(TSN=10,
                                    StatusCat=t.StatusCategory(1),
-                                   StatusCode=20)
+                                   StatusCode=t.StatusCodeGeneric.OK)
     response5 = c.NcpConfig.GetModuleVersion.Req(TSN=1)
 
     # We shouldn't see any effects from receiving a frame early
@@ -444,12 +444,12 @@ async def test_wait_for_responses(connected_zboss, event_loop):
         [c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             partial=True
         ), c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             partial=True
         )]
     )
@@ -460,7 +460,7 @@ async def test_wait_for_responses(connected_zboss, event_loop):
             c.NcpConfig.GetModuleVersion.Rsp(
                 TSN=10,
                 StatusCat=t.StatusCategory(1),
-                StatusCode=20,
+                StatusCode=t.StatusCodeGeneric.OK,
                 FWVersion=1,
                 StackVersion=2,
                 ProtocolVersion=3
@@ -468,7 +468,7 @@ async def test_wait_for_responses(connected_zboss, event_loop):
             c.NcpConfig.GetZigbeeRole.Rsp(
                 TSN=10,
                 StatusCat=t.StatusCategory(1),
-                StatusCode=20,
+                StatusCode=t.StatusCodeGeneric.OK,
                 DeviceRole=t.DeviceRole(10)
             ),
         ]
@@ -478,7 +478,7 @@ async def test_wait_for_responses(connected_zboss, event_loop):
     future3 = zboss.wait_for_responses([c.NcpConfig.GetModuleVersion.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         FWVersion=1,
         StackVersion=2,
         ProtocolVersion=4
@@ -491,7 +491,7 @@ async def test_wait_for_responses(connected_zboss, event_loop):
             c.NcpConfig.GetModuleVersion.Rsp(
                 TSN=10,
                 StatusCat=t.StatusCategory(1),
-                StatusCode=20,
+                StatusCode=t.StatusCodeGeneric.OK,
                 FWVersion=1,
                 StackVersion=2,
                 ProtocolVersion=3
@@ -499,19 +499,19 @@ async def test_wait_for_responses(connected_zboss, event_loop):
             c.NcpConfig.GetZigbeeRole.Rsp(
                 TSN=10,
                 StatusCat=t.StatusCategory(1),
-                StatusCode=20,
+                StatusCode=t.StatusCodeGeneric.OK,
                 DeviceRole=t.DeviceRole(1)
             ),
             c.NcpConfig.GetZigbeeRole.Rsp(
                 TSN=10,
                 StatusCat=t.StatusCategory(1),
-                StatusCode=20,
+                StatusCode=t.StatusCodeGeneric.OK,
                 DeviceRole=t.DeviceRole(1)
             ),
             c.NcpConfig.GetModuleVersion.Rsp(
                 TSN=10,
                 StatusCat=t.StatusCategory(1),
-                StatusCode=20,
+                StatusCode=t.StatusCodeGeneric.OK,
                 FWVersion=1,
                 StackVersion=2,
                 ProtocolVersion=4
@@ -552,7 +552,7 @@ async def test_wait_for_responses(connected_zboss, event_loop):
     zboss.frame_received(c.NcpConfig.GetModuleVersion.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         FWVersion=1,
         StackVersion=2,
         ProtocolVersion=4
@@ -561,7 +561,7 @@ async def test_wait_for_responses(connected_zboss, event_loop):
     assert (await future3) == c.NcpConfig.GetModuleVersion.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         FWVersion=1,
         StackVersion=2,
         ProtocolVersion=4

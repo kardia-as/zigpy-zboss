@@ -84,19 +84,21 @@ def test_command_param_binding():
     with pytest.raises(ValueError):
         c.NcpConfig.GetModuleVersion.Rsp(TSN="invalid",
                                          StatusCat=t.StatusCategory(1),
-                                         StatusCode=20,
+                                         StatusCode=t.StatusCodeGeneric.OK,
                                          FWVersion=123456,
                                          StackVersion=789012,
                                          ProtocolVersion=345678
                                          )
 
     # Example for correct command invocation
-    valid_rsp = c.NcpConfig.GetModuleVersion.Rsp(TSN=10,
-                                                 StatusCat=t.StatusCategory(1),
-                                                 StatusCode=20,
-                                                 FWVersion=123456,
-                                                 StackVersion=789012,
-                                                 ProtocolVersion=345678)
+    valid_rsp = c.NcpConfig.GetModuleVersion.Rsp(
+        TSN=10,
+        StatusCat=t.StatusCategory(1),
+        StatusCode=t.StatusCodeGeneric.OK,
+        FWVersion=123456,
+        StackVersion=789012,
+        ProtocolVersion=345678
+    )
     assert isinstance(valid_rsp.FWVersion, t.uint32_t)
     assert isinstance(valid_rsp.StackVersion, t.uint32_t)
     assert isinstance(valid_rsp.ProtocolVersion, t.uint32_t)
@@ -105,7 +107,8 @@ def test_command_param_binding():
     with pytest.raises(ValueError):
         c.NcpConfig.GetModuleVersion.Rsp(TSN=10,
                                          StatusCat=t.StatusCategory(1),
-                                         StatusCode=20, FWVersion=10 ** 20,
+                                         StatusCode=t.StatusCodeGeneric.OK,
+                                         FWVersion=10 ** 20,
                                          StackVersion=789012,
                                          ProtocolVersion=345678)
 
@@ -129,10 +132,12 @@ def test_command_param_binding():
     )
 
     # Parameters can be looked up by name
-    zigbee_role = c.NcpConfig.GetZigbeeRole.Rsp(TSN=10,
-                                                StatusCat=t.StatusCategory(1),
-                                                StatusCode=20,
-                                                DeviceRole=t.DeviceRole.ZC)
+    zigbee_role = c.NcpConfig.GetZigbeeRole.Rsp(
+        TSN=10,
+        StatusCat=t.StatusCategory(1),
+        StatusCode=t.StatusCodeGeneric.OK,
+        DeviceRole=t.DeviceRole.ZC
+    )
     assert zigbee_role.DeviceRole == t.DeviceRole.ZC
 
     # Invalid ones cannot
@@ -146,7 +151,7 @@ def test_command_optional_params():
     basic_ieee_addr_rsp = c.ZDO.IeeeAddrReq.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         RemoteDevIEEE=t.EUI64([00, 11, 22, 33, 44, 55, 66, 77]),
         RemoteDevNWK=t.NWK(0x1234)
     )
@@ -155,7 +160,7 @@ def test_command_optional_params():
     full_ieee_addr_rsp = c.ZDO.IeeeAddrReq.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         RemoteDevIEEE=t.EUI64([00, 11, 22, 33, 44, 55, 66, 77]),
         RemoteDevNWK=t.NWK(0x1234),
         NumAssocDev=5,
@@ -191,7 +196,7 @@ def test_command_optional_params_failures():
         c.ZDO.IeeeAddrReq.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             RemoteDevIEEE=t.EUI64([00, 11, 22, 33, 44, 55, 66, 77]),
             RemoteDevNWK=t.NWK(0x1234),
             NumAssocDev=5,
@@ -203,7 +208,7 @@ def test_command_optional_params_failures():
     partial = c.ZDO.IeeeAddrReq.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         RemoteDevIEEE=t.EUI64([00, 11, 22, 33, 44, 55, 66, 77]),
         RemoteDevNWK=t.NWK(0x1234),
         NumAssocDev=5,
@@ -236,7 +241,7 @@ def test_simple_descriptor():
     c1 = c.ZDO.SimpleDescriptorReq.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         SimpleDesc=simple_descriptor,
         NwkAddr=t.NWK(0x1234)
     )
@@ -256,7 +261,7 @@ def test_simple_descriptor():
     c2 = c.ZDO.SimpleDescriptorReq.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         SimpleDesc=sp_simple_descriptor,
         NwkAddr=t.NWK(0x1234)
     )
@@ -278,7 +283,7 @@ def test_command_immutability():
     command1 = c.ZDO.IeeeAddrReq.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         RemoteDevNWK=t.NWK(0x1234),
         NumAssocDev=5,
         StartIndex=0,
@@ -288,7 +293,7 @@ def test_command_immutability():
     command2 = c.ZDO.IeeeAddrReq.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         RemoteDevNWK=t.NWK(0x1234),
         NumAssocDev=5,
         StartIndex=0,
@@ -305,7 +310,7 @@ def test_command_immutability():
         command1.partial = False
 
     with pytest.raises(RuntimeError):
-        command1.StatusCode = 20
+        command1.StatusCode = t.StatusCodeGeneric.OK
 
     with pytest.raises(RuntimeError):
         command1.NumAssocDev = 5
@@ -318,12 +323,14 @@ def test_command_immutability():
 
 def test_command_serialization():
     """Test command serialization."""
-    command = c.NcpConfig.GetModuleVersion.Rsp(TSN=10,
-                                               StatusCat=t.StatusCategory(1),
-                                               StatusCode=20,
-                                               FWVersion=123456,
-                                               StackVersion=789012,
-                                               ProtocolVersion=345678)
+    command = c.NcpConfig.GetModuleVersion.Rsp(
+        TSN=10,
+        StatusCat=t.StatusCategory(1),
+        StatusCode=t.StatusCodeGeneric.OK,
+        FWVersion=123456,
+        StackVersion=789012,
+        ProtocolVersion=345678
+    )
     frame = command.to_frame()
 
     assert frame.hl_packet.data == bytes.fromhex(
@@ -332,52 +339,60 @@ def test_command_serialization():
 
     # Partial frames cannot be serialized
     with pytest.raises(ValueError):
-        partial1 = c.NcpConfig.GetModuleVersion.Rsp(TSN=10,
-                                                    StatusCat=t.StatusCategory(
-                                                        1),
-                                                    StatusCode=20,
-                                                    FWVersion=123456,
-                                                    # StackVersion=789012,
-                                                    ProtocolVersion=345678,
-                                                    partial=True)
+        partial1 = c.NcpConfig.GetModuleVersion.Rsp(
+            TSN=10,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=t.StatusCodeGeneric.OK,
+            FWVersion=123456,
+            # StackVersion=789012,
+            ProtocolVersion=345678,
+            partial=True
+        )
 
         partial1.to_frame()
 
     # Partial frames cannot be serialized, even if all params are filled out
     with pytest.raises(ValueError):
-        partial2 = c.NcpConfig.GetModuleVersion.Rsp(TSN=10,
-                                                    StatusCat=t.StatusCategory(
-                                                        1),
-                                                    StatusCode=20,
-                                                    FWVersion=123456,
-                                                    StackVersion=789012,
-                                                    ProtocolVersion=345678,
-                                                    partial=True)
+        partial2 = c.NcpConfig.GetModuleVersion.Rsp(
+            TSN=10,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=t.StatusCodeGeneric.OK,
+            FWVersion=123456,
+            StackVersion=789012,
+            ProtocolVersion=345678,
+            partial=True
+        )
         partial2.to_frame()
 
 
 def test_command_equality():
     """Test command equality."""
-    command1 = c.NcpConfig.GetModuleVersion.Rsp(TSN=10,
-                                                StatusCat=t.StatusCategory(1),
-                                                StatusCode=20,
-                                                FWVersion=123456,
-                                                StackVersion=789012,
-                                                ProtocolVersion=345678)
+    command1 = c.NcpConfig.GetModuleVersion.Rsp(
+        TSN=10,
+        StatusCat=t.StatusCategory(1),
+        StatusCode=t.StatusCodeGeneric.OK,
+        FWVersion=123456,
+        StackVersion=789012,
+        ProtocolVersion=345678
+    )
 
-    command2 = c.NcpConfig.GetModuleVersion.Rsp(TSN=10,
-                                                StatusCat=t.StatusCategory(1),
-                                                StatusCode=20,
-                                                FWVersion=123456,
-                                                StackVersion=789012,
-                                                ProtocolVersion=345678)
+    command2 = c.NcpConfig.GetModuleVersion.Rsp(
+        TSN=10,
+        StatusCat=t.StatusCategory(1),
+        StatusCode=t.StatusCodeGeneric.OK,
+        FWVersion=123456,
+        StackVersion=789012,
+        ProtocolVersion=345678
+    )
 
-    command3 = c.NcpConfig.GetModuleVersion.Rsp(TSN=20,
-                                                StatusCat=t.StatusCategory(1),
-                                                StatusCode=20,
-                                                FWVersion=123456,
-                                                StackVersion=789012,
-                                                ProtocolVersion=345678)
+    command3 = c.NcpConfig.GetModuleVersion.Rsp(
+        TSN=20,
+        StatusCat=t.StatusCategory(1),
+        StatusCode=t.StatusCodeGeneric.OK,
+        FWVersion=123456,
+        StackVersion=789012,
+        ProtocolVersion=345678
+    )
 
     assert command1 == command1
     assert command1.matches(command1)
@@ -394,13 +409,16 @@ def test_command_equality():
 
     assert not command1.matches(
         c.NcpConfig.GetModuleVersion.Rsp(
-            TSN=10, StatusCat=t.StatusCategory(1), StatusCode=20, partial=True
+            TSN=10,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=t.StatusCodeGeneric.OK,
+            partial=True
         )
     )
     assert c.NcpConfig.GetModuleVersion.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         partial=True
     ).matches(command1)
 
@@ -408,21 +426,21 @@ def test_command_equality():
     assert c.NcpConfig.GetModuleVersion.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         StackVersion=None,
         partial=True
     ).matches(command1)
     assert c.NcpConfig.GetModuleVersion.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         StackVersion=789012,
         partial=True
     ).matches(command1)
     assert not c.NcpConfig.GetModuleVersion.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         StackVersion=79000,
         partial=True
     ).matches(command1)
@@ -430,19 +448,21 @@ def test_command_equality():
     # Different frame types do not match, even if they have the same structure
     assert not c.ZDO.MgtLeave.Rsp(TSN=10,
                                   StatusCat=t.StatusCategory(1),
-                                  StatusCode=20).matches(
+                                  StatusCode=t.StatusCodeGeneric.OK).matches(
         c.ZDO.PermitJoin.Rsp(partial=True)
     )
 
 
 def test_command_deserialization():
     """Test command deserialization."""
-    command = c.NcpConfig.GetModuleVersion.Rsp(TSN=10,
-                                               StatusCat=t.StatusCategory(1),
-                                               StatusCode=20,
-                                               FWVersion=123456,
-                                               StackVersion=789012,
-                                               ProtocolVersion=345678)
+    command = c.NcpConfig.GetModuleVersion.Rsp(
+        TSN=10,
+        StatusCat=t.StatusCategory(1),
+        StatusCode=t.StatusCodeGeneric.OK,
+        FWVersion=123456,
+        StackVersion=789012,
+        ProtocolVersion=345678
+    )
 
     assert type(command).from_frame(command.to_frame()) == command
     assert (
@@ -466,8 +486,8 @@ def test_command_deserialization():
     with pytest.raises(ValueError):
         c.ZDO.MgtLeave.Rsp(TSN=10,
                            StatusCat=t.StatusCategory(1),
-                           StatusCode=20).from_frame(
+                           StatusCode=t.StatusCodeGeneric.OK).from_frame(
             c.ZDO.PermitJoin.Rsp(TSN=10,
                                  StatusCat=t.StatusCategory(1),
-                                 StatusCode=20).to_frame()
+                                 StatusCode=t.StatusCodeGeneric.OK).to_frame()
         )

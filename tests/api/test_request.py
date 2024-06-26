@@ -58,7 +58,7 @@ async def test_zboss_request_kwargs(connected_zboss, event_loop):
     ping_rsp = c.NcpConfig.GetModuleVersion.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             FWVersion=1,
             StackVersion=2,
             ProtocolVersion=3
@@ -78,7 +78,7 @@ async def test_zboss_request_kwargs(connected_zboss, event_loop):
         await zboss.request(c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1)
         ))
 
@@ -103,7 +103,7 @@ async def test_zboss_req_rsp(connected_zboss, event_loop):
     ping_rsp = c.NcpConfig.GetModuleVersion.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         FWVersion=1,
         StackVersion=2,
         ProtocolVersion=3
@@ -157,7 +157,7 @@ async def test_frame_merge(connected_zboss, mocker):
     command = c.NcpConfig.ReadNVRAM.Rsp(
                 TSN=10,
                 StatusCat=t.StatusCategory(1),
-                StatusCode=20,
+                StatusCode=t.StatusCodeGeneric.OK,
                 NVRAMVersion=t.uint16_t(0x0000),
                 DatasetId=t.DatasetId(0x0000),
                 Dataset=t.NVRAMDataset(large_data),
@@ -171,7 +171,7 @@ async def test_frame_merge(connected_zboss, mocker):
         c.NcpConfig.ReadNVRAM.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             NVRAMVersion=t.uint16_t(0x0000),
             DatasetId=t.DatasetId(0x0000),
             Dataset=t.NVRAMDataset(large_data),

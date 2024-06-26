@@ -75,7 +75,7 @@ def test_uart_rx_basic(connected_uart):
     test_command = c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1)
         )
     test_frame = test_command.to_frame()
@@ -104,7 +104,7 @@ def test_uart_rx_byte_by_byte(connected_uart):
     test_command = c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1)
         )
     test_frame = test_command.to_frame()
@@ -126,7 +126,7 @@ def test_uart_rx_byte_by_byte_garbage(connected_uart):
     test_command = c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1)
         )
     test_frame = test_command.to_frame()
@@ -158,7 +158,7 @@ def test_uart_rx_big_garbage(connected_uart):
     test_command = c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1)
         )
     test_frame = test_command.to_frame()
@@ -189,7 +189,7 @@ def test_uart_rx_corrupted_fcs(connected_uart):
     test_command = c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1)
         )
     test_frame = test_command.to_frame()
@@ -212,7 +212,7 @@ def test_uart_rx_sof_stress(connected_uart):
     test_command = c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1)
         )
     test_frame = test_command.to_frame()
@@ -242,7 +242,7 @@ def test_uart_frame_received_error(connected_uart, mocker):
     test_command = c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1)
         )
     test_frame = test_command.to_frame()

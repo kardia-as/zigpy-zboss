@@ -17,7 +17,7 @@ async def test_resolve(event_loop, mocker):
         [c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1)
         )], callback
     )
@@ -26,20 +26,20 @@ async def test_resolve(event_loop, mocker):
     one_shot_listener = OneShotResponseListener([c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1)
         )], future)
 
     match = c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1)
         )
     no_match = c.NcpConfig.GetModuleVersion.Rsp(
                 TSN=10,
                 StatusCat=t.StatusCategory(1),
-                StatusCode=20,
+                StatusCode=t.StatusCodeGeneric.OK,
                 FWVersion=1,
                 StackVersion=2,
                 ProtocolVersion=3,
@@ -75,7 +75,7 @@ async def test_cancel(event_loop):
     one_shot_listener = OneShotResponseListener([c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             partial=True
         )], future)
     one_shot_listener.cancel()
@@ -83,7 +83,7 @@ async def test_cancel(event_loop):
     match = c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1)
         )
     assert not one_shot_listener.resolve(match)
@@ -100,7 +100,7 @@ async def test_multi_cancel(event_loop, mocker):
         [c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             partial=True
         )], callback
     )
@@ -109,20 +109,20 @@ async def test_multi_cancel(event_loop, mocker):
     one_shot_listener = OneShotResponseListener([c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             partial=True
         )], future)
 
     match = c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1)
         )
     no_match = c.NcpConfig.GetModuleVersion.Rsp(
                 TSN=10,
                 StatusCat=t.StatusCategory(1),
-                StatusCode=20,
+                StatusCode=t.StatusCodeGeneric.OK,
                 FWVersion=1,
                 StackVersion=2,
                 ProtocolVersion=3,
@@ -149,7 +149,7 @@ async def test_api_cancel_listeners(connected_zboss, mocker):
         c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1)
         ), callback
     )
@@ -158,13 +158,13 @@ async def test_api_cancel_listeners(connected_zboss, mocker):
             c.NcpConfig.GetZigbeeRole.Rsp(
                 TSN=10,
                 StatusCat=t.StatusCategory(1),
-                StatusCode=20,
+                StatusCode=t.StatusCodeGeneric.OK,
                 DeviceRole=t.DeviceRole(1)
             ),
             c.NcpConfig.GetModuleVersion.Rsp(
                 TSN=10,
                 StatusCat=t.StatusCategory(1),
-                StatusCode=20,
+                StatusCode=t.StatusCodeGeneric.OK,
                 FWVersion=1,
                 StackVersion=2,
                 ProtocolVersion=3,

@@ -48,7 +48,7 @@ async def test_zigpy_request(make_application):
         responses=[c.APS.DataReq.Rsp(
             TSN=1,
             StatusCat=t.StatusCategory(4),
-            StatusCode=1,
+            StatusCode=t.StatusCodeGeneric.OK,
             DstAddr=t.EUI64.convert("00:00:00:00:00:00:aa:bb"),
             DstEndpoint=1,
             SrcEndpoint=1,
@@ -206,7 +206,7 @@ async def test_mrequest_doesnt_block(make_application, event_loop):
             c.APS.DataReq.Rsp(
                 TSN=1,
                 StatusCat=t.StatusCategory(1),
-                StatusCode=0,
+                StatusCode=t.StatusCodeGeneric.OK,
                 DstAddr=t.EUI64.convert("00:00:00:00:00:00:aa:bb"),
                 DstEndpoint=1,
                 SrcEndpoint=1,
@@ -262,7 +262,7 @@ async def test_broadcast(make_application, mocker):
             c.APS.DataReq.Rsp(
                 TSN=1,
                 StatusCat=t.StatusCategory(1),
-                StatusCode=0,
+                StatusCode=t.StatusCodeGeneric.OK,
                 DstAddr=t.EUI64.convert("00:00:00:00:00:00:ff:fd"),
                 DstEndpoint=255,
                 SrcEndpoint=1,
@@ -323,7 +323,7 @@ async def test_request_concurrency(make_application, mocker):
             await zboss_server.send(c.APS.DataReq.Rsp(
                 TSN=req.TSN,
                 StatusCat=t.StatusCategory(1),
-                StatusCode=0,
+                StatusCode=t.StatusCodeGeneric.OK,
                 DstAddr=req.DstAddr,
                 DstEndpoint=req.DstEndpoint,
                 SrcEndpoint=req.SrcEndpoint,
@@ -433,7 +433,7 @@ async def test_request_cancellation_shielding(
             c.APS.DataReq.Rsp(
                 TSN=1,
                 StatusCat=t.StatusCategory(4),
-                StatusCode=1,
+                StatusCode=t.StatusCodeGeneric.OK,
                 DstAddr=t.EUI64.convert("00:00:00:00:00:00:aa:bb"),
                 DstEndpoint=1,
                 SrcEndpoint=1,
@@ -508,7 +508,7 @@ async def test_send_security_and_packet_source_route(make_application, mocker):
             c.APS.DataReq.Rsp(
                 TSN=1,
                 StatusCat=t.StatusCategory(4),
-                StatusCode=1,
+                StatusCode=t.StatusCodeGeneric.OK,
                 DstAddr=t.EUI64.convert("00:00:00:00:00:00:aa:bb"),
                 DstEndpoint=1,
                 SrcEndpoint=1,

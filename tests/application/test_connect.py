@@ -95,7 +95,7 @@ async def test_probe_successful(make_zboss_server, event_loop):
     ping_rsp = c.NcpConfig.GetZigbeeRole.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
-        StatusCode=20,
+        StatusCode=t.StatusCodeGeneric.OK,
         DeviceRole=t.DeviceRole(1),
     )
 

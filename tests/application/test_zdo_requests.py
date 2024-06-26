@@ -43,7 +43,7 @@ async def test_mgmt_nwk_update_req(make_application, mocker):
         responses=[c.APS.DataReq.Rsp(
             TSN=123,
             StatusCat=t.StatusCategory(1),
-            StatusCode=0,
+            StatusCode=t.StatusCodeGeneric.OK,
             DstAddr=t.EUI64.convert("00:00:00:00:00:00:aa:bb"),
             DstEndpoint=1,
             SrcEndpoint=1,
@@ -64,7 +64,7 @@ async def test_mgmt_nwk_update_req(make_application, mocker):
             c.ZDO.MgmtNwkUpdate.Rsp(
                 TSN=123,
                 StatusCat=t.StatusCategory(1),
-                StatusCode=0,
+                StatusCode=t.StatusCodeGeneric.OK,
                 ScannedChannels=t.Channels.from_channel_list([new_channel]),
                 TotalTransmissions=1,
                 TransmissionFailures=0,

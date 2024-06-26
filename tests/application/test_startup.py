@@ -28,35 +28,45 @@ async def test_info(make_application, caplog):
     zboss_server.reply_once_to(
         request=c.NcpConfig.GetZigbeeRole.Req(TSN=1),
         responses=[c.NcpConfig.GetZigbeeRole.Rsp(
-            TSN=1, StatusCat=t.StatusCategory(4), StatusCode=0,
+            TSN=1,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1))]
     )
 
     zboss_server.reply_once_to(
         request=c.NcpConfig.GetZigbeeRole.Req(TSN=1),
         responses=[c.NcpConfig.GetZigbeeRole.Rsp(
-            TSN=1, StatusCat=t.StatusCategory(4), StatusCode=0,
+            TSN=1,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1))]
     )
 
     zboss_server.reply_once_to(
         request=c.NcpConfig.GetJoinStatus.Req(TSN=2),
         responses=[c.NcpConfig.GetJoinStatus.Rsp(
-            TSN=2, StatusCat=t.StatusCategory(4), StatusCode=1,
+            TSN=2,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK,
             Joined=1)]
     )
 
     zboss_server.reply_once_to(
         request=c.NcpConfig.GetShortAddr.Req(TSN=3),
         responses=[c.NcpConfig.GetShortAddr.Rsp(
-            TSN=3, StatusCat=t.StatusCategory(4), StatusCode=1,
+            TSN=3,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK,
             NWKAddr=t.NWK(0xAABB))]
     )
 
     zboss_server.reply_once_to(
         request=c.NcpConfig.GetLocalIEEE.Req(TSN=4, MacInterfaceNum=0),
         responses=[c.NcpConfig.GetLocalIEEE.Rsp(
-            TSN=4, StatusCat=t.StatusCategory(4), StatusCode=1,
+            TSN=4,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK,
             MacInterfaceNum=0,
             IEEE=t.EUI64(range(8)))]
     )
@@ -64,35 +74,45 @@ async def test_info(make_application, caplog):
     zboss_server.reply_once_to(
         request=c.NcpConfig.GetZigbeeRole.Req(TSN=5),
         responses=[c.NcpConfig.GetZigbeeRole.Rsp(
-            TSN=5, StatusCat=t.StatusCategory(4), StatusCode=1,
+            TSN=5,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(2))]
     )
 
     zboss_server.reply_once_to(
         request=c.NcpConfig.GetExtendedPANID.Req(TSN=6),
         responses=[c.NcpConfig.GetExtendedPANID.Rsp(
-            TSN=6, StatusCat=t.StatusCategory(4), StatusCode=1,
+            TSN=6,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK,
             ExtendedPANID=ext_pan_id)]
     )
 
     zboss_server.reply_once_to(
         request=c.NcpConfig.GetShortPANID.Req(TSN=7),
         responses=[c.NcpConfig.GetShortPANID.Rsp(
-            TSN=7, StatusCat=t.StatusCategory(4), StatusCode=1,
+            TSN=7,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK,
             PANID=t.PanId(pan_id))]
     )
 
     zboss_server.reply_once_to(
         request=c.NcpConfig.GetCurrentChannel.Req(TSN=8),
         responses=[c.NcpConfig.GetCurrentChannel.Rsp(
-            TSN=8, StatusCat=t.StatusCategory(4), StatusCode=1,
+            TSN=8,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK,
             Channel=channel, Page=0)]
     )
 
     zboss_server.reply_once_to(
         request=c.NcpConfig.GetChannelMask.Req(TSN=9),
         responses=[c.NcpConfig.GetChannelMask.Rsp(
-            TSN=9, StatusCat=t.StatusCategory(4), StatusCode=1,
+            TSN=9,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK,
             ChannelList=[t.ChannelEntry(page=1, channel_mask=channel_mask)])]
     )
 
@@ -103,7 +123,7 @@ async def test_info(make_application, caplog):
         responses=[c.NcpConfig.GetTrustCenterAddr.Rsp(
             TSN=12,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             TCIEEE=t.EUI64.convert("00:11:22:33:44:55:66:77")
             # Example Trust Center IEEE address
         )]
@@ -112,42 +132,54 @@ async def test_info(make_application, caplog):
     zboss_server.reply_once_to(
         request=c.NcpConfig.GetRxOnWhenIdle.Req(TSN=13),
         responses=[c.NcpConfig.GetRxOnWhenIdle.Rsp(
-            TSN=13, StatusCat=t.StatusCategory(4), StatusCode=1,
+            TSN=13,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK,
             RxOnWhenIdle=1)]
     )
 
     zboss_server.reply_once_to(
         request=c.NcpConfig.GetEDTimeout.Req(TSN=14),
         responses=[c.NcpConfig.GetEDTimeout.Rsp(
-            TSN=14, StatusCat=t.StatusCategory(4), StatusCode=1,
+            TSN=14,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK,
             Timeout=t.TimeoutIndex(0x00))]
     )
 
     zboss_server.reply_once_to(
         request=c.NcpConfig.GetMaxChildren.Req(TSN=15),
         responses=[c.NcpConfig.GetMaxChildren.Rsp(
-            TSN=15, StatusCat=t.StatusCategory(4), StatusCode=1,
+            TSN=15,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK,
             ChildrenNbr=10)]
     )
 
     zboss_server.reply_once_to(
         request=c.NcpConfig.GetAuthenticationStatus.Req(TSN=16),
         responses=[c.NcpConfig.GetAuthenticationStatus.Rsp(
-            TSN=16, StatusCat=t.StatusCategory(4), StatusCode=1,
+            TSN=16,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK,
             Authenticated=True)]
     )
 
     zboss_server.reply_once_to(
         request=c.NcpConfig.GetParentAddr.Req(TSN=17),
         responses=[c.NcpConfig.GetParentAddr.Rsp(
-            TSN=17, StatusCat=t.StatusCategory(4), StatusCode=1,
+            TSN=17,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK,
             NWKParentAddr=parent_address)]
     )
 
     zboss_server.reply_once_to(
         request=c.NcpConfig.GetCoordinatorVersion.Req(TSN=18),
         responses=[c.NcpConfig.GetCoordinatorVersion.Rsp(
-            TSN=18, StatusCat=t.StatusCategory(4), StatusCode=1,
+            TSN=18,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK,
             CoordinatorVersion=coordinator_version)]
     )
 
@@ -159,7 +191,9 @@ async def test_info(make_application, caplog):
             TCSignificance=t.uint8_t(0x01),
         ),
         responses=[c.ZDO.PermitJoin.Rsp(
-            TSN=20, StatusCat=t.StatusCategory(4), StatusCode=1,
+            TSN=20,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK,
         )]
     )
 
@@ -168,7 +202,9 @@ async def test_info(make_application, caplog):
             TSN=21, Option=t.ResetOptions(0)
         ),
         responses=[c.NcpConfig.NCPModuleReset.Rsp(
-            TSN=21, StatusCat=t.StatusCategory(4), StatusCode=1
+            TSN=21,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK
         )]
     )
 
@@ -226,21 +262,27 @@ async def test_not_configured(make_application):
     zboss_server.reply_once_to(
         request=c.NcpConfig.GetZigbeeRole.Req(TSN=1),
         responses=[c.NcpConfig.GetZigbeeRole.Rsp(
-            TSN=1, StatusCat=t.StatusCategory(4), StatusCode=0,
+            TSN=1,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1))]
     )
 
     zboss_server.reply_once_to(
         request=c.NcpConfig.GetZigbeeRole.Req(TSN=1),
         responses=[c.NcpConfig.GetZigbeeRole.Rsp(
-            TSN=1, StatusCat=t.StatusCategory(4), StatusCode=0,
+            TSN=1,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1))]
     )
 
     zboss_server.reply_once_to(
         request=c.NcpConfig.GetJoinStatus.Req(TSN=2),
         responses=[c.NcpConfig.GetJoinStatus.Rsp(
-            TSN=2, StatusCat=t.StatusCategory(4), StatusCode=1,
+            TSN=2,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK,
             Joined=0)]
     )
 
@@ -249,7 +291,9 @@ async def test_not_configured(make_application):
             TSN=3, Option=t.ResetOptions(0)
         ),
         responses=[c.NcpConfig.NCPModuleReset.Rsp(
-            TSN=3, StatusCat=t.StatusCategory(4), StatusCode=1
+            TSN=3,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK
         )]
     )
 

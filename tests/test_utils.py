@@ -23,7 +23,7 @@ def test_command_deduplication_complex():
             c.NcpConfig.GetModuleVersion.Rsp(
                 TSN=10,
                 StatusCat=t.StatusCategory(1),
-                StatusCode=20,
+                StatusCode=t.StatusCodeGeneric.OK,
                 FWVersion=1,
                 StackVersion=2,
                 ProtocolVersion=3,
@@ -35,27 +35,27 @@ def test_command_deduplication_complex():
             c.NcpConfig.GetZigbeeRole.Rsp(
                 TSN=10,
                 StatusCat=t.StatusCategory(1),
-                StatusCode=20,
+                StatusCode=t.StatusCodeGeneric.OK,
                 DeviceRole=t.DeviceRole(1)
             ),
             c.NcpConfig.GetZigbeeRole.Rsp(
                 TSN=11,
                 StatusCat=t.StatusCategory(2),
-                StatusCode=10,
+                StatusCode=t.StatusCodeGeneric.OK,
                 DeviceRole=t.DeviceRole(2)
             ),
             c.NcpConfig.GetNwkKeys.Rsp(
                 partial=True,
                 TSN=11,
                 StatusCat=t.StatusCategory(2),
-                StatusCode=10,
+                StatusCode=t.StatusCodeGeneric.OK,
                 KeyNumber1=10,
             ),
             c.NcpConfig.GetNwkKeys.Rsp(
                 partial=True,
                 TSN=11,
                 StatusCat=t.StatusCategory(2),
-                StatusCode=10,
+                StatusCode=t.StatusCodeGeneric.OK,
                 KeyNumber1=10,
                 KeyNumber2=20,
             ),
@@ -63,7 +63,7 @@ def test_command_deduplication_complex():
                 partial=True,
                 TSN=11,
                 StatusCat=t.StatusCategory(2),
-                StatusCode=10,
+                StatusCode=t.StatusCodeGeneric.OK,
                 KeyNumber1=10,
                 KeyNumber2=20,
                 KeyNumber3=30,
@@ -82,20 +82,20 @@ def test_command_deduplication_complex():
         c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
-            StatusCode=20,
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(1)
         ),
         c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=11,
             StatusCat=t.StatusCategory(2),
-            StatusCode=10,
+            StatusCode=t.StatusCodeGeneric.OK,
             DeviceRole=t.DeviceRole(2)
         ),
         c.NcpConfig.GetNwkKeys.Rsp(
             partial=True,
             TSN=11,
             StatusCat=t.StatusCategory(2),
-            StatusCode=10,
+            StatusCode=t.StatusCodeGeneric.OK,
             KeyNumber1=10,
         ),
         c.NcpConfig.GetNwkKeys.Rsp(
