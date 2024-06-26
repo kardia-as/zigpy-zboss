@@ -228,15 +228,10 @@ async def test_info(make_application, caplog):
     assert app.state.network_info.channel == channel
     assert app.state.network_info.channel_mask == channel_mask
     assert app.state.network_info.network_key.seq == 1
-    assert app.state.network_info.stack_specific[
-               "parent_nwk"
-           ] == parent_address
-    assert app.state.network_info.stack_specific[
-               "authenticated"
-           ] == 1
-    assert app.state.network_info.stack_specific[
-               "coordinator_version"
-           ] == coordinator_version
+    zboss_stack_specific = app.state.network_info.stack_specific["zboss"]
+    assert zboss_stack_specific["parent_nwk"] == parent_address
+    assert zboss_stack_specific["authenticated"] == 1
+    assert zboss_stack_specific["coordinator_version"] == coordinator_version
 
     # Anything to make sure it's set
     assert app._device.node_desc.maximum_outgoing_transfer_size == 82
