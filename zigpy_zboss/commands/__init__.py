@@ -1,10 +1,10 @@
 """Module importing all the commands."""
 from .af import AF
 from .aps import APS
-from .zdo import ZDO
-from .security import SEC
-from .nwk_mgmt import NWK
 from .ncp_config import NcpConfig
+from .nwk_mgmt import NWK
+from .security import SEC
+from .zdo import ZDO
 
 ALL_COMMANDS = [
     AF,

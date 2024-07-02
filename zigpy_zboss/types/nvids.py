@@ -1,7 +1,10 @@
 """Module defining zboss nvram types."""
 from __future__ import annotations
+
 import zigpy.types as t
+
 import zigpy_zboss.types as zboss_t
+
 from . import basic
 
 
@@ -105,7 +108,7 @@ class DSNwkAddrMap(
         header = self._header(
             byte_count=byte_count,
             entry_count=len(self),
-            version=t.uint8_t(0x02),
+            version=self.version,
             _align=t.uint16_t(0x0000),
         )
         return header.serialize() + serialized_items

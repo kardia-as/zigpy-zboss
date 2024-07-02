@@ -2,22 +2,22 @@
 from __future__ import annotations
 
 import asyncio
-import logging
-import itertools
 import contextlib
-import zigpy.state
-import async_timeout
-import zigpy_zboss.types as t
-import zigpy_zboss.config as conf
+import itertools
+import logging
+from collections import Counter, defaultdict
 
+import async_timeout
+import zigpy.state
+
+import zigpy_zboss.config as conf
+import zigpy_zboss.types as t
+from zigpy_zboss import commands as c
 from zigpy_zboss import uart
 from zigpy_zboss.frames import Frame
-from zigpy_zboss import commands as c
 from zigpy_zboss.nvram import NVRAMHelper
-from collections import Counter, defaultdict
-from zigpy_zboss.utils import IndicationListener
-from zigpy_zboss.utils import BaseResponseListener
-from zigpy_zboss.utils import OneShotResponseListener
+from zigpy_zboss.utils import (BaseResponseListener, IndicationListener,
+                               OneShotResponseListener)
 
 LOGGER = logging.getLogger(__name__)
 LISTENER_LOGGER = LOGGER.getChild("listener")
@@ -48,8 +48,6 @@ class ZBOSS:
 
         self._listeners = defaultdict(list)
         self._blocking_request_lock = asyncio.Lock()
-
-        self.capabilities = None
 
         self.nvram = NVRAMHelper(self)
         self.network_info: zigpy.state.NetworkInformation = None
@@ -117,6 +115,11 @@ class ZBOSS:
         if not self._reset_uart_reconnect.locked():
             self._app = None
             self.version = None
+
+            for _, listeners in self._listeners.items():
+                for listener in listeners:
+                    listener.cancel()
+            self._listeners.clear()
 
         if self._uart is not None:
             self._uart.close()
@@ -186,6 +189,10 @@ class ZBOSS:
         if type(request) is not request.Req:
             raise ValueError(
                 f"Cannot send a command that isn't a request: {request!r}")
+
+        if self._uart is None:
+            raise RuntimeError(
+                "Coordinator is disconnected, cannot send request")
 
         LOGGER.debug("Sending request: %s", request)
 
@@ -315,14 +322,11 @@ class ZBOSS:
 
     async def version(self):
         """Get NCP module version."""
-        if self._app is not None:
-            tsn = self._app.get_sequence()
-        else:
-            tsn = 0
+        tsn = self._app.get_sequence() if self._app is not None else 0
         req = c.NcpConfig.GetModuleVersion.Req(TSN=tsn)
         res = await self.request(req)
         if res.StatusCode:
-            return
+            return None
         version = ['', '', '']
         for idx, ver in enumerate(
                 [res.FWVersion, res.StackVersion, res.ProtocolVersion]):

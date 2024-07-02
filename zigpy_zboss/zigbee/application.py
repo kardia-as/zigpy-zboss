@@ -1,27 +1,29 @@
 """ControllerApplication for ZBOSS NCP protocol based adapters."""
 from __future__ import annotations
 
-import logging
 import asyncio
-import zigpy.util
-import zigpy.state
+import logging
+from typing import Any, Dict
+
 import zigpy.appdb
+import zigpy.application
 import zigpy.config
 import zigpy.device
 import zigpy.endpoint
 import zigpy.exceptions
+import zigpy.state
 import zigpy.types as t
-import zigpy.application
-import zigpy_zboss.types as t_zboss
+import zigpy.util
 import zigpy.zdo.types as zdo_t
-import zigpy_zboss.config as conf
-
-from typing import Any, Dict
-from zigpy_zboss.api import ZBOSS
-from zigpy_zboss import commands as c
 from zigpy.exceptions import DeliveryError
-from .device import ZbossCoordinator, ZbossDevice
+
+import zigpy_zboss.config as conf
+import zigpy_zboss.types as t_zboss
+from zigpy_zboss import commands as c
+from zigpy_zboss.api import ZBOSS
 from zigpy_zboss.config import CONFIG_SCHEMA, SCHEMA_DEVICE
+
+from .device import ZbossCoordinator, ZbossDevice
 
 LOGGER = logging.getLogger(__name__)
 
@@ -653,8 +655,8 @@ class ControllerApplication(zigpy.application.ControllerApplication):
                     DstAddr=dst_addr,
                     ProfileID=packet.profile_id,
                     ClusterId=packet.cluster_id,
-                    DstEndpoint=packet.dst_ep,
-                    SrcEndpoint=packet.src_ep,
+                    DstEndpoint=packet.dst_ep or 0,
+                    SrcEndpoint=packet.src_ep or 0,
                     Radius=packet.radius or 0,
                     DstAddrMode=dst_addr_mode,
                     TxOptions=options,

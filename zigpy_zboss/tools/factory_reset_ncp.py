@@ -1,11 +1,11 @@
 """Script to factory reset the coordinator."""
-import sys
-import serial
 import asyncio
+import sys
 
-from zigpy_zboss.api import ZBOSS
+import serial
+
 from zigpy_zboss import types as t
-
+from zigpy_zboss.api import ZBOSS
 from zigpy_zboss.tools.config import get_config
 
 

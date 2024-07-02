@@ -1,15 +1,16 @@
 """Zigbee device object."""
 import logging
-import zigpy.util
+from typing import Any
+
 import zigpy.device
 import zigpy.endpoint
 import zigpy.types as t
-import zigpy_zboss.types as t_zboss
-from typing import Any
-from zigpy_zboss import commands as c
-from zigpy.zdo import types as zdo_t
+import zigpy.util
 from zigpy.zdo import ZDO as ZigpyZDO
+from zigpy.zdo import types as zdo_t
 
+import zigpy_zboss.types as t_zboss
+from zigpy_zboss import commands as c
 
 LOGGER = logging.getLogger(__name__)
 

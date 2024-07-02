@@ -1,10 +1,11 @@
 """Module defining utility functions."""
 from __future__ import annotations
 
-import typing
 import asyncio
-import logging
 import dataclasses
+import logging
+import typing
+
 import zigpy_zboss.types as t
 
 LOGGER = logging.getLogger(__name__)

@@ -1,9 +1,9 @@
 """Module defining all ZDO commands."""
 from __future__ import annotations
-from zigpy.zdo import types as zdo_t
 
 import zigpy.types
 import zigpy.zdo.types
+from zigpy.zdo import types as zdo_t
 
 import zigpy_zboss.types as t
 

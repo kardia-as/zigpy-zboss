@@ -1,12 +1,14 @@
 """Module defining types used for commands."""
 from __future__ import annotations
+
+import dataclasses
 import enum
 import logging
-import dataclasses
 
 import zigpy.zdo.types
 
-import zigpy_zboss.types as t
+import zigpy_zboss.types.basic as t
+import zigpy_zboss.types.named as t_named
 
 LOGGER = logging.getLogger(__name__)
 TYPE_ZBOSS_NCP_API_HL = t.uint8_t(0x06)
@@ -421,7 +423,8 @@ class CommandBase:
                     issubclass(param.type, (t.ShortBytes, t.LongBytes)),
 
                     isinstance(value, list) and issubclass(param.type, list),
-                    isinstance(value, bool) and issubclass(param.type, t.Bool),
+                    isinstance(
+                        value, bool) and issubclass(param.type, t_named.Bool),
                 ]
                 # fmt: on
 
@@ -455,9 +458,7 @@ class CommandBase:
         if self._partial:
             raise ValueError(f"Cannot serialize a partial frame: {self}")
 
-        from zigpy_zboss.frames import HLPacket
-        from zigpy_zboss.frames import LLHeader
-        from zigpy_zboss.frames import Frame
+        from zigpy_zboss.frames import Frame, HLPacket, LLHeader
 
         chunks = []
 
@@ -524,6 +525,11 @@ class CommandBase:
                 else:
                     # Otherwise, let the exception happen
                     raise
+        if data:
+            raise ValueError(
+                f"Frame {frame} contains trailing data after parsing: {data}"
+            )
+
         return cls(**params)
 
     def matches(self, other: "CommandBase") -> bool:
@@ -715,7 +721,8 @@ class Relationship(t.enum8):
 
 
 STATUS_SCHEMA = (
-    t.Param("TSN", t.uint8_t, "Transmit Sequence Number"),
-    t.Param("StatusCat", StatusCategory, "Status category code"),
-    t.Param("StatusCode", StatusCodeGeneric, "Status code inside category"),
+    t_named.Param("TSN", t.uint8_t, "Transmit Sequence Number"),
+    t_named.Param("StatusCat", StatusCategory, "Status category code"),
+    t_named.Param(
+        "StatusCode", StatusCodeGeneric, "Status code inside category"),
 )

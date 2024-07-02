@@ -1,8 +1,8 @@
 """NCP NVRAM related helpers."""
 import logging
 
-import zigpy_zboss.types as t
 import zigpy_zboss.commands as c
+import zigpy_zboss.types as t
 
 LOGGER = logging.getLogger(__name__)
 WRITE_DS_LENGTH = 280
@@ -24,7 +24,7 @@ class NVRAMHelper:
             )
         )
         if res.StatusCode != 0:
-            return
+            return None
 
         if not res.DatasetId == nv_id:
             raise
