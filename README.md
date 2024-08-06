@@ -2,7 +2,7 @@
 
 **zigpy-zboss** is a Python library project that adds support for common Nordic Semiconductor nRF modules to **[zigpy (a open source Python Zigbee stack project)](https://github.com/zigpy/)** and other Network Co-Processor radios that uses firmware based on **[ZOI (ZBOSS Open Initiative) by DSR](https://dsr-zoi.com/)**.
 
-Together with the zigpy library and a home automation software application with compatible Zigbee gateway implementation, (such as for example the **[Home Assistant's ZHA integration component](https://www.home-assistant.io/integrations/zha/)**), you can directly control Zigbee devices from most product manufacturers, like; IKEA, Philips Hue, Inovelli, LEDVANCE/OSRAM, SmartThings/Samsung, SALUS/Computime, SONOFF/ITEAD, Xiaomi/Aqara, and many more.
+This together with the [zha](https://github.com/zigpy/zha) and [zigpy](https://github.com/zigpy/zigpy) libraries you can create a Zigbee Gateway host application using compatible radio SoCs, like the [Home Assistant's ZHA (Zigbee Home Automation) integration component](https://www.home-assistant.io/integrations/zha), which will allow the host to directly control other Zigbee devices from most product manufacturers, like; IKEA, Philips Hue, Inovelli, LEDVANCE/OSRAM, SmartThings/Samsung, SALUS/Computime, SONOFF/ITEAD, Tuya, Xiaomi, Aqara, and many more.
 
 # Back-story and use cases
 
