@@ -24,12 +24,6 @@ LISTENER_LOGGER = LOGGER.getChild("listener")
 LISTENER_LOGGER.propagate = False
 
 # All of these are in seconds
-AFTER_BOOTLOADER_SKIP_BYTE_DELAY = 2.5
-NETWORK_COMMISSIONING_TIMEOUT = 30
-BOOTLOADER_PIN_TOGGLE_DELAY = 0.15
-CONNECT_PING_TIMEOUT = 0.50
-CONNECT_PROBE_TIMEOUT = 10
-
 DEFAULT_TIMEOUT = 5
 
 EXPECTED_DISCONNECT_TIMEOUT = 5.0
@@ -87,7 +81,7 @@ class ZBOSS:
         except (Exception, asyncio.CancelledError):
             LOGGER.debug(
                 "Connection to %s failed, cleaning up", self._port_path)
-            self.close()
+            await self.disconnect()
             raise
 
         LOGGER.debug(
@@ -106,7 +100,7 @@ class ZBOSS:
         if self._app is not None and not self._reset_uart_reconnect.locked():
             self._app.connection_lost(exc)
 
-    def close(self) -> None:
+    async def disconnect(self) -> None:
         """Clean up resources, namely the listener queues.
 
         Calling this will reset ZBOSS to the same internal state as a fresh
@@ -122,7 +116,7 @@ class ZBOSS:
             self._listeners.clear()
 
         if self._uart is not None:
-            self._uart.close()
+            await self._uart.disconnect()
             self._uart = None
 
     def frame_received(self, frame: Frame) -> bool:
@@ -347,7 +341,6 @@ class ZBOSS:
 
         tsn = self._app.get_sequence() if self._app is not None else 0
         req = c.NcpConfig.NCPModuleReset.Req(TSN=tsn, Option=option)
-        self._uart.reset_flag = True
 
         async with self._reset_uart_reconnect:
             await self._send_to_uart(req.to_frame())
