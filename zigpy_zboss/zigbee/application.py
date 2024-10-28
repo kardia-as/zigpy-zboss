@@ -645,7 +645,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         # Don't release the concurrency-limiting semaphore until we are done
         # trying. There is no point in allowing requests to take turns getting
         # buffer errors.
-        async with self._limit_concurrency():
+        async with self._limit_concurrency(priority=packet.priority):
             await self._api.request(
                 c.APS.DataReq.Req(
                     TSN=packet.tsn,
