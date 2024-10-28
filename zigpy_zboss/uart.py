@@ -22,7 +22,7 @@ class BufferTooShort(Exception):
     """Exception when the buffer is too short."""
 
 
-class ZbossNcpProtocol(asyncio.Protocol):
+class ZbossNcpProtocol(zigpy.serial.SerialProtocol):
     """Zboss Ncp Protocol class."""
 
     def __init__(self, api) -> None:
