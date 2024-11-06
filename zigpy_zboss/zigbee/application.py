@@ -41,7 +41,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
     def __init__(self, config: Dict[str, Any]):
         """Initialize instance."""
-        super().__init__(config=zigpy.config.ZIGPY_SCHEMA(config))
+        super().__init__(config=config)
         self._api: ZBOSS | None = None
 
     async def connect(self):
