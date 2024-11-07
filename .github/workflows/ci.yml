@@ -21,15 +21,15 @@ jobs:
         python-version: ["3.10.8", "3.11.0", "3.12"]
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         id: python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Restore base Python virtual environment
         id: cache-venv
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: venv
           key: >-
@@ -53,15 +53,15 @@ jobs:
     needs: prepare-base
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
       - name: Restore base Python virtual environment
         id: cache-venv
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: venv
           key: >-
@@ -75,7 +75,7 @@ jobs:
           exit 1
       - name: Restore pre-commit environment from cache
         id: cache-precommit
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ${{ env.PRE_COMMIT_CACHE_PATH }}
           key: |
@@ -88,7 +88,7 @@ jobs:
           . venv/bin/activate
           pre-commit install-hooks
       - name: Cache pre-commit environment
-        uses: actions/cache/save@v3
+        uses: actions/cache/save@v4
         with:
           path: ${{ env.PRE_COMMIT_CACHE_PATH }}
           key: ${{ steps.cache-precommit.outputs.cache-primary-key }}
@@ -103,15 +103,15 @@ jobs:
     needs: pre-commit
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
       - name: Restore base Python virtual environment
         id: cache-venv
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: venv
           key: >-
@@ -125,7 +125,7 @@ jobs:
           exit 1
       - name: Restore pre-commit environment from cache
         id: cache-precommit
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ${{ env.PRE_COMMIT_CACHE_PATH }}
           key: |
@@ -153,15 +153,15 @@ jobs:
       Run tests Python ${{ matrix.python-version }}
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         id: python
         with:
           python-version: ${{ matrix.python-version }}
       - name: Restore base Python virtual environment
         id: cache-venv
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: venv
           key: >-
