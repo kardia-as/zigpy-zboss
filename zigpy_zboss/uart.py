@@ -15,92 +15,37 @@ from zigpy_zboss.logger import SERIAL_LOGGER
 
 LOGGER = logging.getLogger(__name__)
 ACK_TIMEOUT = 1
-SEND_RETRIES = 2
 STARTUP_TIMEOUT = 5
-RECONNECT_TIMEOUT = 10
 
 
 class BufferTooShort(Exception):
     """Exception when the buffer is too short."""
 
 
-class ZbossNcpProtocol(asyncio.Protocol):
+class ZbossNcpProtocol(zigpy.serial.SerialProtocol):
     """Zboss Ncp Protocol class."""
 
-    def __init__(self, config, api) -> None:
+    def __init__(self, api) -> None:
         """Initialize the ZbossNcpProtocol object."""
+        super().__init__()
         self._api = api
         self._ack_seq = 0
         self._pack_seq = 0
-        self._config = config
-        self._transport = None
-        self._reset_flag = False
-        self._buffer = bytearray()
-        self._reconnect_task = None
         self._tx_lock = asyncio.Lock()
         self._ack_received_event = None
-        self._connected_event = asyncio.Event()
-
-        self._port = config[conf.CONF_DEVICE_PATH]
-        self._baudrate = config[conf.CONF_DEVICE_BAUDRATE]
-        self._flow_control = config[conf.CONF_DEVICE_FLOW_CONTROL]
-
-    @property
-    def api(self):
-        """Return the owner of that object."""
-        return self._api
-
-    @property
-    def name(self) -> str:
-        """Return serial name."""
-        return self._transport.serial.name
-
-    @property
-    def baudrate(self) -> int:
-        """Return the baudrate."""
-        return self._transport.serial.baudrate
-
-    @property
-    def reset_flag(self) -> bool:
-        """Return True if a reset is in process."""
-        return self._reset_flag
-
-    @reset_flag.setter
-    def reset_flag(self, value) -> None:
-        if isinstance(value, bool):
-            self._reset_flag = value
-
-    def connection_made(
-            self, transport: asyncio.BaseTransport) -> None:
-        """Notify serial port opened."""
-        self._transport = transport
-        message = f"Opened {transport.serial.name} serial port"
-        if self._reset_flag:
-            self._reset_flag = False
-            return
-        SERIAL_LOGGER.info(message)
-        self._connected_event.set()
 
     def connection_lost(self, exc: typing.Optional[Exception]) -> None:
         """Lost connection."""
-        LOGGER.debug("Connection has been lost: %r", exc)
-
+        super().connection_lost(exc)
         if self._api is not None:
             self._api.connection_lost(exc)
 
     def close(self) -> None:
         """Close serial connection."""
-        self._buffer.clear()
+        super().close()
+        self._api = None
         self._ack_seq = 0
         self._pack_seq = 0
-
-        # Reset transport
-        if self._transport:
-            message = "Closing serial port"
-            LOGGER.debug(message)
-            SERIAL_LOGGER.info(message)
-            self._transport.close()
-            self._transport = None
 
     def write(self, data: bytes) -> None:
         """Write raw bytes to the transport.
@@ -226,41 +171,18 @@ class ZbossNcpProtocol(asyncio.Protocol):
         ack_frame = Frame.ack(self._ack_seq)
         return ack_frame
 
-    def __repr__(self) -> str:
-        """Return a string representing the class."""
-        return (
-            f"<"
-            f"{type(self).__name__} connected to {self.name!r}"
-            f" at {self.baudrate} baud"
-            f" (api: {self._api})"
-            f">"
-        )
-
 
 async def connect(config: conf.ConfigType, api) -> ZbossNcpProtocol:
-    """Instantiate Uart object and connect to it."""
-    loop = asyncio.get_running_loop()
-
-    port = config[conf.CONF_DEVICE_PATH]
-    baudrate = config[conf.CONF_DEVICE_BAUDRATE]
-    flow_control = config[conf.CONF_DEVICE_FLOW_CONTROL]
+    port = config[zigpy.config.CONF_DEVICE_PATH]
 
     _, protocol = await zigpy.serial.create_serial_connection(
-        loop=loop,
-        protocol_factory=lambda: ZbossNcpProtocol(config, api),
+        loop=asyncio.get_running_loop(),
+        protocol_factory=lambda: ZbossNcpProtocol(api),
         url=port,
-        baudrate=baudrate,
-        xonxoff=(flow_control == "software"),
-        rtscts=(flow_control == "hardware"),
+        baudrate=config[zigpy.config.CONF_DEVICE_BAUDRATE],
+        flow_control=config[zigpy.config.CONF_DEVICE_FLOW_CONTROL],
     )
 
-    try:
-        async with async_timeout.timeout(STARTUP_TIMEOUT):
-            await protocol._connected_event.wait()
-    except asyncio.TimeoutError:
-        protocol.close()
-        raise RuntimeError("Could not communicate with NCP!")
-
-    LOGGER.debug("Connected to %s at %s baud", port, baudrate)
+    await protocol.wait_until_connected()
 
     return protocol

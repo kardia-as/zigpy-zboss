@@ -21,7 +21,7 @@ import zigpy_zboss.config as conf
 import zigpy_zboss.types as t_zboss
 from zigpy_zboss import commands as c
 from zigpy_zboss.api import ZBOSS
-from zigpy_zboss.config import CONFIG_SCHEMA, SCHEMA_DEVICE
+from zigpy_zboss.config import CONFIG_SCHEMA
 
 from .device import ZbossCoordinator, ZbossDevice
 
@@ -37,7 +37,6 @@ class ControllerApplication(zigpy.application.ControllerApplication):
     """Controller class."""
 
     SCHEMA = CONFIG_SCHEMA
-    SCHEMA_DEVICE = SCHEMA_DEVICE
 
     def __init__(self, config: Dict[str, Any]):
         """Initialize instance."""
@@ -56,7 +55,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
                 c.NcpConfig.GetZigbeeRole.Req(TSN=1), timeout=1
             )
         except Exception:
-            zboss.close()
+            await zboss.disconnect()
             raise
 
         self._api = zboss
@@ -73,7 +72,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
                     "Failed to reset API during disconnect", exc_info=True
                 )
 
-            self._api.close()
+            await self._api.disconnect()
             self._api = None
 
     async def start_network(self):
@@ -646,7 +645,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         # Don't release the concurrency-limiting semaphore until we are done
         # trying. There is no point in allowing requests to take turns getting
         # buffer errors.
-        async with self._limit_concurrency():
+        async with self._limit_concurrency(priority=packet.priority):
             await self._api.request(
                 c.APS.DataReq.Req(
                     TSN=packet.tsn,
