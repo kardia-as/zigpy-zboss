@@ -2,7 +2,7 @@
 
 **zigpy-zboss** is a Python library project that adds support for common Nordic Semiconductor nRF modules to **[zigpy (a open source Python Zigbee stack project)](https://github.com/zigpy/)** and other Network Co-Processor radios that uses firmware based on **[ZOI (ZBOSS Open Initiative) by DSR](https://dsr-zoi.com/)**.
 
-Together with the zigpy library and a home automation software application with compatible Zigbee gateway implementation, (such as for example the **[Home Assistant's ZHA integration component](https://www.home-assistant.io/integrations/zha/)**), you can directly control Zigbee devices from most product manufacturers, like; IKEA, Philips Hue, Inovelli, LEDVANCE/OSRAM, SmartThings/Samsung, SALUS/Computime, SONOFF/ITEAD, Xiaomi/Aqara, and many more.
+This together with the [zha](https://github.com/zigpy/zha) and [zigpy](https://github.com/zigpy/zigpy) libraries you can create a Zigbee Gateway host application using compatible radio SoCs, like the [Home Assistant's ZHA (Zigbee Home Automation) integration component](https://www.home-assistant.io/integrations/zha), which will allow the host to directly control other Zigbee devices from most product manufacturers, like; IKEA, Philips Hue, Inovelli, LEDVANCE/OSRAM, SmartThings/Samsung, SALUS/Computime, SONOFF/ITEAD, Tuya, Xiaomi, Aqara, and many more.
 
 # Back-story and use cases
 
@@ -14,13 +14,13 @@ Development is initially focused on Zigbee Coordinator functionality Nordic Semi
 
 # Hardware requirements
 
-Nordic Semi USB adapters or development kits/boards based on either the nRF52840 (nRF52 series) SoC or the nRF5340 (nRF53 series) SoC:
+Nordic Semi USB adapter or development board/kit based on nRF52 series or nRF53 series SoCs, such as example the nRF52840 SoC or the nRF5340 SoC:
 
 - **[nRF52840 dongle](https://www.nordicsemi.com/Products/Development-hardware/nrf52840-dongle)**
 - **[nRF52840 development kit](https://www.nordicsemi.com/Products/Development-hardware/nrf52840-dk)**
 - **[nRF5340 development kit](https://www.nordicsemi.com/Products/Development-hardware/nrf5340-dk)** (nRF5340 DK has not been tested but should be compatible)
 
-Note! Only nRF52840 SoC has been used for development and tested as reference hardware by the developers of the zigpy-zboss project.
+Note! Only nRF52840 SoC has been used for development and tested as reference hardware by the developers of the zigpy-zboss project. While not tested it should also work with Nordic Semiconductor nRF chips with a Zigbee (802.15.4) RF radio, such as example nRF5340, nRF52833, and nRF21540 if flashed with compatible firmware.
 
 # Firmware
 
@@ -85,17 +85,25 @@ Also see:
 
 # Related projects
 
+### zigpy organization
+
+[ziggpy "organization"](https://github.com/zigpy) is the umbrella organization on GitHub that contains all the ZHA and zigpy related projects. For more development documentation/information and discussions between developers please see the main "zigpy" repository ther
+
 ### zigpy
 **[zigpy](https://github.com/zigpy/zigpy)** is a **[Zigbee protocol stack](https://en.wikipedia.org/wiki/Zigbee)** integration project to implement the **[Zigbee Home Automation](https://www.zigbee.org/)** standard as a Python library. Zigbee Home Automation integration with zigpy allows you to connect one of many off-the-shelf Zigbee adapters using one of the available Zigbee radio library modules compatible with zigpy to control Zigbee devices. There is currently support for controlling Zigbee device types such as binary sensors (e.g. motion and door sensors), analog sensors (e.g. temperature sensors), lightbulbs, switches, and fans. Zigpy is tightly integrated with **[Home Assistant](https://www.home-assistant.io)**'s **[ZHA component](https://www.home-assistant.io/components/zha/)** and provides a user-friendly interface for working with a Zigbee network.
 
 ### zigpy-cli (zigpy command line interface)
 [zigpy-cli](https://github.com/zigpy/zigpy-cli) is a unified command line interface for zigpy radios. The goal of this project is to allow low-level network management from an intuitive command line interface and to group useful Zigbee tools into a single binary.
 
+### ZHA - Zigbee Gateway library using zigpy
+
+[ZHA (library)](https://github.com/zigpy/zha) is a high-level Zigbee Gateway class library written in Python and depends on the zigpy project + all of its libraries. This zha library is meant to be used by application-level implementations such as the ZHA integration in Home Assistant. It could potentially also be used to create a stand-alone Zigbee Gateway application and/or other Zigbee host integrations.
+
 ### ZHA Device Handlers
 ZHA deviation handling in Home Assistant relies on the third-party [ZHA Device Handlers](https://github.com/zigpy/zha-device-handlers) project (also known unders zha-quirks package name on PyPI). Zigbee devices that deviate from or do not fully conform to the standard specifications set by the [Zigbee Alliance](https://www.zigbee.org) may require the development of custom [ZHA Device Handlers](https://github.com/zigpy/zha-device-handlers) (ZHA custom quirks handler implementation) to for all their functions to work properly with the ZHA component in Home Assistant. These ZHA Device Handlers for Home Assistant can thus be used to parse custom messages to and from non-compliant Zigbee devices. The custom quirks implementations for zigpy implemented as ZHA Device Handlers for Home Assistant are a similar concept to that of [Hub-connected Device Handlers for the SmartThings platform](https://docs.smartthings.com/en/latest/device-type-developers-guide/) as well as that of [zigbee-herdsman converters as used by Zigbee2mqtt](https://www.zigbee2mqtt.io/how_tos/how_to_support_new_devices.html), meaning they are each virtual representations of a physical device that expose additional functionality that is not provided out-of-the-box by the existing integration between these platforms.
 
 ### ZHA integration component for Home Assistant
-[ZHA integration component for Home Assistant](https://www.home-assistant.io/integrations/zha/) is a reference implementation of the zigpy library as integrated into the core of **[Home Assistant](https://www.home-assistant.io)** (a Python based open source home automation software). There are also other GUI and non-GUI projects for Home Assistant's ZHA components which builds on or depends on its features and functions to enhance or improve its user-experience, some of those are listed and linked below.
+[ZHA integration component for Home Assistant](https://www.home-assistant.io/integrations/zha/) is a reference implementation of the ZHA Zigbee Gateway library, depending on all the zigpy organization's Zigbee framework libraries and integrated into the core of **[Home Assistant](https://www.home-assistant.io)** (a Python based open source home automation software). There are also other GUI and non-GUI projects for Home Assistant's ZHA components which builds on or depends on its features and functions to enhance or improve its user-experience, some of those are listed and linked below.
 
 #### ZHA Toolkit
 [ZHA Toolkit](https://github.com/mdeweerd/zha-toolkit) is a custom service for "rare" Zigbee operations using the [ZHA integration component](https://www.home-assistant.io/integrations/zha) in [Home Assistant](https://www.home-assistant.io/). The purpose of ZHA Toolkit and its Home Assistant 'Services' feature, is to provide direct control over low level zigbee commands provided in ZHA or zigpy that are not otherwise available or too limited for some use cases. ZHA Toolkit can also; serve as a framework to do local low level coding (the modules are reloaded on each call), provide access to some higher level commands such as ZNP backup (and restore), make it easier to perform one-time operations where (some) Zigbee knowledge is sufficient and avoiding the need to understand the inner workings of ZHA or Zigpy (methods, quirks, etc).
