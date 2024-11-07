@@ -126,15 +126,17 @@ class ForwardingSerialTransport:
         return f"<{type(self).__name__} to {self.protocol}>"
 
 
-def config_for_port_path(path):
+def config_for_port_path(path, apply_schema: bool = True):
     """Port path configuration."""
-    return conf.CONFIG_SCHEMA(
-        {
-            conf.CONF_DEVICE: {conf.CONF_DEVICE_PATH: path},
-            conf.CONF_DEVICE_BAUDRATE: 115200,
-            conf.CONF_DEVICE_FLOW_CONTROL: None
-        }
-    )
+    config = {
+        conf.CONF_DEVICE: {conf.CONF_DEVICE_PATH: path},
+        zigpy.config.CONF_NWK_BACKUP_ENABLED: False,
+    }
+
+    if apply_schema:
+        return conf.CONFIG_SCHEMA(config)
+
+    return config
 
 
 @pytest.fixture
@@ -389,10 +391,14 @@ def make_application(make_zboss_server):
             active_sequence=False,
             **kwargs,
     ):
-        default = config_for_port_path(FAKE_SERIAL_PORT)
-
-        client_config = merge_dicts(default, client_config or {})
-        server_config = merge_dicts(default, server_config or {})
+        client_config = merge_dicts(
+            config_for_port_path(FAKE_SERIAL_PORT, apply_schema=False),
+            client_config or {},
+        )
+        server_config = merge_dicts(
+            config_for_port_path(FAKE_SERIAL_PORT),
+            server_config or {},
+        )
 
         app = ControllerApplication(client_config)
 
