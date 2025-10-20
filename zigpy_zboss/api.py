@@ -7,7 +7,6 @@ import itertools
 import logging
 from collections import Counter, defaultdict
 
-import async_timeout
 import zigpy.state
 
 import zigpy_zboss.config as conf
@@ -222,7 +221,7 @@ class ZBOSS:
         try:
             await self._uart.send(frame)
             if response_future is not None:
-                async with async_timeout.timeout(timeout):
+                async with asyncio.timeout(timeout):
                     return await response_future
         except asyncio.TimeoutError:
             LOGGER.debug(f"Timeout after {timeout}s: {frame}")
@@ -358,7 +357,7 @@ class ZBOSS:
             LOGGER.debug("Waiting for radio to disconnect")
 
             try:
-                async with async_timeout.timeout(EXPECTED_DISCONNECT_TIMEOUT):
+                async with asyncio.timeout(EXPECTED_DISCONNECT_TIMEOUT):
                     await self._disconnected_event.wait()
             except asyncio.TimeoutError:
                 LOGGER.debug(

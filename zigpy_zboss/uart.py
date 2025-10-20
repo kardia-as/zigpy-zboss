@@ -3,7 +3,6 @@ import asyncio
 import logging
 import typing
 
-import async_timeout
 import zigpy.serial
 
 import zigpy_zboss.config as conf
@@ -118,7 +117,7 @@ class ZbossNcpProtocol(asyncio.Protocol):
             if isinstance(frame, Frame) and self._transport:
                 self._ack_received_event = asyncio.Event()
                 try:
-                    async with async_timeout.timeout(ACK_TIMEOUT):
+                    async with asyncio.timeout(ACK_TIMEOUT):
                         frame = self._set_frame_flag(frame)
                         frame = self._ll_checksum(frame)
                         self.write(frame.serialize())
@@ -255,7 +254,7 @@ async def connect(config: conf.ConfigType, api) -> ZbossNcpProtocol:
     )
 
     try:
-        async with async_timeout.timeout(STARTUP_TIMEOUT):
+        async with asyncio.timeout(STARTUP_TIMEOUT):
             await protocol._connected_event.wait()
     except asyncio.TimeoutError:
         protocol.close()
