@@ -1,6 +1,6 @@
 """Test uart."""
 import pytest
-from serial_asyncio import SerialTransport
+from serial_asyncio_fast import SerialTransport
 
 import zigpy_zboss.commands as c
 import zigpy_zboss.config as conf

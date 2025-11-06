@@ -5,7 +5,7 @@ import logging.handlers
 
 import async_timeout
 import serial
-import serial_asyncio
+import serial_asyncio_fast
 
 from zigpy_zboss import types as t
 
@@ -43,7 +43,7 @@ class NcpDebugLogger(asyncio.Protocol):
         self._connected_event = asyncio.Event()
 
     def connection_made(
-            self, transport: serial_asyncio.SerialTransport) -> None:
+            self, transport: serial_asyncio_fast.SerialTransport) -> None:
         """Notify when serial port opened."""
         self._transport = transport
         message = f"Opened {transport.serial.name} serial port"
@@ -61,7 +61,7 @@ class NcpDebugLogger(asyncio.Protocol):
         async with async_timeout.timeout(timeout):
             while True:
                 try:
-                    _, proto = await serial_asyncio.create_serial_connection(
+                    _, proto = await serial_asyncio_fast.create_serial_connection(
                         loop=loop,
                         protocol_factory=lambda: self,
                         url=self._dev_path,
@@ -103,7 +103,7 @@ async def connect_ncp_debug(api, dev_path) -> NcpDebugLogger:
 
     DEBUG_LOGGER.info(f"Connecting to {dev_path} for NCP debugging")
 
-    _, protocol = await serial_asyncio.create_serial_connection(
+    _, protocol = await serial_asyncio_fast.create_serial_connection(
         loop=loop,
         protocol_factory=lambda: NcpDebugLogger(api, dev_path),
         url=dev_path,
