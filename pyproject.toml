@@ -10,11 +10,10 @@ license = {text = "GPL-3.0"}
 authors = [
     {name = "Damien Kastner", email = "damien.kastner@kardia.no"},
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dynamic = ["version"]
 dependencies = [
-    "zigpy>=0.60.2",
-    "async_timeout",
+    "zigpy>=1.4.0",
     "voluptuous",
     "coloredlogs",
     "jsonschema",
