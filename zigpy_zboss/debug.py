@@ -3,7 +3,6 @@ import asyncio
 import logging
 import logging.handlers
 
-import async_timeout
 import serial
 import serial_asyncio
 
@@ -58,7 +57,7 @@ class NcpDebugLogger(asyncio.Protocol):
     async def _reconnect(self, timeout=RECONNECT_TIMEOUT):
         """Try to reconnect the disconnected serial port."""
         loop = asyncio.get_running_loop()
-        async with async_timeout.timeout(timeout):
+        async with asyncio.timeout(timeout):
             while True:
                 try:
                     _, proto = await serial_asyncio.create_serial_connection(
