@@ -30,7 +30,11 @@ class NVRAMHelper:
             raise
 
         if item_type:
-            value, _ = item_type.deserialize(res.Dataset.serialize())
+            # NVRAMDataset is an LVList; serializing it re-prepends the
+            # uint16_t length header that's not part of the actual dataset
+            # payload. Use the underlying bytes instead so we don't feed
+            # that prefix back into the dataset's deserializer.
+            value, _ = item_type.deserialize(bytes(res.Dataset))
             LOGGER.debug('Read NVRAM [0x%04x] = %r', nv_id.value, value)
             return value
 

@@ -1,58 +1,25 @@
 """Module defining basic types."""
 from __future__ import annotations
 
-import typing
-
-from zigpy.types import enum_factory, int8s, uint8_t  # noqa: F401
+from zigpy.types import (  # noqa: F401
+    bitmap8,
+    bitmap16,
+    enum8,
+    enum16,
+    enum24,
+    enum40,
+    enum64,
+    int8s,
+    uint8_t,
+    uint16_t,
+    uint24_t,
+    uint32_t,
+    uint40_t,
+    uint56_t,
+    uint64_t,
+)
 
 from zigpy_zboss.types.cstruct import CStruct
-
-if typing.TYPE_CHECKING:
-    import enum
-
-    class enum8(int, enum.Enum):
-        """Enum with 8 bits value."""
-
-    class enum16(int, enum.Enum):
-        """Enum with 16 bits value."""
-
-    class enum24(int, enum.Enum):
-        """Enum with 24 bits value."""
-
-    class enum40(int, enum.Enum):
-        """Enum with 40 bits value."""
-
-    class enum64(int, enum.Enum):
-        """Enum with 64 bits value."""
-
-    class bitmap8(enum.IntFlag):
-        """Bitmap with 8 bits value."""
-
-    class bitmap16(enum.IntFlag):
-        """Bitmap with 16 bits value."""
-
-else:
-    from zigpy.types import (  # noqa: F401
-        bitmap8,
-        bitmap16,
-        enum8,
-        enum16,
-        uint16_t,
-        uint24_t,
-        uint32_t,
-        uint40_t,
-        uint56_t,
-        uint64_t,
-    )
-
-    class enum24(enum_factory(uint24_t)):
-        """Enum with 24 bits value."""
-
-    class enum40(enum_factory(uint40_t)):
-        """Enum with 40 bits value."""
-
-    class enum64(enum_factory(uint64_t)):
-        """Enum with 64 bits value."""
 
 
 class Bytes(bytes):
