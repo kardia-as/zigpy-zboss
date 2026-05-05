@@ -526,7 +526,7 @@ class CommandBase:
                     # Otherwise, let the exception happen
                     raise
         if data:
-            raise ValueError(
+            LOGGER.warning(
                 f"Frame {frame} contains trailing data after parsing: {data}"
             )
 
