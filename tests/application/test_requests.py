@@ -292,10 +292,16 @@ async def test_broadcast(make_application, mocker):
 @pytest.mark.asyncio
 async def test_request_concurrency(make_application, mocker):
     """Test request concurency."""
+    # zigpy >= 1.0 splits the configured max concurrency across priority
+    # tiers (LOW 25% / NORMAL 50% / HIGH 25%) and rounds the floor up to a
+    # multiple of the LCM of the fractions (4). For ``max=4`` that gives a
+    # NORMAL-priority cumulative budget of ``ceil(0.25*4) + ceil(0.5*4) = 3``
+    # in-flight requests.
     app, zboss_server = make_application(
         server_cls=BaseZbossDevice,
-        client_config={conf.CONF_MAX_CONCURRENT_REQUESTS: 2},
+        client_config={conf.CONF_MAX_CONCURRENT_REQUESTS: 4},
     )
+    expected_max_in_flight = 3
 
     await app.startup()
 
@@ -315,11 +321,13 @@ async def test_request_concurrency(make_application, mocker):
             nonlocal in_flight_requests
             nonlocal did_lock
 
-            if app._concurrent_requests_semaphore.locked():
+            if app._concurrent_requests_semaphore.locked(
+                priority=zigpy_t.PacketPriority.NORMAL
+            ):
                 did_lock = True
 
             in_flight_requests += 1
-            assert in_flight_requests <= 2
+            assert in_flight_requests <= expected_max_in_flight
 
             await asyncio.sleep(0.1)
             await zboss_server.send(c.APS.DataReq.Rsp(

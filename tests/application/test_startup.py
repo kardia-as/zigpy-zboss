@@ -362,4 +362,4 @@ async def test_concurrency_auto_config(make_application):
     await app.connect()
     await app.start_network()
 
-    assert app._concurrent_requests_semaphore.max_value == 8
+    assert app._concurrent_requests_semaphore.max_concurrency == 8
