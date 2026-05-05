@@ -32,9 +32,18 @@ if typing.TYPE_CHECKING:
         """Bitmap with 16 bits value."""
 
 else:
-    from zigpy.types import (bitmap8, bitmap16, enum8, enum16,  # noqa: F401
-                             uint16_t, uint24_t, uint32_t, uint40_t, uint56_t,
-                             uint64_t)
+    from zigpy.types import (  # noqa: F401
+        bitmap8,
+        bitmap16,
+        enum8,
+        enum16,
+        uint16_t,
+        uint24_t,
+        uint32_t,
+        uint40_t,
+        uint56_t,
+        uint64_t,
+    )
 
     class enum24(enum_factory(uint24_t)):
         """Enum with 24 bits value."""

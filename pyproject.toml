@@ -1,6 +1,44 @@
 [build-system]
-requires = ["setuptools>=61.0.0"]
+requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "zigpy-zboss"
+description = "A library for zigpy which communicates with Nordic nRF52 radios running ZBOSS NCP"
+readme = "README.md"
+license = {text = "GPL-3.0"}
+authors = [
+    {name = "Damien Kastner", email = "damien.kastner@kardia.no"},
+]
+requires-python = ">=3.11"
+dynamic = ["version"]
+dependencies = [
+    "zigpy>=0.60.2",
+    "async_timeout",
+    "voluptuous",
+    "coloredlogs",
+    "jsonschema",
+]
+
+[project.optional-dependencies]
+# XXX: The order of these deps seems to matter
+testing = [
+    "pytest>=5.4.5",
+    "pytest-asyncio>=0.12.0",
+    "pytest-timeout",
+    "pytest-mock",
+    "pytest-cov",
+    "coveralls",
+]
+
+[project.urls]
+Homepage = "https://github.com/kardia-as/zigpy-zboss"
+
+[tool.setuptools.dynamic]
+version = {attr = "zigpy_zboss.__version__"}
+
+[tool.setuptools.packages.find]
+exclude = ["tests", "tests.*"]
 
 [tool.black]
 safe = true
@@ -13,14 +51,14 @@ timeout = 20
 log_format = "%(asctime)s.%(msecs)03d %(levelname)s %(message)s"
 log_date_format = "%Y-%m-%d %H:%M:%S"
 
-[tool.flake8]
-exclude = ".venv,.git,.tox,docs,venv,bin,lib,deps,build"
-# To work with Black
-max-line-length = 88
-# W503: Line break occurred before a binary operator
-# E203: Whitespace before ':'
-# D202 No blank lines allowed after function docstring
-ignore = "W503,E203,D202"
+[tool.ruff]
+line-length = 88
+# Default ruff excludes already cover .git, .venv, venv, .tox, build, etc.
+extend-exclude = ["docs", "deps"]
+
+[tool.ruff.lint]
+# E/W: pycodestyle, F: pyflakes, I: isort (import sorting)
+select = ["E", "F", "W", "I"]
 
 [tool.coverage.run]
 source = ["zigpy_zboss"]

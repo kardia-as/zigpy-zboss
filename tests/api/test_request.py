@@ -7,8 +7,7 @@ import pytest
 
 import zigpy_zboss.commands as c
 import zigpy_zboss.types as t
-from zigpy_zboss.frames import (ZBNCP_LL_BODY_SIZE_MAX, Frame, HLPacket,
-                                LLHeader)
+from zigpy_zboss.frames import ZBNCP_LL_BODY_SIZE_MAX, Frame, HLPacket, LLHeader
 
 
 @pytest.mark.asyncio

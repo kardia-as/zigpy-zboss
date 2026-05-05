@@ -3,9 +3,13 @@ from struct import pack
 
 import zigpy_zboss.types as t
 from zigpy_zboss.types import nvids
-from zigpy_zboss.types.nvids import (ApsSecureEntry, DSApsSecureKeys,
-                                     DSNwkAddrMap, NwkAddrMapHeader,
-                                     NwkAddrMapRecord)
+from zigpy_zboss.types.nvids import (
+    ApsSecureEntry,
+    DSApsSecureKeys,
+    DSNwkAddrMap,
+    NwkAddrMapHeader,
+    NwkAddrMapRecord,
+)
 
 
 def test_nv_ram_get_byte_size():
