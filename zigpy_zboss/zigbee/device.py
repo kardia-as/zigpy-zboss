@@ -6,7 +6,6 @@ import zigpy.device
 import zigpy.endpoint
 import zigpy.types as t
 import zigpy.util
-from zigpy.const import APS_REPLY_TIMEOUT
 from zigpy.zdo import ZDO as ZigpyZDO
 from zigpy.zdo import types as zdo_t
 
@@ -21,16 +20,18 @@ class ZbossZDO(ZigpyZDO):
 
     def handle_mgmt_permit_joining_req(
         self,
-        hdr: zdo_t.ZDOHeader,
         permit_duration: int,
         tc_significance: int,
     ):
         """Handle ZDO permit joining request."""
+        hdr = zdo_t.ZDOHeader(zdo_t.ZDOCmd.Mgmt_Permit_Joining_req, 0)
+        dst_addressing = t.Addressing.IEEE
+
         self.listener_event("permit_duration", permit_duration)
         self.listener_event(
             "zdo_mgmt_permit_joining_req",
             self._device,
-            None,
+            dst_addressing,
             hdr,
             (permit_duration, tc_significance),
         )
@@ -117,38 +118,13 @@ class ZbossZDO(ZigpyZDO):
 
         return (zdo_t.Status.SUCCESS, dst_address, cluster)
 
-    async def request(
-        self,
-        command,
-        *args,
-        timeout=APS_REPLY_TIMEOUT,
-        expect_reply: bool = True,
-        use_ieee: bool = False,
-        ask_for_ack: bool | None = None,
-        priority: int | None = None,
-        **kwargs,
-    ):
-        """Request overwrite for Bind/Unbind requests.
-
-        ZBOSS NCP exposes its own Bind/Unbind commands, so we route those
-        through the radio rather than crafting raw APS frames. All other ZDO
-        commands fall through to the zigpy default implementation, which
-        sends them over APS.
-        """
+    def request(self, command, *args, use_ieee=False):
+        """Request overwrite for Bind/Unbind requests."""
         if command == zdo_t.ZDOCmd.Bind_req:
-            return await self.Bind_req(*args)
+            return self.Bind_req(*args)
         if command == zdo_t.ZDOCmd.Unbind_req:
-            return await self.Unbind_req(*args)
-        return await super().request(
-            command,
-            *args,
-            timeout=timeout,
-            expect_reply=expect_reply,
-            use_ieee=use_ieee,
-            ask_for_ack=ask_for_ack,
-            priority=priority,
-            **kwargs,
-        )
+            return self.Unbind_req(*args)
+        return super().request(command, *args, use_ieee=use_ieee)
 
     async def Node_Desc_req(self, nwk):
         """Node descriptor request."""
