@@ -1,7 +1,7 @@
 """Script to print the NCP firmware version."""
 import asyncio
 
-import serial
+import serialx
 
 from zigpy_zboss.api import ZBOSS
 from zigpy_zboss.tools.config import get_config
@@ -22,7 +22,7 @@ if __name__ == "__main__":
     config = get_config()
     try:
         asyncio.run(get_ncp_version(config))
-    except serial.serialutil.SerialException as exc:
+    except serialx.SerialException as exc:
         print(f"Failed to get NCP version! {exc}")
     except RuntimeError as exc2:
         print(

@@ -2,7 +2,7 @@
 import asyncio
 import sys
 
-import serial
+import serialx
 
 from zigpy_zboss import types as t
 from zigpy_zboss.api import ZBOSS
@@ -23,7 +23,7 @@ async def main(argv):
     try:
         await factory_reset_ncp(config)
         print("Coordinator successfully factory reset!")
-    except serial.serialutil.SerialException as exc:
+    except serialx.SerialException as exc:
         print(f"Failed to factory reset coordinator! {exc}")
     except RuntimeError as exc2:
         print(

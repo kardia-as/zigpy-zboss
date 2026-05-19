@@ -179,7 +179,7 @@ def make_zboss_server(mocker):
             return fut
 
         mocker.patch(
-            "zigpy.serial.create_serial_connection",
+            "serialx.create_serial_connection",
             new=passthrough_serial_conn
         )
 

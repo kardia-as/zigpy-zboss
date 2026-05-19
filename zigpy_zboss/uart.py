@@ -3,7 +3,7 @@ import asyncio
 import logging
 import typing
 
-import zigpy.serial
+import serialx
 
 import zigpy_zboss.config as conf
 from zigpy_zboss import types as t
@@ -52,12 +52,25 @@ class ZbossNcpProtocol(asyncio.Protocol):
     @property
     def name(self) -> str:
         """Return serial name."""
-        return self._transport.serial.name
+        serial = getattr(self._transport, "serial", None)
+        if serial is None:
+            return str(self._port)
+
+        # serialx exposes `port`/`portstr`, while pyserial had `name`.
+        return (
+            getattr(serial, "name", None)
+            or getattr(serial, "port", None)
+            or getattr(serial, "portstr", None)
+            or str(self._port)
+        )
 
     @property
     def baudrate(self) -> int:
         """Return the baudrate."""
-        return self._transport.serial.baudrate
+        serial = getattr(self._transport, "serial", None)
+        if serial is None:
+            return self._baudrate
+        return getattr(serial, "baudrate", self._baudrate)
 
     @property
     def reset_flag(self) -> bool:
@@ -73,7 +86,7 @@ class ZbossNcpProtocol(asyncio.Protocol):
             self, transport: asyncio.BaseTransport) -> None:
         """Notify serial port opened."""
         self._transport = transport
-        message = f"Opened {transport.serial.name} serial port"
+        message = f"Opened {self.name} serial port"
         if self._reset_flag:
             self._reset_flag = False
             return
@@ -244,7 +257,7 @@ async def connect(config: conf.ConfigType, api) -> ZbossNcpProtocol:
     baudrate = config[conf.CONF_DEVICE_BAUDRATE]
     flow_control = config[conf.CONF_DEVICE_FLOW_CONTROL]
 
-    _, protocol = await zigpy.serial.create_serial_connection(
+    _, protocol = await serialx.create_serial_connection(
         loop=loop,
         protocol_factory=lambda: ZbossNcpProtocol(config, api),
         url=port,

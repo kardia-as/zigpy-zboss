@@ -3,8 +3,7 @@ import asyncio
 import logging
 import logging.handlers
 
-import serial
-import serial_asyncio
+import serialx
 
 from zigpy_zboss import types as t
 
@@ -42,10 +41,17 @@ class NcpDebugLogger(asyncio.Protocol):
         self._connected_event = asyncio.Event()
 
     def connection_made(
-            self, transport: serial_asyncio.SerialTransport) -> None:
+            self, transport: serialx.SerialTransport) -> None:
         """Notify when serial port opened."""
         self._transport = transport
-        message = f"Opened {transport.serial.name} serial port"
+        serial = getattr(transport, "serial", None)
+        serial_name = (
+            getattr(serial, "name", None)
+            or getattr(serial, "port", None)
+            or getattr(serial, "portstr", None)
+            or self._dev_path
+        )
+        message = f"Opened {serial_name} serial port"
         DEBUG_LOGGER.debug(message)
         self._connected_event.set()
 
@@ -60,19 +66,19 @@ class NcpDebugLogger(asyncio.Protocol):
         async with asyncio.timeout(timeout):
             while True:
                 try:
-                    _, proto = await serial_asyncio.create_serial_connection(
+                    _, proto = await serialx.create_serial_connection(
                         loop=loop,
                         protocol_factory=lambda: self,
                         url=self._dev_path,
                         baudrate=115_200,
-                        parity=serial.PARITY_NONE,
-                        stopbits=serial.STOPBITS_ONE,
+                        parity=serialx.PARITY_NONE,
+                        stopbits=serialx.STOPBITS_ONE,
                         xonxoff=False,
                         rtscts=False,
                     )
                     self._api._ncp_debug = proto
                     break
-                except serial.serialutil.SerialException:
+                except serialx.SerialException:
                     await asyncio.sleep(0.1)
 
     def close(self) -> None:
@@ -102,13 +108,13 @@ async def connect_ncp_debug(api, dev_path) -> NcpDebugLogger:
 
     DEBUG_LOGGER.info(f"Connecting to {dev_path} for NCP debugging")
 
-    _, protocol = await serial_asyncio.create_serial_connection(
+    _, protocol = await serialx.create_serial_connection(
         loop=loop,
         protocol_factory=lambda: NcpDebugLogger(api, dev_path),
         url=dev_path,
         baudrate=115200,
-        parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE,
+        parity=serialx.PARITY_NONE,
+        stopbits=serialx.STOPBITS_ONE,
         xonxoff=False,
         rtscts=False,
     )
