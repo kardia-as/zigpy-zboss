@@ -1,5 +1,6 @@
 """Script to print the NCP firmware version."""
 import asyncio
+import sys
 
 import serialx
 
@@ -18,10 +19,12 @@ async def get_ncp_version(config):
           f"Protocol: {version[2]}\n")
 
 
-if __name__ == "__main__":
-    config = get_config()
+async def main(argv):
+    """Get config and print NCP firmware version."""
+    config = get_config(argv)
+
     try:
-        asyncio.run(get_ncp_version(config))
+        await get_ncp_version(config)
     except serialx.SerialException as exc:
         print(f"Failed to get NCP version! {exc}")
     except RuntimeError as exc2:
@@ -29,3 +32,7 @@ if __name__ == "__main__":
             f"Failed to get NCP version! {exc2}\n"
             "Power cycle the module and try again."
         )
+
+
+if __name__ == "__main__":
+    asyncio.run(main(sys.argv[1:]))
