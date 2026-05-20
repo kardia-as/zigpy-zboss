@@ -200,9 +200,17 @@ class ZbossNcpProtocol(asyncio.Protocol):
                 if signature_idx < 0:
                     # If we don't have a signature in the buffer,
                     # drop everything
+                    discarded = bytes(self._buffer)
                     self._buffer.clear()
                 else:
+                    discarded = bytes(self._buffer[:signature_idx])
                     del self._buffer[:signature_idx]
+
+                if discarded:
+                    SERIAL_LOGGER.warning(
+                        "Dropped unrecognized bytes: %s",
+                        t.Bytes.__repr__(discarded),
+                    )
 
     def _extract_frame(self) -> Frame:
         """Extract a single frame from the buffer."""
