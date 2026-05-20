@@ -183,10 +183,6 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             )
         )
 
-        if network_info.stack_specific.get("form_quickly", False):
-            await self._form_network(network_info, node_info)
-            return
-
         await self._api.request(
             request=c.NcpConfig.SetNwkKey.Req(
                 TSN=self.get_sequence(),
@@ -194,6 +190,10 @@ class ControllerApplication(zigpy.application.ControllerApplication):
                 KeyNumber=network_info.network_key.seq
             )
         )
+
+        if network_info.stack_specific.get("form_quickly", False):
+            await self._form_network(network_info, node_info)
+            return
 
         for policy_type, policy_value in {
             t_zboss.PolicyType.TC_Link_Keys_Required: (
