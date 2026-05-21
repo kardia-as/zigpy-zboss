@@ -78,7 +78,15 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
     async def start_network(self):
         """Start the network."""
-        if self.state.node_info == zigpy.state.NodeInfo():
+        # The original equality check ``if self.state.node_info == NodeInfo()``
+        # short-circuits when ``form_network`` has populated some fields of
+        # node_info (typically ieee and logical_type) but not ``nwk``. The
+        # ZbossCoordinator construction below then crashes with
+        # ``TypeError: int() argument must be a string, a bytes-like object
+        # or a real number, not 'NoneType'``. Trigger ``load_network_info``
+        # whenever ``nwk`` is missing instead. ``load_network_info`` itself
+        # calls ``GetShortAddr`` which fills it in.
+        if self.state.node_info.nwk is None:
             await self.load_network_info()
 
         await self.start_without_formation()

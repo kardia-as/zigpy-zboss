@@ -52,8 +52,13 @@ class ZbossNcpProtocol(asyncio.Protocol):
 
     @property
     def name(self) -> str:
-        """Return serial name."""
-        return self._transport.serial.name
+        """Return serial name.
+
+        `serialx.LinuxSerial` (which zigpy.serial uses under recent zigpy)
+        exposes ``port`` rather than ``name``. Fall back gracefully.
+        """
+        ser = self._transport.serial
+        return getattr(ser, "name", getattr(ser, "port", "<unnamed>"))
 
     @property
     def baudrate(self) -> int:
@@ -74,7 +79,7 @@ class ZbossNcpProtocol(asyncio.Protocol):
             self, transport: asyncio.BaseTransport) -> None:
         """Notify serial port opened."""
         self._transport = transport
-        message = f"Opened {transport.serial.name} serial port"
+        message = f"Opened {getattr(transport.serial, 'name', getattr(transport.serial, 'port', '<unnamed>'))} serial port"
         if self._reset_flag:
             self._reset_flag = False
             return
