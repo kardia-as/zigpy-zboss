@@ -1,9 +1,17 @@
 """Module that connects and sends/receives bytes from the nRF52 SoC."""
 import asyncio
+import errno
 import logging
+import os
 import typing
 
 import serialx
+
+try:
+    import termios as _termios
+    _SERIAL_TRANSIENT_ERRORS = (OSError, _termios.error)
+except ImportError:
+    _SERIAL_TRANSIENT_ERRORS = (OSError,)
 
 import zigpy_zboss.config as conf
 from zigpy_zboss import types as t
@@ -17,6 +25,8 @@ ACK_TIMEOUT = 1
 SEND_RETRIES = 2
 STARTUP_TIMEOUT = 5
 RECONNECT_TIMEOUT = 10
+CONNECT_OPEN_TIMEOUT = 15.0
+CONNECT_OPEN_RETRY_DELAY = 0.5
 
 
 class BufferTooShort(Exception):
@@ -265,14 +275,47 @@ async def connect(config: conf.ConfigType, api) -> ZbossNcpProtocol:
     baudrate = config[conf.CONF_DEVICE_BAUDRATE]
     flow_control = config[conf.CONF_DEVICE_FLOW_CONTROL]
 
-    _, protocol = await serialx.create_serial_connection(
-        loop=loop,
-        protocol_factory=lambda: ZbossNcpProtocol(config, api),
-        url=port,
-        baudrate=baudrate,
-        xonxoff=(flow_control == "software"),
-        rtscts=(flow_control == "hardware"),
-    )
+    deadline = loop.time() + CONNECT_OPEN_TIMEOUT
+    last_exc: OSError | None = None
+    protocol = None
+
+    while loop.time() < deadline:
+        if not os.path.exists(port):
+            await asyncio.sleep(CONNECT_OPEN_RETRY_DELAY)
+            continue
+
+        try:
+            _, protocol = await serialx.create_serial_connection(
+                loop=loop,
+                protocol_factory=lambda: ZbossNcpProtocol(config, api),
+                url=port,
+                baudrate=baudrate,
+                xonxoff=(flow_control == "software"),
+                rtscts=(flow_control == "hardware"),
+            )
+            break
+        except _SERIAL_TRANSIENT_ERRORS as exc:
+            err_no = (
+                exc.errno if isinstance(exc, OSError)
+                else (exc.args[0] if exc.args else 0)
+            )
+            if err_no != errno.ENXIO:
+                raise
+            last_exc = exc if isinstance(exc, OSError) else OSError(
+                errno.ENXIO, str(exc))
+            LOGGER.debug(
+                "Open %r not ready (%s), retrying until %.0fs elapsed",
+                port,
+                exc,
+                CONNECT_OPEN_TIMEOUT,
+            )
+            await asyncio.sleep(CONNECT_OPEN_RETRY_DELAY)
+
+    if protocol is None:
+        raise OSError(
+            errno.ENXIO,
+            f"Could not open {port!r} within {CONNECT_OPEN_TIMEOUT:.0f}s",
+        ) from last_exc
 
     try:
         async with asyncio.timeout(STARTUP_TIMEOUT):
