@@ -53,7 +53,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         try:
             await zboss.connect()
             await zboss.request(
-                c.NcpConfig.GetZigbeeRole.Req(TSN=1), timeout=1
+                c.NcpConfig.GetZigbeeRole.Req(TSN=1), timeout=5
             )
         except Exception:
             zboss.close()
@@ -298,7 +298,16 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             c.NcpConfig.GetJoinStatus.Req(TSN=self.get_sequence()))
 
         if not res.Joined & 0x01:
-            raise zigpy.exceptions.NetworkNotFormed
+            # The NCP may have reset (e.g. DTR on port open) and not yet
+            # rejoined. Try starting from stored NVRAM before giving up.
+            LOGGER.debug(
+                "NCP not joined after reset, attempting StartWithoutFormation"
+            )
+            await self.start_without_formation()
+            res = await self._api.request(
+                c.NcpConfig.GetJoinStatus.Req(TSN=self.get_sequence()))
+            if not res.Joined & 0x01:
+                raise zigpy.exceptions.NetworkNotFormed
 
         zboss_stack_specific = (
             self.state.network_info.stack_specific.setdefault("zboss", {})
@@ -319,8 +328,6 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             c.NcpConfig.GetZigbeeRole.Req(TSN=self.get_sequence()))
         self.state.node_info.logical_type = zdo_t.LogicalType(res.DeviceRole)
 
-        # TODO: it looks like we can't load the device info unless a network is
-        # running, as it is only accessible via ZCL
         try:
             self._device
         except KeyError:
