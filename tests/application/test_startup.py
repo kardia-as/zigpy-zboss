@@ -293,14 +293,14 @@ async def test_not_configured(make_application):
             Joined=0)]
     )
 
+    # StartWithoutFormation is attempted when Joined=0; respond with an error
+    # so that start_without_formation() raises NetworkNotFormed.
     zboss_server.reply_once_to(
-        request=c.NcpConfig.NCPModuleReset.Req(
-            TSN=3, Option=t.ResetOptions(0)
-        ),
-        responses=[c.NcpConfig.NCPModuleReset.Rsp(
+        request=c.NWK.StartWithoutFormation.Req(TSN=3),
+        responses=[c.NWK.StartWithoutFormation.Rsp(
             TSN=3,
             StatusCat=t.StatusCategory(4),
-            StatusCode=t.StatusCodeGeneric.OK
+            StatusCode=t.StatusCodeGeneric.ERROR
         )]
     )
 

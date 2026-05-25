@@ -64,6 +64,7 @@ def dummy_serial_conn(event_loop, mocker):
         "serialx.create_serial_connection",
         new=create_serial_conn
     )
+    mocker.patch("zigpy_zboss.uart.os.path.exists", return_value=True)
 
     return device, serial_interface
 

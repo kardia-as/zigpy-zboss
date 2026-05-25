@@ -182,6 +182,7 @@ def make_zboss_server(mocker):
             "serialx.create_serial_connection",
             new=passthrough_serial_conn
         )
+        mocker.patch("zigpy_zboss.uart.os.path.exists", return_value=True)
 
         # So we don't have to import it every time
         server.serial_port = FAKE_SERIAL_PORT
@@ -704,7 +705,7 @@ class BaseZbossDevice(BaseServerZBOSS):
             NVRAMVersion=nvram_version,
             DatasetId=t.DatasetId(request.DatasetId),
             DatasetVersion=dataset_version,
-            Dataset=t.NVRAMDataset(dataset.serialize())
+            Dataset=t.NVRAMDataset(dataset.serialize()[2:])
         )
 
     @reply_to(c.NcpConfig.GetTrustCenterAddr.Req(partial=True))
@@ -735,6 +736,15 @@ class BaseZbossDevice(BaseServerZBOSS):
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
             StatusCode=t.StatusCodeGeneric.OK  # Example status code
+        )
+
+    @reply_to(c.NcpConfig.SetTCPolicy.Req(partial=True))
+    def set_tc_policy(self, request):
+        """Handle set TC policy."""
+        return c.NcpConfig.SetTCPolicy.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=t.StatusCodeGeneric.OK
         )
 
     @reply_to(c.NcpConfig.GetModuleVersion.Req(partial=True))
@@ -969,7 +979,7 @@ class BaseZbossGenericDevice(BaseServerZBOSS):
             NVRAMVersion=nvram_version,
             DatasetId=t.DatasetId(request.DatasetId),
             DatasetVersion=dataset_version,
-            Dataset=t.NVRAMDataset(dataset.serialize())
+            Dataset=t.NVRAMDataset(dataset.serialize()[2:])
         )
 
     def on_zdo_node_desc_req(self, req, NWKAddrOfInterest):
