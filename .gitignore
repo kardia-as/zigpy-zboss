@@ -81,3 +81,5 @@ ENV/
 
 
 zigpy-nordic-*.*.*/
+
+.claude/
