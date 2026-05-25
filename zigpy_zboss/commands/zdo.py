@@ -454,6 +454,16 @@ class ZDO(t.CommandsBase):
             t.Param("EnergyValues", EnergyValues, ""),
         ),
     )
+    DevAuthorizedInd = t.CommandDef(
+        t.ControlType.IND,
+        ZdoCommandCode.ZDO_DEV_AUTHORIZED_IND,
+        rsp_schema=(
+            t.Param("IEEE", t.EUI64, "the IEEE address of the device"),
+            t.Param("Nwk", t.NWK, "the NWK address of the device"),
+            t.Param("AuthorizationType", t.uint8_t, "authorization type"),
+            t.Param("AuthorizationStatus", t.uint8_t, "authorization status"),
+        ),
+    )
     DevUpdateInd = t.CommandDef(
         t.ControlType.IND,
         ZdoCommandCode.ZDO_DEV_UPDATE_IND,

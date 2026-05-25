@@ -134,7 +134,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             "tc_policy_tc_rejoin_enabled": t.Bool.true,
             "tc_policy_unsecured_tc_rejoin_enabled": t.Bool.false,
             "tc_policy_tc_rejoin_ignored": t.Bool.false,
-            "tc_policy_aps_insecure_join_enabled": t.Bool.false,
+            "tc_policy_aps_insecure_join_enabled": t.Bool.true,
             "tc_policy_mgmt_channel_update_disabled": t.Bool.false,
         }
 
@@ -463,12 +463,38 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         assert self._api is not None
         await self._api.reset(option=t_zboss.ResetOptions.FactoryReset)
 
+    async def _apply_tc_policies(self):
+        """Apply TC policies to the NCP using code defaults."""
+        defaults = self.get_default_stack_specific_formation_settings()
+        for policy_type, key in [
+            (t_zboss.PolicyType.TC_Link_Keys_Required,
+             "tc_policy_unique_tclk_required"),
+            (t_zboss.PolicyType.IC_Required,
+             "tc_policy_ic_required"),
+            (t_zboss.PolicyType.TC_Rejoin_Enabled,
+             "tc_policy_tc_rejoin_enabled"),
+            (t_zboss.PolicyType.Ignore_TC_Rejoin,
+             "tc_policy_tc_rejoin_ignored"),
+            (t_zboss.PolicyType.APS_Insecure_Join,
+             "tc_policy_aps_insecure_join_enabled"),
+            (t_zboss.PolicyType.Disable_NWK_MGMT_Channel_Update,
+             "tc_policy_mgmt_channel_update_disabled"),
+        ]:
+            await self._api.request(
+                request=c.NcpConfig.SetTCPolicy.Req(
+                    TSN=self.get_sequence(),
+                    PolicyType=policy_type,
+                    PolicyValue=defaults[key],
+                )
+            )
+
     async def start_without_formation(self):
         """Start the network with settings currently stored on the module."""
         res = await self._api.request(
             c.NWK.StartWithoutFormation.Req(TSN=self.get_sequence()))
         if res.StatusCode != 0:
             raise zigpy.exceptions.NetworkNotFormed
+        await self._apply_tc_policies()
 
     async def permit_ncp(self, time_s=60):
         """Permits joins on the coordinator."""
@@ -530,6 +556,10 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             c.NcpConfig.DeviceResetIndication.Ind(partial=True),
             self.on_ncp_reset
         )
+        self._api.register_indication_listener(
+            c.ZDO.DevAuthorizedInd.Ind(partial=True),
+            self.on_dev_authorized
+        )
 
     def on_nwk_leave(self, msg: c.NWK.NwkLeaveInd.Ind):
         """Device left indication."""
@@ -544,18 +574,24 @@ class ControllerApplication(zigpy.application.ControllerApplication):
     def on_dev_update(self, msg: c.ZDO.DevUpdateInd.Ind):
         """Device update indication."""
         if msg.Status == t_zboss.DeviceUpdateStatus.secured_rejoin:
-            # 0x000 as parent device, currently unused
-            pass
-            # self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
+            self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
         elif msg.Status == t_zboss.DeviceUpdateStatus.unsecured_join:
-            # 0x000 as parent device, currently unused
-            pass
-            # self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
+            self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
         elif msg.Status == t_zboss.DeviceUpdateStatus.device_left:
             self.handle_leave(msg.Nwk, msg.IEEE)
         elif msg.Status == t_zboss.DeviceUpdateStatus.tc_rejoin:
-            pass
-            # self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
+            self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
+
+    def on_dev_authorized(self, msg: c.ZDO.DevAuthorizedInd.Ind):
+        """TC device authorized indication."""
+        # AuthorizationType 1 = R21_TCLK; AuthorizationStatus 0 = SUCCESS
+        if msg.AuthorizationStatus != 0:
+            LOGGER.warning(
+                "TCLK authorization failed for %s (NWK 0x%04x): type=%d status=%d",
+                msg.IEEE, msg.Nwk, msg.AuthorizationType, msg.AuthorizationStatus,
+            )
+            # ZBOSS NCP will kick the device and reset; proactively clean up
+            self.handle_leave(msg.Nwk, msg.IEEE)
 
     def on_apsde_indication(self, msg):
         """APSDE-DATA.indication handler."""
