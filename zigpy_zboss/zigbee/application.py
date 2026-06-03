@@ -1,7 +1,6 @@
 """ControllerApplication for ZBOSS NCP protocol based adapters."""
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any, Dict
 
@@ -257,9 +256,61 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             )
         )
 
-        # XXX: We must wait a moment after setting the PAN ID, otherwise the
-        # setting does not persist
-        await asyncio.sleep(1)
+        wrote_nvram = False
+
+        if network_info.network_key.tx_counter:
+            LOGGER.debug(
+                "Restoring NWK frame counter to %d",
+                network_info.network_key.tx_counter,
+            )
+            await self._api.nvram.write(
+                t_zboss.DatasetId.ZB_IB_COUNTERS,
+                t_zboss.DSIbCounters(
+                    byte_count=t.uint16_t(8),
+                    nib_counter=t.uint32_t(
+                        network_info.network_key.tx_counter
+                    ),
+                    aib_counter=t.uint32_t(0),
+                ),
+            )
+            wrote_nvram = True
+
+        if network_info.key_table:
+            aps_keys = t_zboss.DSApsSecureKeys([
+                t_zboss.ApsSecureEntry(
+                    ieee_addr=k.partner_ieee,
+                    key=k.key,
+                    _unknown_1=0
+                )
+                for k in network_info.key_table
+            ])
+            await self._api.nvram.write(
+                t_zboss.DatasetId.ZB_NVRAM_APS_SECURE_DATA, aps_keys
+            )
+            wrote_nvram = True
+
+        if network_info.nwk_addresses:
+            addr_map = t_zboss.DSNwkAddrMap([
+                t_zboss.NwkAddrMapRecord(
+                    ieee_addr=ieee,
+                    nwk_addr=nwk,
+                    index=0,
+                    redirect_type=0,
+                    redirect_ref=0,
+                    _align=0
+                )
+                for ieee, nwk in network_info.nwk_addresses.items()
+            ])
+            await self._api.nvram.write(
+                t_zboss.DatasetId.ZB_NVRAM_ADDR_MAP, addr_map
+            )
+            wrote_nvram = True
+
+        if wrote_nvram:
+            LOGGER.debug(
+                "Soft-resetting NCP so restored NVRAM takes effect on next SWF"
+            )
+            await self._api.reset(wait_for_reset=True)
 
     async def _form_network(self, network_info, node_info):
         """Clear the current config and forms a new network."""
