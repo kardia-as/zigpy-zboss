@@ -128,7 +128,7 @@ def make_zboss_server(mocker):
 
         if shorten_delays:
             mocker.patch(
-                "zigpy_zboss.api.AFTER_BOOTLOADER_SKIP_BYTE_DELAY", 0.001
+                "zigpy_zboss.api.CONNECT_PROBE_RETRY_DELAY", 0.001
             )
             mocker.patch("zigpy_zboss.api.BOOTLOADER_PIN_TOGGLE_DELAY", 0.001)
 
@@ -708,6 +708,15 @@ class BaseZbossDevice(BaseServerZBOSS):
             Dataset=t.NVRAMDataset(dataset.serialize()[2:])
         )
 
+    @reply_to(c.NcpConfig.WriteNVRAM.Req(partial=True))
+    def write_nvram(self, request):
+        """Handle NVRAM write."""
+        return c.NcpConfig.WriteNVRAM.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=t.StatusCodeGeneric.OK,
+        )
+
     @reply_to(c.NcpConfig.GetTrustCenterAddr.Req(partial=True))
     def get_trust_center_addr(self, request):
         """Handle get trust center address."""
@@ -886,6 +895,16 @@ class BaseZbossGenericDevice(BaseServerZBOSS):
         self.active_endpoints.clear()
         return super().connection_lost(exc)
 
+    @reply_to(c.NcpConfig.GetZigbeeRole.Req(partial=True))
+    def get_zigbee_role(self, request):
+        """Answer any GetZigbeeRole probe (incl. the connect-time TSN=0)."""
+        return c.NcpConfig.GetZigbeeRole.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=t.StatusCodeGeneric.OK,
+            DeviceRole=t.DeviceRole(1)
+        )
+
     @reply_to(c.NcpConfig.ReadNVRAM.Req(partial=True))
     def read_nvram(self, request):
         """Handle NVRAM read."""
@@ -980,6 +999,15 @@ class BaseZbossGenericDevice(BaseServerZBOSS):
             DatasetId=t.DatasetId(request.DatasetId),
             DatasetVersion=dataset_version,
             Dataset=t.NVRAMDataset(dataset.serialize()[2:])
+        )
+
+    @reply_to(c.NcpConfig.WriteNVRAM.Req(partial=True))
+    def write_nvram(self, request):
+        """Handle NVRAM write."""
+        return c.NcpConfig.WriteNVRAM.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=t.StatusCodeGeneric.OK,
         )
 
     def on_zdo_node_desc_req(self, req, NWKAddrOfInterest):

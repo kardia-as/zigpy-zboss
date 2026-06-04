@@ -73,11 +73,12 @@ def test_dsapssecurekeys():
     assert deserialized_entry2.key == key2
     assert deserialized_entry2._unknown_1 == unknown_1_2
 
-    # Test the serialization
+    # Test the serialization — must be symmetric with deserialize:
+    # uint16_t(4 + N*entry_size) + 4 reserved bytes + entries
     serialized_data = result.serialize()
-    total_length = (entry_size * 2)
+    total_length = (entry_size * 2) + 4
     length_bytes = pack("<H", total_length)
-    expected_data = length_bytes + entry_data1 + entry_data2
+    expected_data = length_bytes + b"\x00\x00\x00\x00" + entry_data1 + entry_data2
     assert serialized_data == expected_data
 
 

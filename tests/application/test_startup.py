@@ -311,19 +311,23 @@ async def test_not_configured(make_application):
 
 
 @pytest.mark.asyncio
-async def test_reset(make_application, mocker):
-    """Test application reset."""
+async def test_disconnect_does_not_reset(make_application, mocker):
+    """Disconnect must NOT reset the NCP.
+
+    Opening the serial port does not reset the device and the NCP keeps its
+    state in NVRAM, so disconnect just closes the port. Resetting on every
+    disconnect (probe, reload, shutdown) would force a needless ~4-5s
+    reboot/re-enumeration each time. Starting an already-formed network and
+    shutting down should therefore perform no reset at all.
+    """
     app, zboss_server = make_application(server_cls=BaseZbossDevice)
 
-    # `_reset` should be called at least once
-    # to put the radio into a consistent state
     mocker.spy(ZBOSS, "reset")
-    assert ZBOSS.reset.call_count == 0
 
     await app.startup()
     await app.shutdown()
 
-    assert ZBOSS.reset.call_count >= 1
+    assert ZBOSS.reset.call_count == 0
 
 
 @pytest.mark.asyncio
