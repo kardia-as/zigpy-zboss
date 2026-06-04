@@ -31,6 +31,15 @@ FORMAT = "%H:%M:%S"
 DEVICE_JOIN_MAX_DELAY = 2
 REQUEST_MAX_RETRIES = 2
 
+# ZBOSS APS link-key flags (zb_secur.h). The trailing 4 bytes of an APS-secure
+# NVRAM entry pack a flags byte (then 3 align bytes); the byte is:
+#   bit0    aps_link_key_type  0=UNIQUE, 1=GLOBAL
+#   bit1    key_source         0=unknown, 1=CBKE
+#   bits2-3 key_attributes     0=PROVISIONAL, 1=UNVERIFIED, 2=VERIFIED
+APS_LINK_KEY_TYPE_UNIQUE = 0
+APS_LINK_KEY_TYPE_GLOBAL = 1
+APS_KEY_ATTR_VERIFIED = 2
+
 
 class ControllerApplication(zigpy.application.ControllerApplication):
     """Controller class."""
@@ -137,6 +146,25 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             "tc_policy_aps_insecure_join_enabled": t.Bool.true,
             "tc_policy_mgmt_channel_update_disabled": t.Bool.false,
         }
+
+    @staticmethod
+    def _aps_secure_flags(key, tc_link_key) -> int:
+        """Build the ZBOSS APS-secure entry flags byte for a restored key.
+
+        Restored keys are marked VERIFIED so ZBOSS trusts them immediately on
+        reload; otherwise they default to PROVISIONAL and the device has to
+        re-establish/verify the key (a TC re-key) before it can be used. A key
+        equal to the TC link key is a GLOBAL key, otherwise it is UNIQUE.
+        """
+        is_global = (
+            tc_link_key is not None and tc_link_key.key == key
+        )
+        link_key_type = (
+            APS_LINK_KEY_TYPE_GLOBAL if is_global
+            else APS_LINK_KEY_TYPE_UNIQUE
+        )
+        # bit0 = type, bit1 = key_source (0 = unknown), bits2-3 = attributes
+        return link_key_type | (APS_KEY_ATTR_VERIFIED << 2)
 
     async def write_network_info(self, *, network_info, node_info):
         """Write the provided network and node info to the radio hardware."""
@@ -281,7 +309,11 @@ class ControllerApplication(zigpy.application.ControllerApplication):
                 t_zboss.ApsSecureEntry(
                     ieee_addr=k.partner_ieee,
                     key=k.key,
-                    _unknown_1=0
+                    _unknown_1=t.uint32_t(
+                        self._aps_secure_flags(
+                            k.key, network_info.tc_link_key
+                        )
+                    ),
                 )
                 for k in network_info.key_table
             ])
