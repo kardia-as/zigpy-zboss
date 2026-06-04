@@ -143,14 +143,20 @@ class DSApsSecureKeys(
             r.append(item)
         return r, data
 
+    _HEADER_SIZE = 4
+
     def serialize(self, *, align=False) -> bytes:
         """Serialize object."""
         assert self._item_type is not None
         serialized_items = b"".join(
             [self._serialize_item(i, align=align) for i in self])
-        return self._header(
-            len(self) * self._item_type.get_byte_size()
-            ).serialize() + serialized_items
+        length = self._HEADER_SIZE + (
+            len(self) * self._item_type.get_byte_size())
+        return (
+            self._header(length).serialize()
+            + b"\x00" * self._HEADER_SIZE
+            + serialized_items
+        )
 
 
 class DSIbCounters(t.Struct):
