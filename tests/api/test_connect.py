@@ -1,21 +1,34 @@
 """Test cases for zigpy-zboss API connect/close methods."""
 import pytest
 
+import zigpy_zboss.commands as c
+import zigpy_zboss.types as t
 from zigpy_zboss.api import ZBOSS
 
 from ..conftest import BaseServerZBOSS, config_for_port_path
 
 
 @pytest.mark.asyncio
-async def test_connect_no_test(make_zboss_server):
-    """Test that ZBOSS.connect() can connect."""
+async def test_connect(make_zboss_server):
+    """Test that ZBOSS.connect() connects and probes the NCP."""
     zboss_server = make_zboss_server(server_cls=BaseServerZBOSS)
+
+    # connect() probes the NCP with GetZigbeeRole until it answers.
+    zboss_server.reply_to(
+        request=c.NcpConfig.GetZigbeeRole.Req(partial=True),
+        responses=lambda req: c.NcpConfig.GetZigbeeRole.Rsp(
+            TSN=req.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=t.StatusCodeGeneric.OK,
+            DeviceRole=t.DeviceRole(1),
+        ),
+    )
+
     zboss = ZBOSS(config_for_port_path(zboss_server.port_path))
 
     await zboss.connect()
 
-    # Nothing will be sent
-    assert zboss_server._uart.data_received.call_count == 0
+    assert zboss._uart is not None
 
     zboss.close()
 

@@ -205,6 +205,19 @@ def make_connected_zboss(make_zboss_server, mocker):
         zboss = ZBOSS(config)
         zboss_server = make_zboss_server(server_cls=server_cls)
 
+        # connect() probes the NCP with GetZigbeeRole until it answers. The
+        # bare BaseServerZBOSS has no responders registered, so answer the
+        # probe here, echoing the request's TSN.
+        zboss_server.reply_to(
+            request=c.NcpConfig.GetZigbeeRole.Req(partial=True),
+            responses=lambda req: c.NcpConfig.GetZigbeeRole.Rsp(
+                TSN=req.TSN,
+                StatusCat=t.StatusCategory(1),
+                StatusCode=t.StatusCodeGeneric.OK,
+                DeviceRole=t.DeviceRole(1),
+            ),
+        )
+
         await zboss.connect()
 
         zboss.nvram.align_structs = server_cls.align_structs
