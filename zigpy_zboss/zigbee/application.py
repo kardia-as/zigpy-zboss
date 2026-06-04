@@ -50,10 +50,10 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         zboss = ZBOSS(self.config)
 
         try:
+            # ZBOSS.connect() already probes the NCP (GetZigbeeRole) until it
+            # answers, so an extra explicit probe here would just be a wasted
+            # round-trip.
             await zboss.connect()
-            await zboss.request(
-                c.NcpConfig.GetZigbeeRole.Req(TSN=1), timeout=5
-            )
         except Exception:
             zboss.close()
             raise
@@ -63,15 +63,16 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         self._bind_callbacks()
 
     async def disconnect(self):
-        """Disconnect from the zigbee module."""
-        if self._api is not None:
-            try:
-                await self._api.reset(wait_for_reset=False)
-            except Exception:
-                LOGGER.debug(
-                    "Failed to reset API during disconnect", exc_info=True
-                )
+        """Disconnect from the zigbee module.
 
+        Just close the serial port; do not reset the NCP. Opening the port
+        does not reset the device and the NCP keeps its state in NVRAM, so a
+        plain close lets the next connect simply re-open and probe. Resetting
+        here would reboot the NCP on every disconnect (probe, reload,
+        shutdown), forcing a ~4-5s re-enumeration/boot wait each time for no
+        benefit.
+        """
+        if self._api is not None:
             self._api.close()
             self._api = None
 
