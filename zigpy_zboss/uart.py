@@ -43,7 +43,6 @@ class ZbossNcpProtocol(asyncio.Protocol):
         self._pack_seq = 0
         self._config = config
         self._transport = None
-        self._reset_flag = False
         self._buffer = bytearray()
         self._reconnect_task = None
         self._tx_lock = asyncio.Lock()
@@ -82,25 +81,11 @@ class ZbossNcpProtocol(asyncio.Protocol):
             return self._baudrate
         return getattr(serial, "baudrate", self._baudrate)
 
-    @property
-    def reset_flag(self) -> bool:
-        """Return True if a reset is in process."""
-        return self._reset_flag
-
-    @reset_flag.setter
-    def reset_flag(self, value) -> None:
-        if isinstance(value, bool):
-            self._reset_flag = value
-
     def connection_made(
             self, transport: asyncio.BaseTransport) -> None:
         """Notify serial port opened."""
         self._transport = transport
-        message = f"Opened {self.name} serial port"
-        if self._reset_flag:
-            self._reset_flag = False
-            return
-        SERIAL_LOGGER.info(message)
+        SERIAL_LOGGER.info(f"Opened {self.name} serial port")
         self._connected_event.set()
 
     def connection_lost(self, exc: typing.Optional[Exception]) -> None:

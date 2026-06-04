@@ -26,11 +26,11 @@ LISTENER_LOGGER = LOGGER.getChild("listener")
 LISTENER_LOGGER.propagate = False
 
 # All of these are in seconds
-AFTER_BOOTLOADER_SKIP_BYTE_DELAY = 2.5
 NETWORK_COMMISSIONING_TIMEOUT = 30
 BOOTLOADER_PIN_TOGGLE_DELAY = 0.15
 CONNECT_PING_TIMEOUT = 0.50
-CONNECT_PROBE_TIMEOUT = 10
+CONNECT_PROBE_TIMEOUT = 15
+CONNECT_PROBE_RETRY_DELAY = 0.5
 
 DEFAULT_TIMEOUT = 5
 
@@ -94,6 +94,13 @@ class ZBOSS:
 
         LOGGER.debug(
             "Connected to %s at %s baud", self._uart.name, self._uart.baudrate)
+        try:
+            await self._probe_until_ready()
+        except asyncio.TimeoutError as exc:
+            self.close()
+            raise RuntimeError(
+                "Could not communicate with NCP!"
+            ) from exc
 
     def connection_lost(self, exc) -> None:
         """Port has been closed.
@@ -349,35 +356,88 @@ class ZBOSS:
 
         tsn = self._app.get_sequence() if self._app is not None else 0
         req = c.NcpConfig.NCPModuleReset.Req(TSN=tsn, Option=option)
-        self._uart.reset_flag = True
 
         async with self._reset_uart_reconnect:
+            # Best-effort send: the NCP reboots and the LL ACK may never come.
+            self._disconnected_event.clear()
             await self._send_to_uart(req.to_frame())
 
             if not wait_for_reset:
                 return
 
-            LOGGER.debug("Waiting for radio to disconnect")
-
             try:
                 async with asyncio.timeout(EXPECTED_DISCONNECT_TIMEOUT):
                     await self._disconnected_event.wait()
             except asyncio.TimeoutError:
+                # The link never dropped: the chip did not reboot over a
+                # USB-CDC transport (e.g. an external UART). Confirm it is
+                # responsive by probing the existing link rather than assuming.
                 LOGGER.debug(
-                    "Radio did not disconnect, must be using external UART"
-                )
+                    "Radio did not disconnect; probing existing link")
+                if self._uart is not None:
+                    await self._probe_until_ready()
                 return
 
-            LOGGER.debug("Radio has disconnected, reconnecting")
-
+            # USB-CDC dropped: reopen the port and probe until the NCP answers.
+            # connect() handles the re-enumeration window and boot delay.
             for attempt in range(MAX_RESET_RECONNECT_ATTEMPTS):
                 await asyncio.sleep(RESET_RECONNECT_DELAY)
-
                 try:
                     await self.connect()
-                    break
+                    return
                 except Exception as exc:
                     if attempt == MAX_RESET_RECONNECT_ATTEMPTS - 1:
                         raise
-
                     LOGGER.debug("Failed to reconnect, retrying: %r", exc)
+
+    async def _probe_until_ready(self):
+        """Poll the NCP until it answers or the probe deadline elapses.
+
+        The NCP may go through one or more USB CDC disconnect/reconnect cycles
+        while booting (e.g. after a previous reset command). This method handles
+        those cycles by reconnecting whenever _uart is lost, then continues
+        probing — all within CONNECT_PROBE_TIMEOUT seconds.
+        """
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + CONNECT_PROBE_TIMEOUT
+        attempt = 0
+
+        while True:
+            attempt += 1
+
+            if self._uart is None:
+                if loop.time() >= deadline:
+                    raise asyncio.TimeoutError()
+                LOGGER.debug("UART lost, reconnecting (attempt %d)", attempt)
+                try:
+                    self._uart = await uart.connect(
+                        self._config[conf.CONF_DEVICE], self)
+                except Exception as exc:
+                    LOGGER.debug("Reconnect failed: %r", exc)
+                    if loop.time() >= deadline:
+                        raise asyncio.TimeoutError()
+                    await asyncio.sleep(CONNECT_PROBE_RETRY_DELAY)
+                    continue
+
+            tsn = self._app.get_sequence() if self._app is not None else 0
+            try:
+                await self.request(
+                    c.NcpConfig.GetZigbeeRole.Req(TSN=tsn),
+                    timeout=CONNECT_PING_TIMEOUT,
+                )
+                LOGGER.debug("NCP ready after %d probe attempt(s)", attempt)
+                return
+            except asyncio.TimeoutError:
+                if loop.time() >= deadline:
+                    raise
+            except RuntimeError:
+                # connection_lost fired during the request; will reconnect on
+                # the next iteration.
+                pass
+
+            LOGGER.debug(
+                "NCP not ready (probe attempt %d), retrying in %.1fs",
+                attempt,
+                CONNECT_PROBE_RETRY_DELAY,
+            )
+            await asyncio.sleep(CONNECT_PROBE_RETRY_DELAY)
