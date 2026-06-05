@@ -309,7 +309,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
                 t_zboss.ApsSecureEntry(
                     ieee_addr=k.partner_ieee,
                     key=k.key,
-                    _unknown_1=t.uint32_t(
+                    flags=t.uint32_t(
                         self._aps_secure_flags(
                             k.key, network_info.tc_link_key
                         )

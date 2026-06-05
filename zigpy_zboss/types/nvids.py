@@ -119,7 +119,9 @@ class ApsSecureEntry(NVRAMStruct):
 
     ieee_addr: t.EUI64
     key: t.KeyData
-    _unknown_1: basic.uint32_t
+    # Flags byte + 3 align bytes (ZBOSS zb_aps_device_key_pair_set_t tail):
+    # aps_link_key_type (bit0) | key_source (bit1) | key_attributes (bits2-3).
+    flags: basic.uint32_t
 
 
 class DSApsSecureKeys(

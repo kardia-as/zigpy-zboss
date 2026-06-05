@@ -30,17 +30,17 @@ def test_dsapssecurekeys():
     """Test the serialize/deserialize method of the DSApsSecureKeys class."""
     ieee_addr1 = t.EUI64([0, 1, 2, 3, 4, 5, 6, 7])
     key1 = t.KeyData([0x10] * 16)
-    unknown_1_1 = t.basic.uint32_t(12345678)
+    flags_1 = t.basic.uint32_t(12345678)
     entry1 = ApsSecureEntry(
-        ieee_addr=ieee_addr1, key=key1, _unknown_1=unknown_1_1
+        ieee_addr=ieee_addr1, key=key1, flags=flags_1
     )
     entry_data1 = entry1.serialize()
 
     ieee_addr2 = t.EUI64([8, 9, 10, 11, 12, 13, 14, 15])
     key2 = t.KeyData([0x20] * 16)
-    unknown_1_2 = t.basic.uint32_t(87654321)
+    flags_2 = t.basic.uint32_t(87654321)
     entry2 = ApsSecureEntry(
-        ieee_addr=ieee_addr2, key=key2, _unknown_1=unknown_1_2
+        ieee_addr=ieee_addr2, key=key2, flags=flags_2
     )
     entry_data2 = entry2.serialize()
 
@@ -66,12 +66,12 @@ def test_dsapssecurekeys():
     deserialized_entry1 = result[0]
     assert deserialized_entry1.ieee_addr == ieee_addr1
     assert deserialized_entry1.key == key1
-    assert deserialized_entry1._unknown_1 == unknown_1_1
+    assert deserialized_entry1.flags == flags_1
 
     deserialized_entry2 = result[1]
     assert deserialized_entry2.ieee_addr == ieee_addr2
     assert deserialized_entry2.key == key2
-    assert deserialized_entry2._unknown_1 == unknown_1_2
+    assert deserialized_entry2.flags == flags_2
 
     # Test the serialization — must be symmetric with deserialize:
     # uint16_t(4 + N*entry_size) + 4 reserved bytes + entries

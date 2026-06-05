@@ -696,12 +696,12 @@ class BaseZbossDevice(BaseServerZBOSS):
                 t.ApsSecureEntry(
                     ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:77"),
                     key=t.KeyData(b'\x03' * 16),
-                    _unknown_1=0
+                    flags=0
                 ),
                 t.ApsSecureEntry(
                     ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:78"),
                     key=t.KeyData(b'\x04' * 16),
-                    _unknown_1=0
+                    flags=0
                 ),
             ])
             nvram_version = 1
@@ -989,12 +989,12 @@ class BaseZbossGenericDevice(BaseServerZBOSS):
                 t.ApsSecureEntry(
                     ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:77"),
                     key=t.KeyData(b'\x03' * 16),
-                    _unknown_1=0
+                    flags=0
                 ),
                 t.ApsSecureEntry(
                     ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:78"),
                     key=t.KeyData(b'\x04' * 16),
-                    _unknown_1=0
+                    flags=0
                 ),
             ])
             nvram_version = 1
