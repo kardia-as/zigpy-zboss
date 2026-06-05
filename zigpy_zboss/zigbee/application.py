@@ -87,7 +87,7 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
     async def start_network(self):
         """Start the network."""
-        if self.state.node_info == zigpy.state.NodeInfo():
+        if self.state.node_info.nwk is None:
             await self.load_network_info()
 
         await self.start_without_formation()
