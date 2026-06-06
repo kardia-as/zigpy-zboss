@@ -214,7 +214,7 @@ class ZbossZDO(ZigpyZDO):
         return res.StatusCode
 
     async def Mgmt_NWK_Update_req(self, nwkUpdate):
-        """Request join permition."""
+        """Issue a ZDO Mgmt_NWK_Update (energy scan / channel change)."""
         res = await self._device._application._api.request(
             c.ZDO.MgmtNwkUpdate.Req(
                 TSN=self._device._application.get_sequence(),
@@ -226,7 +226,10 @@ class ZbossZDO(ZigpyZDO):
             )
         )
         if res.StatusCode != 0:
-            return (None, None, None, None, None)
+            raise zigpy.exceptions.DeliveryError(
+                f"Mgmt_NWK_Update_req failed: {res.StatusCode}",
+                status=res.StatusCode,
+            )
         return (None, res.ScannedChannels, None, None, res.EnergyValues)
 
     async def zboss_specific_cmd(self, packet: t.ZigbeePacket) -> None:
