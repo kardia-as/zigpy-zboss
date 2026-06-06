@@ -1,10 +1,17 @@
 """Module that connects and sends/receives bytes from the nRF52 SoC."""
 import asyncio
+import errno
 import logging
+import os
 import typing
 
-import async_timeout
-import zigpy.serial
+import serialx
+
+try:
+    import termios as _termios
+    _SERIAL_TRANSIENT_ERRORS = (OSError, _termios.error)
+except ImportError:
+    _SERIAL_TRANSIENT_ERRORS = (OSError,)
 
 import zigpy_zboss.config as conf
 from zigpy_zboss import types as t
@@ -15,9 +22,11 @@ from zigpy_zboss.logger import SERIAL_LOGGER
 
 LOGGER = logging.getLogger(__name__)
 ACK_TIMEOUT = 1
-SEND_RETRIES = 2
+SEND_RETRIES = 3
 STARTUP_TIMEOUT = 5
 RECONNECT_TIMEOUT = 10
+CONNECT_OPEN_TIMEOUT = 15.0
+CONNECT_OPEN_RETRY_DELAY = 0.5
 
 
 class BufferTooShort(Exception):
@@ -34,7 +43,6 @@ class ZbossNcpProtocol(asyncio.Protocol):
         self._pack_seq = 0
         self._config = config
         self._transport = None
-        self._reset_flag = False
         self._buffer = bytearray()
         self._reconnect_task = None
         self._tx_lock = asyncio.Lock()
@@ -53,32 +61,31 @@ class ZbossNcpProtocol(asyncio.Protocol):
     @property
     def name(self) -> str:
         """Return serial name."""
-        return self._transport.serial.name
+        serial = getattr(self._transport, "serial", None)
+        if serial is None:
+            return str(self._port)
+
+        # serialx exposes `port`/`portstr`, while pyserial had `name`.
+        return (
+            getattr(serial, "name", None)
+            or getattr(serial, "port", None)
+            or getattr(serial, "portstr", None)
+            or str(self._port)
+        )
 
     @property
     def baudrate(self) -> int:
         """Return the baudrate."""
-        return self._transport.serial.baudrate
-
-    @property
-    def reset_flag(self) -> bool:
-        """Return True if a reset is in process."""
-        return self._reset_flag
-
-    @reset_flag.setter
-    def reset_flag(self, value) -> None:
-        if isinstance(value, bool):
-            self._reset_flag = value
+        serial = getattr(self._transport, "serial", None)
+        if serial is None:
+            return self._baudrate
+        return getattr(serial, "baudrate", self._baudrate)
 
     def connection_made(
             self, transport: asyncio.BaseTransport) -> None:
         """Notify serial port opened."""
         self._transport = transport
-        message = f"Opened {transport.serial.name} serial port"
-        if self._reset_flag:
-            self._reset_flag = False
-            return
-        SERIAL_LOGGER.info(message)
+        SERIAL_LOGGER.info(f"Opened {self.name} serial port")
         self._connected_event.set()
 
     def connection_lost(self, exc: typing.Optional[Exception]) -> None:
@@ -113,21 +120,45 @@ class ZbossNcpProtocol(asyncio.Protocol):
             self._transport.write(data)
 
     async def send(self, frame: Frame) -> None:
-        """Send data, and wait for acknowledgement."""
+        """Send and retransmit a frame and wait for its link-level ACK."""
         async with self._tx_lock:
-            if isinstance(frame, Frame) and self._transport:
+            if not (isinstance(frame, Frame) and self._transport):
+                return
+
+            # The packet sequence is only advanced when an ACK is received,
+            # so it stays stable across retransmissions of the same frame.
+            frame = self._set_frame_flag(frame)
+            frame = self._ll_checksum(frame)
+
+            for attempt in range(SEND_RETRIES):
+                if attempt:
+                    # Flag subsequent sends as retransmissions of the same
+                    # packet sequence and refresh the checksum.
+                    frame.ll_header = frame.ll_header.with_flags(
+                        frame.ll_header.flags | t.LLFlags.Retransmit
+                    )
+                    frame = self._ll_checksum(frame)
+
                 self._ack_received_event = asyncio.Event()
                 try:
-                    async with async_timeout.timeout(ACK_TIMEOUT):
-                        frame = self._set_frame_flag(frame)
-                        frame = self._ll_checksum(frame)
+                    async with asyncio.timeout(ACK_TIMEOUT):
                         self.write(frame.serialize())
                         await self._ack_received_event.wait()
+                    return
                 except asyncio.TimeoutError:
                     SERIAL_LOGGER.debug(
-                        f'No ACK after {ACK_TIMEOUT}s for '
-                        f'{t.Bytes.__repr__(frame.serialize())}'
+                        "No ACK after %ss for %s (attempt %d/%d)",
+                        ACK_TIMEOUT,
+                        t.Bytes.__repr__(frame.serialize()),
+                        attempt + 1,
+                        SEND_RETRIES,
                     )
+
+            SERIAL_LOGGER.warning(
+                "No ACK after %d attempts, giving up on frame: %s",
+                SEND_RETRIES,
+                t.Bytes.__repr__(frame.serialize()),
+            )
 
     def _set_frame_flag(self, frame):
         """Return frame with required flags set."""
@@ -188,9 +219,17 @@ class ZbossNcpProtocol(asyncio.Protocol):
                 if signature_idx < 0:
                     # If we don't have a signature in the buffer,
                     # drop everything
+                    discarded = bytes(self._buffer)
                     self._buffer.clear()
                 else:
+                    discarded = bytes(self._buffer[:signature_idx])
                     del self._buffer[:signature_idx]
+
+                if discarded:
+                    SERIAL_LOGGER.warning(
+                        "Dropped unrecognized bytes: %s",
+                        t.Bytes.__repr__(discarded),
+                    )
 
     def _extract_frame(self) -> Frame:
         """Extract a single frame from the buffer."""
@@ -245,17 +284,50 @@ async def connect(config: conf.ConfigType, api) -> ZbossNcpProtocol:
     baudrate = config[conf.CONF_DEVICE_BAUDRATE]
     flow_control = config[conf.CONF_DEVICE_FLOW_CONTROL]
 
-    _, protocol = await zigpy.serial.create_serial_connection(
-        loop=loop,
-        protocol_factory=lambda: ZbossNcpProtocol(config, api),
-        url=port,
-        baudrate=baudrate,
-        xonxoff=(flow_control == "software"),
-        rtscts=(flow_control == "hardware"),
-    )
+    deadline = loop.time() + CONNECT_OPEN_TIMEOUT
+    last_exc: OSError | None = None
+    protocol = None
+
+    while loop.time() < deadline:
+        if not os.path.exists(port):
+            await asyncio.sleep(CONNECT_OPEN_RETRY_DELAY)
+            continue
+
+        try:
+            _, protocol = await serialx.create_serial_connection(
+                loop=loop,
+                protocol_factory=lambda: ZbossNcpProtocol(config, api),
+                url=port,
+                baudrate=baudrate,
+                xonxoff=(flow_control == "software"),
+                rtscts=(flow_control == "hardware"),
+            )
+            break
+        except _SERIAL_TRANSIENT_ERRORS as exc:
+            err_no = (
+                exc.errno if isinstance(exc, OSError)
+                else (exc.args[0] if exc.args else 0)
+            )
+            if err_no != errno.ENXIO:
+                raise
+            last_exc = exc if isinstance(exc, OSError) else OSError(
+                errno.ENXIO, str(exc))
+            LOGGER.debug(
+                "Open %r not ready (%s), retrying until %.0fs elapsed",
+                port,
+                exc,
+                CONNECT_OPEN_TIMEOUT,
+            )
+            await asyncio.sleep(CONNECT_OPEN_RETRY_DELAY)
+
+    if protocol is None:
+        raise OSError(
+            errno.ENXIO,
+            f"Could not open {port!r} within {CONNECT_OPEN_TIMEOUT:.0f}s",
+        ) from last_exc
 
     try:
-        async with async_timeout.timeout(STARTUP_TIMEOUT):
+        async with asyncio.timeout(STARTUP_TIMEOUT):
             await protocol._connected_event.wait()
     except asyncio.TimeoutError:
         protocol.close()

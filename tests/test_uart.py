@@ -1,6 +1,5 @@
 """Test uart."""
 import pytest
-from serial_asyncio import SerialTransport
 
 import zigpy_zboss.commands as c
 import zigpy_zboss.config as conf
@@ -52,7 +51,8 @@ def dummy_serial_conn(event_loop, mocker):
         event_loop.remove_writer = lambda *args, **kwargs: None
         event_loop.remove_reader = lambda *args, **kwargs: None
 
-        transport = SerialTransport(event_loop, protocol, serial_interface)
+        transport = mocker.Mock()
+        transport.serial = serial_interface
 
         protocol.connection_made(transport)
 
@@ -61,9 +61,10 @@ def dummy_serial_conn(event_loop, mocker):
         return fut
 
     mocker.patch(
-        "zigpy.serial.pyserial_asyncio.create_serial_connection",
+        "serialx.create_serial_connection",
         new=create_serial_conn
     )
+    mocker.patch("zigpy_zboss.uart.os.path.exists", return_value=True)
 
     return device, serial_interface
 

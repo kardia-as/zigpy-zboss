@@ -453,8 +453,10 @@ def test_command_equality():
     )
 
 
-def test_command_deserialization():
+def test_command_deserialization(caplog):
     """Test command deserialization."""
+    import logging
+
     command = c.NcpConfig.GetModuleVersion.Rsp(
         TSN=10,
         StatusCat=t.StatusCategory(1),
@@ -470,17 +472,18 @@ def test_command_deserialization():
             type(command).from_frame(command.to_frame()).to_frame()
     )
 
-    # Deserialization fails if there is unparsed data at the end of the frame
+    # Deserialization warns (does not raise) if there is unparsed data at
+    # the end of the frame. This tolerates protocol stack additions that the
+    # NCP-side firmware may emit and the host may not yet know about.
     frame = command.to_frame()
     new_hl_packet = dataclasses.replace(
         frame.hl_packet, data=frame.hl_packet.data + b"\x01"
     )
-
-    # Create a new Frame instance with the updated hl_packet
     bad_frame = dataclasses.replace(frame, hl_packet=new_hl_packet)
 
-    with pytest.raises(ValueError):
+    with caplog.at_level(logging.WARNING, logger="zigpy_zboss.types.commands"):
         type(command).from_frame(bad_frame)
+    assert "trailing data after parsing" in caplog.text
 
     # Deserialization fails if you attempt to deserialize the wrong frame
     with pytest.raises(ValueError):

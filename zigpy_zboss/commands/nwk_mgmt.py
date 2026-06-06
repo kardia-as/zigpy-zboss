@@ -92,6 +92,9 @@ class NWK(t.CommandsBase):
         ),
         rsp_schema=t.STATUS_SCHEMA + (
             t.Param("NWKAddr", t.NWK, "NWK address"),
+            t.Param("PANID", t.PanId, "Short PAN ID"),
+            t.Param("Page", t.uint8_t, "Channel page number"),
+            t.Param("Channel", t.uint8_t, "Channel number"),
         ),
     )
     # Discovery = t.CommandDef(

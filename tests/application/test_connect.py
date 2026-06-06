@@ -85,7 +85,7 @@ async def test_probe_unsuccessful_slow(make_zboss_server, mocker):
 
 
 @pytest.mark.asyncio
-async def test_probe_successful(make_zboss_server, event_loop):
+async def test_probe_successful(make_zboss_server):
     """Test successful probe."""
     zboss_server = make_zboss_server(
         server_cls=BaseServerZBOSS, shorten_delays=False
@@ -102,7 +102,7 @@ async def test_probe_successful(make_zboss_server, event_loop):
     async def send_ping_response():
         await zboss_server.send(ping_rsp)
 
-    event_loop.call_soon(asyncio.create_task, send_ping_response())
+    asyncio.create_task(send_ping_response())
 
     assert await ControllerApplication.probe(
         conf.SCHEMA_DEVICE({conf.CONF_DEVICE_PATH: zboss_server.serial_port})

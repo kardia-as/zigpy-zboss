@@ -438,7 +438,9 @@ class NcpConfig(t.CommandsBase):
             t.Param("PolicyType", t.PolicyType, "A policy type to set"),
             t.Param("PolicyValue", t.uint8_t, "A policy value to set"),
         ),
-        rsp_schema=t.STATUS_SCHEMA,
+        rsp_schema=t.STATUS_SCHEMA + (
+            t.Param("Reserved", t.Bytes, "Reserved bytes", optional=True),
+        ),
     )
     SetExtendedPANID = t.CommandDef(
         t.ControlType.REQ,

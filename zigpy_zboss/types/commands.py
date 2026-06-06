@@ -236,9 +236,9 @@ class HLCommonHeader(t.uint32_t):
         """Set the string representation of the high level common header."""
         return (
             f"{type(self).__name__}("
-            f"version=0x{self.version:02X}, "
+            f"version=0x{self.version: 02X}, "
             f"type={self.control_type!s}, "
-            f"command_id=0x{self.id:04X}"
+            f"command_id=0x{self.id: 04X}"
             ")"
         )
 
@@ -526,7 +526,7 @@ class CommandBase:
                     # Otherwise, let the exception happen
                     raise
         if data:
-            raise ValueError(
+            LOGGER.warning(
                 f"Frame {frame} contains trailing data after parsing: {data}"
             )
 

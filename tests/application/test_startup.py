@@ -293,14 +293,14 @@ async def test_not_configured(make_application):
             Joined=0)]
     )
 
+    # StartWithoutFormation is attempted when Joined=0; respond with an error
+    # so that start_without_formation() raises NetworkNotFormed.
     zboss_server.reply_once_to(
-        request=c.NcpConfig.NCPModuleReset.Req(
-            TSN=3, Option=t.ResetOptions(0)
-        ),
-        responses=[c.NcpConfig.NCPModuleReset.Rsp(
+        request=c.NWK.StartWithoutFormation.Req(TSN=3),
+        responses=[c.NWK.StartWithoutFormation.Rsp(
             TSN=3,
             StatusCat=t.StatusCategory(4),
-            StatusCode=t.StatusCodeGeneric.OK
+            StatusCode=t.StatusCodeGeneric.ERROR
         )]
     )
 
@@ -311,19 +311,23 @@ async def test_not_configured(make_application):
 
 
 @pytest.mark.asyncio
-async def test_reset(make_application, mocker):
-    """Test application reset."""
+async def test_disconnect_does_not_reset(make_application, mocker):
+    """Disconnect must NOT reset the NCP.
+
+    Opening the serial port does not reset the device and the NCP keeps its
+    state in NVRAM, so disconnect just closes the port. Resetting on every
+    disconnect (probe, reload, shutdown) would force a needless ~4-5s
+    reboot/re-enumeration each time. Starting an already-formed network and
+    shutting down should therefore perform no reset at all.
+    """
     app, zboss_server = make_application(server_cls=BaseZbossDevice)
 
-    # `_reset` should be called at least once
-    # to put the radio into a consistent state
     mocker.spy(ZBOSS, "reset")
-    assert ZBOSS.reset.call_count == 0
 
     await app.startup()
     await app.shutdown()
 
-    assert ZBOSS.reset.call_count >= 1
+    assert ZBOSS.reset.call_count == 0
 
 
 @pytest.mark.asyncio
@@ -362,4 +366,4 @@ async def test_concurrency_auto_config(make_application):
     await app.connect()
     await app.start_network()
 
-    assert app._concurrent_requests_semaphore.max_value == 8
+    assert app._concurrent_requests_semaphore.max_concurrency == 8

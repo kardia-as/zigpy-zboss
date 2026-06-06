@@ -5,9 +5,20 @@ import dataclasses
 import logging
 import typing
 
-from zigpy.types import (EUI64, NWK, Bool, Channels,  # noqa: F401
-                         CharacterString, ClusterId, ExtendedPanId, KeyData,
-                         List, PanId, Struct, bitmap8)
+from zigpy.types import (  # noqa: F401
+    EUI64,
+    NWK,
+    Bool,
+    Channels,
+    CharacterString,
+    ClusterId,
+    ExtendedPanId,
+    KeyData,
+    List,
+    PanId,
+    Struct,
+    bitmap8,
+)
 
 from . import basic
 

@@ -3,11 +3,10 @@ import asyncio
 import gc
 import inspect
 import logging
-import sys
-import typing
 from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 
 import pytest
+import pytest_asyncio
 import zigpy
 from zigpy.zdo import types as zdo_t
 
@@ -35,44 +34,23 @@ def pytest_collection_modifyitems(session, config, items):
         item.add_marker(pytest.mark.filterwarnings("error::RuntimeWarning"))
 
 
-@pytest.hookimpl(trylast=True)
-def pytest_fixture_post_finalizer(fixturedef, request) -> None:
-    """Post fixture teardown."""
-    if fixturedef.argname != "event_loop":
-        return
-
-    policy = asyncio.get_event_loop_policy()
-    try:
-        loop = policy.get_event_loop()
-    except RuntimeError:
-        loop = None
-    if loop is not None:
-        # Cleanup code based on the implementation of asyncio.run()
-        try:
-            if not loop.is_closed():
-                asyncio.runners._cancel_all_tasks(loop)
-                loop.run_until_complete(loop.shutdown_asyncgens())
-                if sys.version_info >= (3, 9):
-                    loop.run_until_complete(loop.shutdown_default_executor())
-        finally:
-            loop.close()
-    new_loop = policy.new_event_loop()  # Replace existing event loop
-    # Ensure subsequent calls to get_event_loop() succeed
-    policy.set_event_loop(new_loop)
-
-
-@pytest.fixture
-def event_loop(
-        request: pytest.FixtureRequest,
-) -> typing.Iterator[asyncio.AbstractEventLoop]:
-    """Create an instance of the default event loop for each test case."""
-    yield asyncio.get_event_loop_policy().new_event_loop()
-    # Call the garbage collector to trigger ResourceWarning's as soon
-    # as possible (these are triggered in various __del__ methods).
-    # Without this, resources opened in one test can fail other tests
-    # when the warning is generated.
+@pytest.fixture(autouse=True)
+def _gc_after_test():
+    """Run gc after each test to surface ResourceWarnings deterministically."""
+    yield
     gc.collect()
-    # Event loop cleanup handled by pytest_fixture_post_finalizer
+
+
+@pytest_asyncio.fixture
+async def event_loop():
+    """Expose the currently running event loop to tests as a fixture.
+
+    Compatibility shim for tests written against pytest-asyncio < 1.0,
+    which exposed an ``event_loop`` fixture out of the box. With
+    pytest-asyncio >= 1.0 fixtures share the test's loop, so we just
+    surface ``asyncio.get_running_loop()``.
+    """
+    yield asyncio.get_running_loop()
 
 
 class ForwardingSerialTransport:
@@ -150,7 +128,7 @@ def make_zboss_server(mocker):
 
         if shorten_delays:
             mocker.patch(
-                "zigpy_zboss.api.AFTER_BOOTLOADER_SKIP_BYTE_DELAY", 0.001
+                "zigpy_zboss.api.CONNECT_PROBE_RETRY_DELAY", 0.001
             )
             mocker.patch("zigpy_zboss.api.BOOTLOADER_PIN_TOGGLE_DELAY", 0.001)
 
@@ -201,9 +179,10 @@ def make_zboss_server(mocker):
             return fut
 
         mocker.patch(
-            "zigpy.serial.pyserial_asyncio.create_serial_connection",
+            "serialx.create_serial_connection",
             new=passthrough_serial_conn
         )
+        mocker.patch("zigpy_zboss.uart.os.path.exists", return_value=True)
 
         # So we don't have to import it every time
         server.serial_port = FAKE_SERIAL_PORT
@@ -226,6 +205,19 @@ def make_connected_zboss(make_zboss_server, mocker):
         zboss = ZBOSS(config)
         zboss_server = make_zboss_server(server_cls=server_cls)
 
+        # connect() probes the NCP with GetZigbeeRole until it answers. The
+        # bare BaseServerZBOSS has no responders registered, so answer the
+        # probe here, echoing the request's TSN.
+        zboss_server.reply_to(
+            request=c.NcpConfig.GetZigbeeRole.Req(partial=True),
+            responses=lambda req: c.NcpConfig.GetZigbeeRole.Rsp(
+                TSN=req.TSN,
+                StatusCat=t.StatusCategory(1),
+                StatusCode=t.StatusCodeGeneric.OK,
+                DeviceRole=t.DeviceRole(1),
+            ),
+        )
+
         await zboss.connect()
 
         zboss.nvram.align_structs = server_cls.align_structs
@@ -236,12 +228,10 @@ def make_connected_zboss(make_zboss_server, mocker):
     return inner
 
 
-@pytest.fixture
-def connected_zboss(event_loop, make_connected_zboss):
+@pytest_asyncio.fixture
+async def connected_zboss(make_connected_zboss):
     """Zboss connected fixture."""
-    zboss, zboss_server = event_loop.run_until_complete(
-        make_connected_zboss(BaseServerZBOSS)
-    )
+    zboss, zboss_server = await make_connected_zboss(BaseServerZBOSS)
     yield zboss, zboss_server
     zboss.close()
 
@@ -680,50 +670,40 @@ class BaseZbossDevice(BaseServerZBOSS):
             dataset_version = 1
         elif request.DatasetId == t.DatasetId.ZB_NVRAM_ADDR_MAP:
             status_code = t.StatusCodeGeneric.OK
-            dataset = t.DSNwkAddrMap(
-                header=t.NwkAddrMapHeader(
-                    byte_count=100,
-                    entry_count=2,
+            dataset = t.DSNwkAddrMap([
+                t.NwkAddrMapRecord(
+                    ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:77"),
+                    nwk_addr=0x1234,
+                    index=1,
+                    redirect_type=0,
+                    redirect_ref=0,
                     _align=0
                 ),
-                items=[
-                    t.NwkAddrMapRecord(
-                        ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:77"),
-                        nwk_addr=0x1234,
-                        index=1,
-                        redirect_type=0,
-                        redirect_ref=0,
-                        _align=0
-                    ),
-                    t.NwkAddrMapRecord(
-                        ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:78"),
-                        nwk_addr=0x5678,
-                        index=2,
-                        redirect_type=0,
-                        redirect_ref=0,
-                        _align=0
-                    )
-                ]
-            )
+                t.NwkAddrMapRecord(
+                    ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:78"),
+                    nwk_addr=0x5678,
+                    index=2,
+                    redirect_type=0,
+                    redirect_ref=0,
+                    _align=0
+                ),
+            ])
             nvram_version = 2
             dataset_version = 1
         elif request.DatasetId == t.DatasetId.ZB_NVRAM_APS_SECURE_DATA:
             status_code = t.StatusCodeGeneric.OK
-            dataset = t.DSApsSecureKeys(
-                header=10,
-                items=[
-                    t.ApsSecureEntry(
-                        ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:77"),
-                        key=t.KeyData(b'\x03' * 16),
-                        _unknown_1=0
-                    ),
-                    t.ApsSecureEntry(
-                        ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:78"),
-                        key=t.KeyData(b'\x04' * 16),
-                        _unknown_1=0
-                    )
-                ]
-            )
+            dataset = t.DSApsSecureKeys([
+                t.ApsSecureEntry(
+                    ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:77"),
+                    key=t.KeyData(b'\x03' * 16),
+                    flags=0
+                ),
+                t.ApsSecureEntry(
+                    ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:78"),
+                    key=t.KeyData(b'\x04' * 16),
+                    flags=0
+                ),
+            ])
             nvram_version = 1
             dataset_version = 1
         else:
@@ -738,7 +718,16 @@ class BaseZbossDevice(BaseServerZBOSS):
             NVRAMVersion=nvram_version,
             DatasetId=t.DatasetId(request.DatasetId),
             DatasetVersion=dataset_version,
-            Dataset=t.NVRAMDataset(dataset.serialize())
+            Dataset=t.NVRAMDataset(dataset.serialize()[2:])
+        )
+
+    @reply_to(c.NcpConfig.WriteNVRAM.Req(partial=True))
+    def write_nvram(self, request):
+        """Handle NVRAM write."""
+        return c.NcpConfig.WriteNVRAM.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=t.StatusCodeGeneric.OK,
         )
 
     @reply_to(c.NcpConfig.GetTrustCenterAddr.Req(partial=True))
@@ -769,6 +758,15 @@ class BaseZbossDevice(BaseServerZBOSS):
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
             StatusCode=t.StatusCodeGeneric.OK  # Example status code
+        )
+
+    @reply_to(c.NcpConfig.SetTCPolicy.Req(partial=True))
+    def set_tc_policy(self, request):
+        """Handle set TC policy."""
+        return c.NcpConfig.SetTCPolicy.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=t.StatusCodeGeneric.OK
         )
 
     @reply_to(c.NcpConfig.GetModuleVersion.Req(partial=True))
@@ -910,6 +908,16 @@ class BaseZbossGenericDevice(BaseServerZBOSS):
         self.active_endpoints.clear()
         return super().connection_lost(exc)
 
+    @reply_to(c.NcpConfig.GetZigbeeRole.Req(partial=True))
+    def get_zigbee_role(self, request):
+        """Answer any GetZigbeeRole probe (incl. the connect-time TSN=0)."""
+        return c.NcpConfig.GetZigbeeRole.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=t.StatusCodeGeneric.OK,
+            DeviceRole=t.DeviceRole(1)
+        )
+
     @reply_to(c.NcpConfig.ReadNVRAM.Req(partial=True))
     def read_nvram(self, request):
         """Handle NVRAM read."""
@@ -929,7 +937,7 @@ class BaseZbossGenericDevice(BaseServerZBOSS):
                 parent_addr=t.EUI64.convert("00:11:22:33:44:55:66:77"),
                 tc_addr=t.EUI64.convert("00:11:22:33:44:55:66:77"),
                 nwk_key=t.KeyData(b'\x01' * 16),
-                nwk_key_seq=0,
+                nwk_key_seq=1,
                 tc_standard_key=t.KeyData(b'\x02' * 16),
                 channel=15,
                 page=0,
@@ -955,50 +963,40 @@ class BaseZbossGenericDevice(BaseServerZBOSS):
             dataset_version = 1
         elif request.DatasetId == t.DatasetId.ZB_NVRAM_ADDR_MAP:
             status_code = t.StatusCodeGeneric.OK
-            dataset = t.DSNwkAddrMap(
-                header=t.NwkAddrMapHeader(
-                    byte_count=100,
-                    entry_count=2,
+            dataset = t.DSNwkAddrMap([
+                t.NwkAddrMapRecord(
+                    ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:77"),
+                    nwk_addr=0x1234,
+                    index=1,
+                    redirect_type=0,
+                    redirect_ref=0,
                     _align=0
                 ),
-                items=[
-                    t.NwkAddrMapRecord(
-                        ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:77"),
-                        nwk_addr=0x1234,
-                        index=1,
-                        redirect_type=0,
-                        redirect_ref=0,
-                        _align=0
-                    ),
-                    t.NwkAddrMapRecord(
-                        ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:78"),
-                        nwk_addr=0x5678,
-                        index=2,
-                        redirect_type=0,
-                        redirect_ref=0,
-                        _align=0
-                    )
-                ]
-            )
+                t.NwkAddrMapRecord(
+                    ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:78"),
+                    nwk_addr=0x5678,
+                    index=2,
+                    redirect_type=0,
+                    redirect_ref=0,
+                    _align=0
+                ),
+            ])
             nvram_version = 2
             dataset_version = 1
         elif request.DatasetId == t.DatasetId.ZB_NVRAM_APS_SECURE_DATA:
             status_code = t.StatusCodeGeneric.OK
-            dataset = t.DSApsSecureKeys(
-                header=10,
-                items=[
-                    t.ApsSecureEntry(
-                        ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:77"),
-                        key=t.KeyData(b'\x03' * 16),
-                        _unknown_1=0
-                    ),
-                    t.ApsSecureEntry(
-                        ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:78"),
-                        key=t.KeyData(b'\x04' * 16),
-                        _unknown_1=0
-                    )
-                ]
-            )
+            dataset = t.DSApsSecureKeys([
+                t.ApsSecureEntry(
+                    ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:77"),
+                    key=t.KeyData(b'\x03' * 16),
+                    flags=0
+                ),
+                t.ApsSecureEntry(
+                    ieee_addr=t.EUI64.convert("00:11:22:33:44:55:66:78"),
+                    key=t.KeyData(b'\x04' * 16),
+                    flags=0
+                ),
+            ])
             nvram_version = 1
             dataset_version = 1
         else:
@@ -1013,7 +1011,16 @@ class BaseZbossGenericDevice(BaseServerZBOSS):
             NVRAMVersion=nvram_version,
             DatasetId=t.DatasetId(request.DatasetId),
             DatasetVersion=dataset_version,
-            Dataset=t.NVRAMDataset(dataset.serialize())
+            Dataset=t.NVRAMDataset(dataset.serialize()[2:])
+        )
+
+    @reply_to(c.NcpConfig.WriteNVRAM.Req(partial=True))
+    def write_nvram(self, request):
+        """Handle NVRAM write."""
+        return c.NcpConfig.WriteNVRAM.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=t.StatusCodeGeneric.OK,
         )
 
     def on_zdo_node_desc_req(self, req, NWKAddrOfInterest):

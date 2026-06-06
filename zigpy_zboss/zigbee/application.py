@@ -1,7 +1,6 @@
 """ControllerApplication for ZBOSS NCP protocol based adapters."""
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any, Dict
 
@@ -32,6 +31,15 @@ FORMAT = "%H:%M:%S"
 DEVICE_JOIN_MAX_DELAY = 2
 REQUEST_MAX_RETRIES = 2
 
+# ZBOSS APS link-key flags (zb_secur.h). The trailing 4 bytes of an APS-secure
+# NVRAM entry pack a flags byte (then 3 align bytes); the byte is:
+#   bit0    aps_link_key_type  0=UNIQUE, 1=GLOBAL
+#   bit1    key_source         0=unknown, 1=CBKE
+#   bits2-3 key_attributes     0=PROVISIONAL, 1=UNVERIFIED, 2=VERIFIED
+APS_LINK_KEY_TYPE_UNIQUE = 0
+APS_LINK_KEY_TYPE_GLOBAL = 1
+APS_KEY_ATTR_VERIFIED = 2
+
 
 class ControllerApplication(zigpy.application.ControllerApplication):
     """Controller class."""
@@ -51,10 +59,10 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         zboss = ZBOSS(self.config)
 
         try:
+            # ZBOSS.connect() already probes the NCP (GetZigbeeRole) until it
+            # answers, so an extra explicit probe here would just be a wasted
+            # round-trip.
             await zboss.connect()
-            await zboss.request(
-                c.NcpConfig.GetZigbeeRole.Req(TSN=1), timeout=1
-            )
         except Exception:
             zboss.close()
             raise
@@ -64,21 +72,22 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         self._bind_callbacks()
 
     async def disconnect(self):
-        """Disconnect from the zigbee module."""
-        if self._api is not None:
-            try:
-                await self._api.reset(wait_for_reset=False)
-            except Exception:
-                LOGGER.debug(
-                    "Failed to reset API during disconnect", exc_info=True
-                )
+        """Disconnect from the zigbee module.
 
+        Just close the serial port; do not reset the NCP. Opening the port
+        does not reset the device and the NCP keeps its state in NVRAM, so a
+        plain close lets the next connect simply re-open and probe. Resetting
+        here would reboot the NCP on every disconnect (probe, reload,
+        shutdown), forcing a ~4-5s re-enumeration/boot wait each time for no
+        benefit.
+        """
+        if self._api is not None:
             self._api.close()
             self._api = None
 
     async def start_network(self):
         """Start the network."""
-        if self.state.node_info == zigpy.state.NodeInfo():
+        if self.state.node_info.nwk is None:
             await self.load_network_info()
 
         await self.start_without_formation()
@@ -134,9 +143,28 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             "tc_policy_tc_rejoin_enabled": t.Bool.true,
             "tc_policy_unsecured_tc_rejoin_enabled": t.Bool.false,
             "tc_policy_tc_rejoin_ignored": t.Bool.false,
-            "tc_policy_aps_insecure_join_enabled": t.Bool.false,
+            "tc_policy_aps_insecure_join_enabled": t.Bool.true,
             "tc_policy_mgmt_channel_update_disabled": t.Bool.false,
         }
+
+    @staticmethod
+    def _aps_secure_flags(key, tc_link_key) -> int:
+        """Build the ZBOSS APS-secure entry flags byte for a restored key.
+
+        Restored keys are marked VERIFIED so ZBOSS trusts them immediately on
+        reload; otherwise they default to PROVISIONAL and the device has to
+        re-establish/verify the key (a TC re-key) before it can be used. A key
+        equal to the TC link key is a GLOBAL key, otherwise it is UNIQUE.
+        """
+        is_global = (
+            tc_link_key is not None and tc_link_key.key == key
+        )
+        link_key_type = (
+            APS_LINK_KEY_TYPE_GLOBAL if is_global
+            else APS_LINK_KEY_TYPE_UNIQUE
+        )
+        # bit0 = type, bit1 = key_source (0 = unknown), bits2-3 = attributes
+        return link_key_type | (APS_KEY_ATTR_VERIFIED << 2)
 
     async def write_network_info(self, *, network_info, node_info):
         """Write the provided network and node info to the radio hardware."""
@@ -183,10 +211,6 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             )
         )
 
-        if network_info.stack_specific.get("form_quickly", False):
-            await self._form_network(network_info, node_info)
-            return
-
         await self._api.request(
             request=c.NcpConfig.SetNwkKey.Req(
                 TSN=self.get_sequence(),
@@ -194,6 +218,10 @@ class ControllerApplication(zigpy.application.ControllerApplication):
                 KeyNumber=network_info.network_key.seq
             )
         )
+
+        if network_info.stack_specific.get("form_quickly", False):
+            await self._form_network(network_info, node_info)
+            return
 
         for policy_type, policy_value in {
             t_zboss.PolicyType.TC_Link_Keys_Required: (
@@ -257,9 +285,65 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             )
         )
 
-        # XXX: We must wait a moment after setting the PAN ID, otherwise the
-        # setting does not persist
-        await asyncio.sleep(1)
+        wrote_nvram = False
+
+        if network_info.network_key.tx_counter:
+            LOGGER.debug(
+                "Restoring NWK frame counter to %d",
+                network_info.network_key.tx_counter,
+            )
+            await self._api.nvram.write(
+                t_zboss.DatasetId.ZB_IB_COUNTERS,
+                t_zboss.DSIbCounters(
+                    byte_count=t.uint16_t(8),
+                    nib_counter=t.uint32_t(
+                        network_info.network_key.tx_counter
+                    ),
+                    aib_counter=t.uint32_t(0),
+                ),
+            )
+            wrote_nvram = True
+
+        if network_info.key_table:
+            aps_keys = t_zboss.DSApsSecureKeys([
+                t_zboss.ApsSecureEntry(
+                    ieee_addr=k.partner_ieee,
+                    key=k.key,
+                    flags=t.uint32_t(
+                        self._aps_secure_flags(
+                            k.key, network_info.tc_link_key
+                        )
+                    ),
+                )
+                for k in network_info.key_table
+            ])
+            await self._api.nvram.write(
+                t_zboss.DatasetId.ZB_NVRAM_APS_SECURE_DATA, aps_keys
+            )
+            wrote_nvram = True
+
+        if network_info.nwk_addresses:
+            addr_map = t_zboss.DSNwkAddrMap([
+                t_zboss.NwkAddrMapRecord(
+                    ieee_addr=ieee,
+                    nwk_addr=nwk,
+                    index=0,
+                    redirect_type=0,
+                    redirect_ref=0,
+                    _align=0
+                )
+                for ieee, nwk in network_info.nwk_addresses.items()
+            ])
+            await self._api.nvram.write(
+                t_zboss.DatasetId.ZB_NVRAM_ADDR_MAP, addr_map
+            )
+            wrote_nvram = True
+
+        if wrote_nvram:
+            LOGGER.debug(
+                "Soft-resetting NCP so restored NVRAM takes effect on next SWF"
+            )
+            await self._api.reset(wait_for_reset=True)
 
     async def _form_network(self, network_info, node_info):
         """Clear the current config and forms a new network."""
@@ -298,7 +382,16 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             c.NcpConfig.GetJoinStatus.Req(TSN=self.get_sequence()))
 
         if not res.Joined & 0x01:
-            raise zigpy.exceptions.NetworkNotFormed
+            # The NCP may have reset (e.g. DTR on port open) and not yet
+            # rejoined. Try starting from stored NVRAM before giving up.
+            LOGGER.debug(
+                "NCP not joined after reset, attempting StartWithoutFormation"
+            )
+            await self.start_without_formation()
+            res = await self._api.request(
+                c.NcpConfig.GetJoinStatus.Req(TSN=self.get_sequence()))
+            if not res.Joined & 0x01:
+                raise zigpy.exceptions.NetworkNotFormed
 
         zboss_stack_specific = (
             self.state.network_info.stack_specific.setdefault("zboss", {})
@@ -319,8 +412,6 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             c.NcpConfig.GetZigbeeRole.Req(TSN=self.get_sequence()))
         self.state.node_info.logical_type = zdo_t.LogicalType(res.DeviceRole)
 
-        # TODO: it looks like we can't load the device info unless a network is
-        # running, as it is only accessible via ZCL
         try:
             self._device
         except KeyError:
@@ -456,12 +547,38 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         assert self._api is not None
         await self._api.reset(option=t_zboss.ResetOptions.FactoryReset)
 
+    async def _apply_tc_policies(self):
+        """Apply TC policies to the NCP using code defaults."""
+        defaults = self.get_default_stack_specific_formation_settings()
+        for policy_type, key in [
+            (t_zboss.PolicyType.TC_Link_Keys_Required,
+             "tc_policy_unique_tclk_required"),
+            (t_zboss.PolicyType.IC_Required,
+             "tc_policy_ic_required"),
+            (t_zboss.PolicyType.TC_Rejoin_Enabled,
+             "tc_policy_tc_rejoin_enabled"),
+            (t_zboss.PolicyType.Ignore_TC_Rejoin,
+             "tc_policy_tc_rejoin_ignored"),
+            (t_zboss.PolicyType.APS_Insecure_Join,
+             "tc_policy_aps_insecure_join_enabled"),
+            (t_zboss.PolicyType.Disable_NWK_MGMT_Channel_Update,
+             "tc_policy_mgmt_channel_update_disabled"),
+        ]:
+            await self._api.request(
+                request=c.NcpConfig.SetTCPolicy.Req(
+                    TSN=self.get_sequence(),
+                    PolicyType=policy_type,
+                    PolicyValue=defaults[key],
+                )
+            )
+
     async def start_without_formation(self):
         """Start the network with settings currently stored on the module."""
         res = await self._api.request(
             c.NWK.StartWithoutFormation.Req(TSN=self.get_sequence()))
         if res.StatusCode != 0:
             raise zigpy.exceptions.NetworkNotFormed
+        await self._apply_tc_policies()
 
     async def permit_ncp(self, time_s=60):
         """Permits joins on the coordinator."""
@@ -523,6 +640,10 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             c.NcpConfig.DeviceResetIndication.Ind(partial=True),
             self.on_ncp_reset
         )
+        self._api.register_indication_listener(
+            c.ZDO.DevAuthorizedInd.Ind(partial=True),
+            self.on_dev_authorized
+        )
 
     def on_nwk_leave(self, msg: c.NWK.NwkLeaveInd.Ind):
         """Device left indication."""
@@ -537,18 +658,24 @@ class ControllerApplication(zigpy.application.ControllerApplication):
     def on_dev_update(self, msg: c.ZDO.DevUpdateInd.Ind):
         """Device update indication."""
         if msg.Status == t_zboss.DeviceUpdateStatus.secured_rejoin:
-            # 0x000 as parent device, currently unused
-            pass
-            # self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
+            self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
         elif msg.Status == t_zboss.DeviceUpdateStatus.unsecured_join:
-            # 0x000 as parent device, currently unused
-            pass
-            # self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
+            self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
         elif msg.Status == t_zboss.DeviceUpdateStatus.device_left:
             self.handle_leave(msg.Nwk, msg.IEEE)
         elif msg.Status == t_zboss.DeviceUpdateStatus.tc_rejoin:
-            pass
-            # self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
+            self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
+
+    def on_dev_authorized(self, msg: c.ZDO.DevAuthorizedInd.Ind):
+        """TC device authorized indication."""
+        # AuthorizationType 1 = R21_TCLK; AuthorizationStatus 0 = SUCCESS
+        if msg.AuthorizationStatus != 0:
+            LOGGER.warning(
+                "TCLK authorization failed for %s (NWK 0x%04x): type=%d status=%d",
+                msg.IEEE, msg.Nwk, msg.AuthorizationType, msg.AuthorizationStatus,
+            )
+            # ZBOSS NCP will kick the device and reset; proactively clean up
+            self.handle_leave(msg.Nwk, msg.IEEE)
 
     def on_apsde_indication(self, msg):
         """APSDE-DATA.indication handler."""

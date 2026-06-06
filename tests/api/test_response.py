@@ -1,7 +1,6 @@
 """Test response."""
 import asyncio
 
-import async_timeout
 import pytest
 
 import zigpy_zboss.commands as c
@@ -104,7 +103,7 @@ async def test_response_timeouts(connected_zboss):
 
     asyncio.create_task(send_soon(0.1))
 
-    async with async_timeout.timeout(0.5):
+    async with asyncio.timeout(0.5):
         assert (await zboss.wait_for_response(c.NcpConfig.GetZigbeeRole.Rsp(
             TSN=10,
             StatusCat=t.StatusCategory(1),
@@ -120,7 +119,7 @@ async def test_response_timeouts(connected_zboss):
     asyncio.create_task(send_soon(0.6))
 
     with pytest.raises(asyncio.TimeoutError):
-        async with async_timeout.timeout(0.5):
+        async with asyncio.timeout(0.5):
             assert (
                        await zboss.wait_for_response(
                            c.NcpConfig.GetZigbeeRole.Rsp(

@@ -2,13 +2,11 @@
 import asyncio
 import logging
 
-import async_timeout
 import pytest
 
 import zigpy_zboss.commands as c
 import zigpy_zboss.types as t
-from zigpy_zboss.frames import (ZBNCP_LL_BODY_SIZE_MAX, Frame, HLPacket,
-                                LLHeader)
+from zigpy_zboss.frames import ZBNCP_LL_BODY_SIZE_MAX, Frame, HLPacket, LLHeader
 
 
 @pytest.mark.asyncio
@@ -34,7 +32,7 @@ async def test_cleanup_timeout_external(connected_zboss):
 
     # This request will timeout because we didn't send anything back
     with pytest.raises(asyncio.TimeoutError):
-        async with async_timeout.timeout(0.1):
+        async with asyncio.timeout(0.1):
             await zboss.request(c.NcpConfig.GetModuleVersion.Req(TSN=1), 10)
 
     # We should be cleaned up
@@ -42,7 +40,7 @@ async def test_cleanup_timeout_external(connected_zboss):
 
 
 @pytest.mark.asyncio
-async def test_zboss_request_kwargs(connected_zboss, event_loop):
+async def test_zboss_request_kwargs(connected_zboss):
     """Test zboss request."""
     zboss, zboss_server = connected_zboss
 
@@ -67,7 +65,7 @@ async def test_zboss_request_kwargs(connected_zboss, event_loop):
     async def send_ping_response():
         await zboss_server.send(ping_rsp)
 
-    event_loop.call_soon(asyncio.create_task, send_ping_response())
+    asyncio.create_task(send_ping_response())
 
     assert (
         await zboss.request(c.NcpConfig.GetModuleVersion.Req(TSN=1), 2)
@@ -90,13 +88,13 @@ async def test_zboss_request_kwargs(connected_zboss, event_loop):
 
 
 @pytest.mark.asyncio
-async def test_zboss_req_rsp(connected_zboss, event_loop):
+async def test_zboss_req_rsp(connected_zboss):
     """Test zboss request/response."""
     zboss, zboss_server = connected_zboss
 
     # Each SREQ must have a corresponding SRSP, so this will fail
     with pytest.raises(asyncio.TimeoutError):
-        async with async_timeout.timeout(0.5):
+        async with asyncio.timeout(0.5):
             await zboss.request(c.NcpConfig.GetModuleVersion.Req(TSN=1), 10)
 
     # This will work
@@ -112,7 +110,7 @@ async def test_zboss_req_rsp(connected_zboss, event_loop):
     async def send_ping_response():
         await zboss_server.send(ping_rsp)
 
-    event_loop.call_soon(asyncio.create_task, send_ping_response())
+    asyncio.create_task(send_ping_response())
 
     await zboss.request(c.NcpConfig.GetModuleVersion.Req(TSN=1), 10)
 
