@@ -22,7 +22,7 @@ from zigpy_zboss.logger import SERIAL_LOGGER
 
 LOGGER = logging.getLogger(__name__)
 ACK_TIMEOUT = 1
-SEND_RETRIES = 2
+SEND_RETRIES = 3
 STARTUP_TIMEOUT = 5
 RECONNECT_TIMEOUT = 10
 CONNECT_OPEN_TIMEOUT = 15.0
@@ -120,21 +120,45 @@ class ZbossNcpProtocol(asyncio.Protocol):
             self._transport.write(data)
 
     async def send(self, frame: Frame) -> None:
-        """Send data, and wait for acknowledgement."""
+        """Send and retransmit a frame and wait for its link-level ACK."""
         async with self._tx_lock:
-            if isinstance(frame, Frame) and self._transport:
+            if not (isinstance(frame, Frame) and self._transport):
+                return
+
+            # The packet sequence is only advanced when an ACK is received,
+            # so it stays stable across retransmissions of the same frame.
+            frame = self._set_frame_flag(frame)
+            frame = self._ll_checksum(frame)
+
+            for attempt in range(SEND_RETRIES):
+                if attempt:
+                    # Flag subsequent sends as retransmissions of the same
+                    # packet sequence and refresh the checksum.
+                    frame.ll_header = frame.ll_header.with_flags(
+                        frame.ll_header.flags | t.LLFlags.Retransmit
+                    )
+                    frame = self._ll_checksum(frame)
+
                 self._ack_received_event = asyncio.Event()
                 try:
                     async with asyncio.timeout(ACK_TIMEOUT):
-                        frame = self._set_frame_flag(frame)
-                        frame = self._ll_checksum(frame)
                         self.write(frame.serialize())
                         await self._ack_received_event.wait()
+                    return
                 except asyncio.TimeoutError:
                     SERIAL_LOGGER.debug(
-                        f'No ACK after {ACK_TIMEOUT}s for '
-                        f'{t.Bytes.__repr__(frame.serialize())}'
+                        "No ACK after %ss for %s (attempt %d/%d)",
+                        ACK_TIMEOUT,
+                        t.Bytes.__repr__(frame.serialize()),
+                        attempt + 1,
+                        SEND_RETRIES,
                     )
+
+            SERIAL_LOGGER.warning(
+                "No ACK after %d attempts, giving up on frame: %s",
+                SEND_RETRIES,
+                t.Bytes.__repr__(frame.serialize()),
+            )
 
     def _set_frame_flag(self, frame):
         """Return frame with required flags set."""
