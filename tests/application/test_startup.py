@@ -129,67 +129,54 @@ async def test_info(make_application, caplog):
     )
 
     zboss_server.reply_once_to(
-        request=c.NcpConfig.GetTrustCenterAddr.Req(
-            TSN=13
-        ),
-        responses=[c.NcpConfig.GetTrustCenterAddr.Rsp(
-            TSN=13,
-            StatusCat=t.StatusCategory(1),
-            StatusCode=t.StatusCodeGeneric.OK,
-            TCIEEE=t.EUI64.convert("00:11:22:33:44:55:66:77")
-            # Example Trust Center IEEE address
-        )]
-    )
-
-    zboss_server.reply_once_to(
-        request=c.NcpConfig.GetRxOnWhenIdle.Req(TSN=14),
+        request=c.NcpConfig.GetRxOnWhenIdle.Req(TSN=13),
         responses=[c.NcpConfig.GetRxOnWhenIdle.Rsp(
-            TSN=14,
+            TSN=13,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK,
             RxOnWhenIdle=1)]
     )
 
     zboss_server.reply_once_to(
-        request=c.NcpConfig.GetEDTimeout.Req(TSN=15),
+        request=c.NcpConfig.GetEDTimeout.Req(TSN=14),
         responses=[c.NcpConfig.GetEDTimeout.Rsp(
-            TSN=15,
+            TSN=14,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK,
             Timeout=t.TimeoutIndex(0x00))]
     )
 
     zboss_server.reply_once_to(
-        request=c.NcpConfig.GetMaxChildren.Req(TSN=16),
+        request=c.NcpConfig.GetMaxChildren.Req(TSN=15),
         responses=[c.NcpConfig.GetMaxChildren.Rsp(
-            TSN=16,
+            TSN=15,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK,
             ChildrenNbr=10)]
     )
 
     zboss_server.reply_once_to(
-        request=c.NcpConfig.GetAuthenticationStatus.Req(TSN=17),
+        request=c.NcpConfig.GetAuthenticationStatus.Req(TSN=16),
         responses=[c.NcpConfig.GetAuthenticationStatus.Rsp(
-            TSN=17,
+            TSN=16,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK,
             Authenticated=True)]
     )
 
     zboss_server.reply_once_to(
-        request=c.NcpConfig.GetParentAddr.Req(TSN=18),
+        request=c.NcpConfig.GetParentAddr.Req(TSN=17),
         responses=[c.NcpConfig.GetParentAddr.Rsp(
-            TSN=18,
+            TSN=17,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK,
             NWKParentAddr=parent_address)]
     )
 
     zboss_server.reply_once_to(
-        request=c.NcpConfig.GetCoordinatorVersion.Req(TSN=19),
+        request=c.NcpConfig.GetCoordinatorVersion.Req(TSN=18),
         responses=[c.NcpConfig.GetCoordinatorVersion.Rsp(
-            TSN=19,
+            TSN=18,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK,
             CoordinatorVersion=coordinator_version)]
@@ -197,13 +184,13 @@ async def test_info(make_application, caplog):
 
     zboss_server.reply_once_to(
         request=c.ZDO.PermitJoin.Req(
-            TSN=21,
+            TSN=20,
             DestNWK=t.NWK(0x0000),
             PermitDuration=t.uint8_t(0),
             TCSignificance=t.uint8_t(0x01),
         ),
         responses=[c.ZDO.PermitJoin.Rsp(
-            TSN=21,
+            TSN=20,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK,
         )]
@@ -211,10 +198,10 @@ async def test_info(make_application, caplog):
 
     zboss_server.reply_once_to(
         request=c.NcpConfig.NCPModuleReset.Req(
-            TSN=22, Option=t.ResetOptions(0)
+            TSN=21, Option=t.ResetOptions(0)
         ),
         responses=[c.NcpConfig.NCPModuleReset.Rsp(
-            TSN=22,
+            TSN=21,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK
         )]

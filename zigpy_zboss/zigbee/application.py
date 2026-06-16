@@ -450,10 +450,6 @@ class ControllerApplication(zigpy.application.ControllerApplication):
 
         self.state.network_info.security_level = 0x05
 
-        common = await self._api.nvram.read(
-            t_zboss.DatasetId.ZB_NVRAM_COMMON_DATA,
-            t_zboss.DSCommonData
-        )
         counters = await self._api.nvram.read(
             t_zboss.DatasetId.ZB_IB_COUNTERS,
             t_zboss.DSIbCounters
@@ -464,37 +460,39 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         if counters is not None:
             tx_counter = counters.nib_counter
 
-        if common is not None:
-            self.state.network_info.network_key = zigpy.state.Key(
-                key=common.nwk_key,
-                tx_counter=tx_counter,
-                rx_counter=0,
-                seq=common.nwk_key_seq,
-                partner_ieee=self.state.node_info.ieee,
+        nwk_keys = await self._api.request(
+            c.NcpConfig.GetNwkKeys.Req(TSN=self.get_sequence()))
+        nwk_key = nwk_keys.NwkKey1
+        if (
+            nwk_keys.StatusCode != 0
+            or nwk_key is None
+            or nwk_key.serialize() in (b"\xff" * 16, b"\x00" * 16)
+        ):
+            raise zigpy.exceptions.ControllerException(
+                "NCP reports joined but GetNwkKeys returned no usable network "
+                f"key (status={nwk_keys.StatusCode}, NwkKey1={nwk_key}); "
+                "refusing to load a blank key."
             )
+        self.state.network_info.network_key = zigpy.state.Key(
+            key=nwk_key,
+            tx_counter=tx_counter,
+            rx_counter=0,
+            seq=nwk_keys.KeyNumber1,
+            partner_ieee=self.state.node_info.ieee,
+        )
 
-            if self.state.node_info.logical_type == \
-                    zdo_t.LogicalType.Coordinator:
-                self.state.network_info.tc_link_key = zigpy.state.Key(
-                    key=common.tc_standard_key,
-                    tx_counter=0,
-                    rx_counter=0,
-                    seq=0,
-                    partner_ieee=self.state.node_info.ieee,
-                )
-            else:
-                res = await self._api.request(
-                    c.NcpConfig.GetTrustCenterAddr.Req(
-                        TSN=self.get_sequence()))
-                self.state.network_info.tc_link_key = (
-                    zigpy.state.Key(
-                        key=None,
-                        tx_counter=0,
-                        rx_counter=0,
-                        seq=0,
-                        partner_ieee=res.TCIEEE,
-                    ),
-                )
+        # The coordinator is the trust centre, and ZBOSS always uses the
+        # standard global TC link key (ZigBeeAlliance09) - we never push a
+        # custom one. Set it explicitly rather than reading the flaky
+        # ZB_NVRAM_COMMON_DATA dataset (its only extra contribution was
+        # partner_ieee, which nothing compares against).
+        self.state.network_info.tc_link_key = zigpy.state.Key(
+            key=t.KeyData(zigpy.config.CONF_NWK_TC_LINK_KEY_DEFAULT),
+            tx_counter=0,
+            rx_counter=0,
+            seq=0,
+            partner_ieee=self.state.node_info.ieee,
+        )
 
         res = await self._api.request(
             c.NcpConfig.GetRxOnWhenIdle.Req(TSN=self.get_sequence()))
