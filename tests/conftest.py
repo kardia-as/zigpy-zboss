@@ -730,6 +730,21 @@ class BaseZbossDevice(BaseServerZBOSS):
             StatusCode=t.StatusCodeGeneric.OK,
         )
 
+    @reply_to(c.NcpConfig.GetNwkKeys.Req(partial=True))
+    def get_nwk_keys(self, request):
+        """Handle get network keys (active key in slot 1)."""
+        return c.NcpConfig.GetNwkKeys.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=t.StatusCodeGeneric.OK,
+            NwkKey1=t.KeyData(b'\x01' * 16),
+            KeyNumber1=0,
+            NwkKey2=t.KeyData(b'\xff' * 16),
+            KeyNumber2=0xff,
+            NwkKey3=t.KeyData(b'\xff' * 16),
+            KeyNumber3=0xff,
+        )
+
     @reply_to(c.NcpConfig.GetTrustCenterAddr.Req(partial=True))
     def get_trust_center_addr(self, request):
         """Handle get trust center address."""
@@ -1021,6 +1036,21 @@ class BaseZbossGenericDevice(BaseServerZBOSS):
             TSN=request.TSN,
             StatusCat=t.StatusCategory(1),
             StatusCode=t.StatusCodeGeneric.OK,
+        )
+
+    @reply_to(c.NcpConfig.GetNwkKeys.Req(partial=True))
+    def get_nwk_keys(self, request):
+        """Handle get network keys (active key in slot 1, seq 1)."""
+        return c.NcpConfig.GetNwkKeys.Rsp(
+            TSN=request.TSN,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=t.StatusCodeGeneric.OK,
+            NwkKey1=t.KeyData(b'\x01' * 16),
+            KeyNumber1=1,
+            NwkKey2=t.KeyData(b'\xff' * 16),
+            KeyNumber2=0xff,
+            NwkKey3=t.KeyData(b'\xff' * 16),
+            KeyNumber3=0xff,
         )
 
     def on_zdo_node_desc_req(self, req, NWKAddrOfInterest):
