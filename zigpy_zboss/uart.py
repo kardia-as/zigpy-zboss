@@ -288,8 +288,14 @@ async def connect(config: conf.ConfigType, api) -> ZbossNcpProtocol:
     last_exc: OSError | None = None
     protocol = None
 
+    # URL-style ports (``socket://``, ``tcp://``, ``rfc2217://``, …) are not
+    # filesystem paths, so the local-device existence check below must be
+    # skipped for them; otherwise the loop spins until the timeout and the
+    # connection is never opened (e.g. ser2net or a native TCP NCP).
+    is_local_device = "://" not in port
+
     while loop.time() < deadline:
-        if not os.path.exists(port):
+        if is_local_device and not os.path.exists(port):
             await asyncio.sleep(CONNECT_OPEN_RETRY_DELAY)
             continue
 

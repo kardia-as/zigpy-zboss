@@ -280,6 +280,42 @@ async def test_connection_lost(dummy_serial_conn, mocker, event_loop):
     assert (await conn_lost_fut) == exception
 
 
+@pytest.mark.asyncio
+async def test_connect_url_port_skips_path_check(mocker, event_loop):
+    """A URL-style port (``socket://``/``tcp://``) has no filesystem path.
+
+    ``connect()`` must not gate on ``os.path.exists`` for such ports, otherwise
+    it spins in the retry loop until the timeout and never opens the connection
+    (regression for ser2net bridges and native-TCP NCPs).
+    """
+    target_url = "socket://127.0.0.1:6638"
+
+    def create_serial_conn(loop, protocol_factory, url, *args, **kwargs):
+        assert url == target_url
+        fut = event_loop.create_future()
+        protocol = protocol_factory()
+        event_loop.add_writer = lambda *a, **k: None
+        event_loop.add_reader = lambda *a, **k: None
+        event_loop.remove_writer = lambda *a, **k: None
+        event_loop.remove_reader = lambda *a, **k: None
+        transport = mocker.Mock()
+        transport.serial = mocker.Mock()
+        protocol.connection_made(transport)
+        fut.set_result((transport, protocol))
+        return fut
+
+    mocker.patch("serialx.create_serial_connection", new=create_serial_conn)
+    # A socket:// path never exists on disk; the check must be skipped for it.
+    exists = mocker.patch("zigpy_zboss.uart.os.path.exists", return_value=False)
+
+    protocol = await zboss_uart.connect(
+        conf.SCHEMA_DEVICE({conf.CONF_DEVICE_PATH: target_url}), api=mocker.Mock()
+    )
+
+    assert protocol is not None
+    exists.assert_not_called()
+
+
 # ToFix: this is not testing the uart test_connection_made method
 # @pytest.mark.asyncio
 # async def test_connection_made(dummy_serial_conn, mocker):
