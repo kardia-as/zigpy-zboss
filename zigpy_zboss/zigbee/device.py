@@ -73,7 +73,7 @@ class ZbossZDO(ZigpyZDO):
             )
         )
         if res.StatusCode != 0:
-            return (res.StatusCode % 0xFF, dst_address, cluster)
+            return (res.StatusCode, dst_address, cluster)
 
         return (zdo_t.Status.SUCCESS, dst_address, cluster)
 
@@ -81,7 +81,7 @@ class ZbossZDO(ZigpyZDO):
         """Unbinding request."""
         if dst_address.addrmode == t.AddrMode.IEEE:
             addr_mode = t_zboss.BindAddrMode.IEEE
-            dst_eui64 = t.Addressing.IEEE
+            dst_eui64 = dst_address.ieee
         # ZBOSS does not support the NWK mode for binding
         elif dst_address.addrmode == t.AddrMode.NWK:
             self.log(
@@ -114,7 +114,7 @@ class ZbossZDO(ZigpyZDO):
             )
         )
         if res.StatusCode != 0:
-            return (res.StatusCode % 0xFF, dst_address, cluster)
+            return (res.StatusCode, dst_address, cluster)
 
         return (zdo_t.Status.SUCCESS, dst_address, cluster)
 
