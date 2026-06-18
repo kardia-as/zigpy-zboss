@@ -68,11 +68,14 @@ jobs:
             ${{ env.CACHE_VERSION}}-${{ runner.os }}-base-venv-${{
             steps.python.outputs.python-version }}-${{
             hashFiles('pyproject.toml') }}
-      - name: Fail job if Python cache restore failed
+      - name: Create Python virtual environment if cache miss
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
-          echo "Failed to restore Python virtual environment from cache"
-          exit 1
+          python -m venv venv
+          . venv/bin/activate
+          pip install -U pip setuptools pre-commit
+          pip install -r requirements_test.txt
+          pip install -e .
       - name: Restore pre-commit environment from cache
         id: cache-precommit
         uses: actions/cache@v4
@@ -118,11 +121,14 @@ jobs:
             ${{ env.CACHE_VERSION}}-${{ runner.os }}-base-venv-${{
             steps.python.outputs.python-version }}-${{
             hashFiles('pyproject.toml') }}
-      - name: Fail job if Python cache restore failed
+      - name: Create Python virtual environment if cache miss
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
-          echo "Failed to restore Python virtual environment from cache"
-          exit 1
+          python -m venv venv
+          . venv/bin/activate
+          pip install -U pip setuptools pre-commit
+          pip install -r requirements_test.txt
+          pip install -e .
       - name: Restore pre-commit environment from cache
         id: cache-precommit
         uses: actions/cache@v4
@@ -130,11 +136,11 @@ jobs:
           path: ${{ env.PRE_COMMIT_CACHE_PATH }}
           key: |
             ${{ env.CACHE_VERSION}}-${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
-      - name: Fail job if cache restore failed
-        if: steps.cache-venv.outputs.cache-hit != 'true'
+      - name: Install pre-commit dependencies if cache miss
+        if: steps.cache-precommit.outputs.cache-hit != 'true'
         run: |
-          echo "Failed to restore Python virtual environment from cache"
-          exit 1
+          . venv/bin/activate
+          pre-commit install-hooks
       - name: Run ruff
         run: |
           . venv/bin/activate
@@ -165,11 +171,14 @@ jobs:
             ${{ env.CACHE_VERSION}}-${{ runner.os }}-base-venv-${{
             steps.python.outputs.python-version }}-${{
             hashFiles('pyproject.toml') }}
-      - name: Fail job if Python cache restore failed
+      - name: Create Python virtual environment if cache miss
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
-          echo "Failed to restore Python virtual environment from cache"
-          exit 1
+          python -m venv venv
+          . venv/bin/activate
+          pip install -U pip setuptools pre-commit
+          pip install -r requirements_test.txt
+          pip install -e .
       - name: Register Python problem matcher
         run: |
           echo "::add-matcher::.github/workflows/matchers/python.json"
