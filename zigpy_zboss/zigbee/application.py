@@ -44,6 +44,8 @@ APS_KEY_ATTR_VERIFIED = 2
 class ControllerApplication(zigpy.application.ControllerApplication):
     """Controller class."""
 
+    DISPLAY_NAME = "ZBOSS"
+    DESCRIPTION = "ZBOSS NCP protocol: nRF52-based, esp32-based modules."
     SCHEMA = CONFIG_SCHEMA
     SCHEMA_DEVICE = SCHEMA_DEVICE
 
