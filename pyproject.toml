@@ -20,6 +20,9 @@ dependencies = [
     "jsonschema",
 ]
 
+[project.entry-points."zigpy.radio"]
+zboss = "zigpy_zboss.zigbee.application:ControllerApplication"
+
 [project.optional-dependencies]
 # XXX: The order of these deps seems to matter
 testing = [
