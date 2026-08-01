@@ -78,7 +78,9 @@ async def test_join_coordinator(make_application):
 async def test_join_device(make_application):
     """Test device join."""
     ieee = t.EUI64.convert("EC:1B:BD:FF:FE:54:4F:40")
-    nwk = 0x1234
+    # Not 0x1234: that is the coordinator's own NWK in the test server, and
+    # `get_device()` resolves it to the coordinator instead of this device.
+    nwk = 0xABCD
 
     app, zboss_server = make_application(server_cls=BaseZbossDevice)
     app.add_initialized_device(ieee=ieee, nwk=nwk)
