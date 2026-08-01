@@ -45,7 +45,7 @@ async def test_bind_req_ieee(make_application):
         responses=[_ok_rsp(c.ZDO.BindReq)],
     )
 
-    status, returned_addr, returned_cluster = await device.zdo.request(
+    (status,) = await device.zdo.request(
         zdo_t.ZDOCmd.Bind_req, SRC_IEEE, 1, 6, dst_address
     )
 
@@ -60,8 +60,6 @@ async def test_bind_req_ieee(make_application):
     assert received.TargetNwkAddr == device.nwk
 
     assert status == zdo_t.Status.SUCCESS
-    assert returned_addr is dst_address
-    assert returned_cluster == 6
 
     await app.shutdown()
 
@@ -87,7 +85,7 @@ async def test_unbind_req_ieee(make_application):
         responses=[_ok_rsp(c.ZDO.UnbindReq)],
     )
 
-    status, returned_addr, returned_cluster = await device.zdo.request(
+    (status,) = await device.zdo.request(
         zdo_t.ZDOCmd.Unbind_req, SRC_IEEE, 1, 6, dst_address
     )
 
@@ -103,8 +101,6 @@ async def test_unbind_req_ieee(make_application):
     assert received.TargetNwkAddr == device.nwk
 
     assert status == zdo_t.Status.SUCCESS
-    assert returned_addr is dst_address
-    assert returned_cluster == 6
 
     await app.shutdown()
 
@@ -117,7 +113,6 @@ async def test_bind_req_group(make_application):
     dst_address = zdo_t.MultiAddress(
         addrmode=zigpy_t.AddrMode.Group,
         nwk=0x1234,
-        endpoint=0,
     )
 
     bind_req = zboss_server.reply_once_to(
@@ -125,7 +120,7 @@ async def test_bind_req_group(make_application):
         responses=[_ok_rsp(c.ZDO.BindReq)],
     )
 
-    status, _, _ = await device.zdo.request(
+    (status,) = await device.zdo.request(
         zdo_t.ZDOCmd.Bind_req, SRC_IEEE, 1, 6, dst_address
     )
 
@@ -147,7 +142,6 @@ async def test_unbind_req_group(make_application):
     dst_address = zdo_t.MultiAddress(
         addrmode=zigpy_t.AddrMode.Group,
         nwk=0x1234,
-        endpoint=0,
     )
 
     unbind_req = zboss_server.reply_once_to(
@@ -155,7 +149,7 @@ async def test_unbind_req_group(make_application):
         responses=[_ok_rsp(c.ZDO.UnbindReq)],
     )
 
-    status, _, _ = await device.zdo.request(
+    (status,) = await device.zdo.request(
         zdo_t.ZDOCmd.Unbind_req, SRC_IEEE, 1, 6, dst_address
     )
 
@@ -189,12 +183,10 @@ async def test_unbind_req_failure_status(make_application):
         )],
     )
 
-    status, returned_addr, returned_cluster = await device.zdo.request(
+    (status,) = await device.zdo.request(
         zdo_t.ZDOCmd.Unbind_req, SRC_IEEE, 1, 6, dst_address
     )
 
     assert status == error_code
-    assert returned_addr is dst_address
-    assert returned_cluster == 6
 
     await app.shutdown()

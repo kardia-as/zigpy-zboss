@@ -652,20 +652,42 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         if dev:
             self.handle_leave(nwk=dev.nwk, ieee=msg.IEEE)
 
+    def _should_handle_join(self, nwk: t.NWK, ieee: t.EUI64) -> bool:
+        """Whether a join signal is worth passing on to zigpy.
+
+        `Device_annce` is a broadcast that routers rebroadcast, so the same
+        join arrives several times, and the NCP reports its own indications
+        alongside it. `handle_join` restarts a running interview, so the
+        repeats have to be dropped while one is still in flight.
+        """
+        device = self.devices.get(ieee)
+        return device is None or device.nwk != nwk or device.is_initialized
+
     def on_zdo_device_announcement(self, msg: c.ZDO.DevAnnceInd.Ind):
         """ZDO Device announcement command received."""
-        self.handle_join(nwk=msg.NWK, ieee=msg.IEEE, parent_nwk=None)
+        if self._should_handle_join(msg.NWK, msg.IEEE):
+            self.handle_join(nwk=msg.NWK, ieee=msg.IEEE, parent_nwk=None)
 
     def on_dev_update(self, msg: c.ZDO.DevUpdateInd.Ind):
         """Device update indication."""
         if msg.Status == t_zboss.DeviceUpdateStatus.secured_rejoin:
-            self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
+            if self._should_handle_join(msg.Nwk, msg.IEEE):
+                self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
         elif msg.Status == t_zboss.DeviceUpdateStatus.unsecured_join:
-            self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
+            # A fresh association: the device has no network key yet and
+            # cannot answer, so interviewing it now only adds traffic while
+            # it is still finishing the handshake. The announcement or the
+            # authorization indication brings it in once it is really on.
+            LOGGER.debug(
+                "Device %s associated as 0x%04x, waiting for it to join",
+                msg.IEEE,
+                msg.Nwk,
+            )
         elif msg.Status == t_zboss.DeviceUpdateStatus.device_left:
             self.handle_leave(msg.Nwk, msg.IEEE)
         elif msg.Status == t_zboss.DeviceUpdateStatus.tc_rejoin:
-            self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
+            if self._should_handle_join(msg.Nwk, msg.IEEE):
+                self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
 
     def on_dev_authorized(self, msg: c.ZDO.DevAuthorizedInd.Ind):
         """TC device authorized indication."""
@@ -677,6 +699,13 @@ class ControllerApplication(zigpy.application.ControllerApplication):
             )
             # ZBOSS NCP will kick the device and reset; proactively clean up
             self.handle_leave(msg.Nwk, msg.IEEE)
+            return
+
+        # `Device_annce` is a broadcast and can be lost, while this
+        # indication is generated locally by the NCP, so it has to be able
+        # to bring the device in on its own.
+        if self._should_handle_join(msg.Nwk, msg.IEEE):
+            self.handle_join(msg.Nwk, msg.IEEE, 0x0000)
 
     def on_apsde_indication(self, msg):
         """APSDE-DATA.indication handler."""
