@@ -2,6 +2,7 @@
 from unittest.mock import AsyncMock as CoroutineMock
 
 import pytest
+import zigpy.types
 from zigpy.exceptions import NetworkNotFormed
 
 import zigpy_zboss.commands as c
@@ -185,9 +186,11 @@ async def test_info(make_application, caplog):
     zboss_server.reply_once_to(
         request=c.ZDO.PermitJoin.Req(
             TSN=20,
-            DestNWK=t.NWK(0x0000),
+            DestNWK=t.NWK(
+                zigpy.types.BroadcastAddress.ALL_ROUTERS_AND_COORDINATOR
+            ),
             PermitDuration=t.uint8_t(0),
-            TCSignificance=t.uint8_t(0x01),
+            TCSignificance=t.uint8_t(0),
         ),
         responses=[c.ZDO.PermitJoin.Rsp(
             TSN=20,
@@ -197,11 +200,25 @@ async def test_info(make_application, caplog):
     )
 
     zboss_server.reply_once_to(
+        request=c.ZDO.PermitJoin.Req(
+            TSN=21,
+            DestNWK=t.NWK(0x0000),
+            PermitDuration=t.uint8_t(0),
+            TCSignificance=t.uint8_t(0x01),
+        ),
+        responses=[c.ZDO.PermitJoin.Rsp(
+            TSN=21,
+            StatusCat=t.StatusCategory(4),
+            StatusCode=t.StatusCodeGeneric.OK,
+        )]
+    )
+
+    zboss_server.reply_once_to(
         request=c.NcpConfig.NCPModuleReset.Req(
-            TSN=21, Option=t.ResetOptions(0)
+            TSN=22, Option=t.ResetOptions(0)
         ),
         responses=[c.NcpConfig.NCPModuleReset.Rsp(
-            TSN=21,
+            TSN=22,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK
         )]
@@ -231,15 +248,15 @@ async def test_endpoints(make_application):
     """Test endpoints."""
     app, zboss_server = make_application(server_cls=BaseZbossDevice)
 
-    endpoints = []
+    permit_requests = []
     zboss_server.register_indication_listener(
-        c.ZDO.PermitJoin.Req(partial=True), endpoints.append
+        c.ZDO.PermitJoin.Req(partial=True), permit_requests.append
     )
 
     await app.startup(auto_form=False)
 
-    # We currently just register one endpoint
-    assert len(endpoints) == 1
+    # Startup closes joins network-wide and then on the coordinator
+    assert len(permit_requests) == 2
     assert 1 in app._device.endpoints
 
     await app.shutdown()

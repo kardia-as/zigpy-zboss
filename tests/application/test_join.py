@@ -17,6 +17,24 @@ async def test_permit_join(mocker, make_application):
     """Test permit join."""
     app, zboss_server = make_application(server_cls=BaseZbossDevice)
 
+    permit_join_routers = zboss_server.reply_once_to(
+        request=c.ZDO.PermitJoin.Req(
+            TSN=123,
+            DestNWK=t.NWK(
+                zigpy.types.t.BroadcastAddress.ALL_ROUTERS_AND_COORDINATOR
+            ),
+            PermitDuration=t.uint8_t(10),
+            TCSignificance=t.uint8_t(0),
+        ),
+        responses=[
+            c.ZDO.PermitJoin.Rsp(
+                TSN=123,
+                StatusCat=t.StatusCategory(1),
+                StatusCode=t.StatusCodeGeneric.OK,
+            ),
+        ],
+    )
+
     permit_join_coordinator = zboss_server.reply_once_to(
         request=c.ZDO.PermitJoin.Req(
             TSN=123,
@@ -38,6 +56,7 @@ async def test_permit_join(mocker, make_application):
 
     await asyncio.sleep(0.1)
 
+    assert permit_join_routers.done()
     assert permit_join_coordinator.done()
 
     await app.shutdown()
