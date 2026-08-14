@@ -3,10 +3,8 @@ import logging
 from typing import Any
 
 import zigpy.device
-import zigpy.endpoint
 import zigpy.exceptions
 import zigpy.types as t
-import zigpy.util
 from zigpy.zdo import ZDO as ZigpyZDO
 from zigpy.zdo import types as zdo_t
 
@@ -32,24 +30,6 @@ class ZbossZDO(ZigpyZDO):
     hook lives on the coordinator, which is never quirked, so every device
     takes the same path and gets standard zigpy return values.
     """
-
-    def handle_mgmt_permit_joining_req(
-        self,
-        permit_duration: int,
-        tc_significance: int,
-    ):
-        """Handle ZDO permit joining request."""
-        hdr = zdo_t.ZDOHeader(zdo_t.ZDOCmd.Mgmt_Permit_Joining_req, 0)
-        dst_addressing = t.Addressing.IEEE
-
-        self.listener_event("permit_duration", permit_duration)
-        self.listener_event(
-            "zdo_mgmt_permit_joining_req",
-            self._device,
-            dst_addressing,
-            hdr,
-            (permit_duration, tc_significance),
-        )
 
     async def Mgmt_NWK_Update_req(self, nwkUpdate):
         """Issue a ZDO Mgmt_NWK_Update (energy scan / channel change).
@@ -352,30 +332,27 @@ class ZbossZDO(ZigpyZDO):
             packet: t.ZigbeePacket,
             zdo_hdr: zdo_t.ZDOHeader,
             zdo_args: tuple[Any]) -> None:
-        """Send ZDO permit joining request and handle the response.
+        """Send ZDO permit joining request and handle the response."""
+        is_unicast = packet.dst.addr_mode in (t.AddrMode.NWK, t.AddrMode.IEEE)
 
-        `app.permit()` already broadcasts this and then opens the coordinator
-        via `permit_ncp`, so forwarding the broadcast here would send it
-        twice. Only the targeted form is translated.
-        """
-        if packet.dst.addr_mode not in (t.AddrMode.NWK, t.AddrMode.IEEE):
-            LOGGER.debug("Dropping broadcast permit joining request")
-            return
+        if is_unicast:
+            dest_nwk = t.NWK(t.BroadcastAddress.RX_ON_WHEN_IDLE)
+        else:
+            dest_nwk = t.NWK(packet.dst.address)
 
         duration, tc_significance = zdo_args
         res = await self._api.request(
             c.ZDO.PermitJoin.Req(
                 TSN=self._next_tsn(),
-                # Targeting `self._target_nwk(packet)` would be correct, but
-                # this has always gone out as a broadcast and changing where
-                # joins are opened deserves its own change.
-                DestNWK=t.NWK(t.BroadcastAddress.RX_ON_WHEN_IDLE),
+                DestNWK=dest_nwk,
                 PermitDuration=t.uint8_t(duration),
                 TCSignificance=t.uint8_t(tc_significance),
             ),
             timeout=ZDO_TIMEOUT,
         )
-        self._send_zdo_rsp(packet, zdo_hdr, res.StatusCode)
+
+        if is_unicast:
+            self._send_zdo_rsp(packet, zdo_hdr, res.StatusCode)
 
     async def _IEEE_addr_req(
             self,
