@@ -17,7 +17,7 @@ import zigpy_zboss.config as conf
 from zigpy_zboss import types as t
 from zigpy_zboss.checksum import CRC8
 from zigpy_zboss.exceptions import InvalidFrame
-from zigpy_zboss.frames import Frame
+from zigpy_zboss.frames import Frame, LLHeader
 from zigpy_zboss.logger import SERIAL_LOGGER
 
 LOGGER = logging.getLogger(__name__)
@@ -251,9 +251,22 @@ class ZbossNcpProtocol(asyncio.Protocol):
         if self._buffer[4] != t.TYPE_ZBOSS_NCP_API_HL:
             raise InvalidFrame()
 
-        # At this point we should have a complete frame
-        # If not, deserialization will fail and the error will propapate up
-        frame, rest = Frame.deserialize(self._buffer)
+        try:
+            frame, rest = Frame.deserialize(self._buffer)
+        except InvalidFrame:
+            # The LL checksum failed, so the length field cannot be trusted
+            # either. Resynchronize on the next signature instead.
+            raise
+        except ValueError:
+            malformed = bytes(self._buffer[:length + 2])
+            del self._buffer[:length + 2]
+
+            SERIAL_LOGGER.warning(
+                "Discarding frame with unparseable payload: %s",
+                t.Bytes.__repr__(malformed),
+            )
+            ll_header, _ = LLHeader.deserialize(malformed)
+            return Frame(ll_header, None)
 
         # If we get this far then we have a valid frame. Update the buffer.
         del self._buffer[: len(self._buffer) - len(rest)]
