@@ -588,15 +588,6 @@ class BaseZbossDevice(BaseServerZBOSS):
             StatusCode=t.StatusCodeGeneric.OK,
         )
 
-    @reply_to(c.NWK.PermitJoin.Req(partial=True))
-    def nwk_permit_join(self, request):
-        """Handle permit join on the coordinator itself."""
-        return c.NWK.PermitJoin.Rsp(
-            TSN=request.TSN,
-            StatusCat=t.StatusCategory(1),
-            StatusCode=t.StatusCodeGeneric.OK,
-        )
-
     @reply_to(c.NcpConfig.GetShortPANID.Req(partial=True))
     def get_short_panid(self, request):
         """Handle get short PANID."""

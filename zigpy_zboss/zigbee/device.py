@@ -51,6 +51,30 @@ class ZbossZDO(ZigpyZDO):
             )
         return (None, res.ScannedChannels, None, None, res.EnergyValues)
 
+    async def permit_ncp(self, time_s: int = 60) -> None:
+        """Open or close joins on this node only.
+
+        `NWK_PERMIT_JOINING` looks like the right primitive for this, but the
+        NCP answers it with BUSY, or not at all, when it follows the broadcast
+        zigpy sends just before. Addressing the ZDO form to our own NWK
+        address is what the NCP accepts.
+        """
+        res = await self._api.request(
+            c.ZDO.PermitJoin.Req(
+                TSN=self._next_tsn(),
+                DestNWK=t.NWK(0x0000),
+                PermitDuration=t.uint8_t(time_s),
+                TCSignificance=t.uint8_t(0x01),
+            ),
+            timeout=ZDO_TIMEOUT,
+        )
+        if res.StatusCode != 0:
+            LOGGER.warning(
+                "Coordinator refused to permit joins for %ss: %s",
+                time_s,
+                res.StatusCode,
+            )
+
     async def zboss_specific_cmd(self, packet: t.ZigbeePacket) -> None:
         """Reroute ZDO packets sent over APSDE to ZBOSS ZDO commands."""
         try:

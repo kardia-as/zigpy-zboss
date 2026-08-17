@@ -200,11 +200,13 @@ async def test_info(make_application, caplog):
     )
 
     zboss_server.reply_once_to(
-        request=c.NWK.PermitJoin.Req(
+        request=c.ZDO.PermitJoin.Req(
             TSN=21,
+            DestNWK=t.NWK(0x0000),
             PermitDuration=t.uint8_t(0),
+            TCSignificance=t.uint8_t(0x01),
         ),
-        responses=[c.NWK.PermitJoin.Rsp(
+        responses=[c.ZDO.PermitJoin.Rsp(
             TSN=21,
             StatusCat=t.StatusCategory(4),
             StatusCode=t.StatusCodeGeneric.OK,
@@ -246,20 +248,15 @@ async def test_endpoints(make_application):
     """Test endpoints."""
     app, zboss_server = make_application(server_cls=BaseZbossDevice)
 
-    zdo_permits = []
-    nwk_permits = []
+    permit_requests = []
     zboss_server.register_indication_listener(
-        c.ZDO.PermitJoin.Req(partial=True), zdo_permits.append
-    )
-    zboss_server.register_indication_listener(
-        c.NWK.PermitJoin.Req(partial=True), nwk_permits.append
+        c.ZDO.PermitJoin.Req(partial=True), permit_requests.append
     )
 
     await app.startup(auto_form=False)
 
-    # Startup closes joins network-wide over ZDO, then locally over NWK
-    assert len(zdo_permits) == 1
-    assert len(nwk_permits) == 1
+    # Startup closes joins network-wide and then on the coordinator
+    assert len(permit_requests) == 2
     assert 1 in app._device.endpoints
 
     await app.shutdown()

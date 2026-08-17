@@ -36,12 +36,14 @@ async def test_permit_join(mocker, make_application):
     )
 
     permit_join_coordinator = zboss_server.reply_once_to(
-        request=c.NWK.PermitJoin.Req(
+        request=c.ZDO.PermitJoin.Req(
             TSN=123,
+            DestNWK=t.NWK(0x0000),
             PermitDuration=t.uint8_t(10),
+            TCSignificance=t.uint8_t(0x01),
         ),
         responses=[
-            c.NWK.PermitJoin.Rsp(
+            c.ZDO.PermitJoin.Rsp(
                 TSN=123,
                 StatusCat=t.StatusCategory(1),
                 StatusCode=t.StatusCodeGeneric.OK,
@@ -67,13 +69,15 @@ async def test_join_coordinator(make_application):
 
     # Handle us opening joins on the coordinator
     permit_join_coordinator = zboss_server.reply_once_to(
-        request=c.NWK.PermitJoin.Req(
+        request=c.ZDO.PermitJoin.Req(
             TSN=123,
+            DestNWK=t.NWK(0x0000),
             PermitDuration=t.uint8_t(60),
+            TCSignificance=t.uint8_t(0x01),
             partial=True
         ),
         responses=[
-            c.NWK.PermitJoin.Rsp(
+            c.ZDO.PermitJoin.Rsp(
                 TSN=123,
                 StatusCat=t.StatusCategory(1),
                 StatusCode=t.StatusCodeGeneric.OK,
@@ -208,7 +212,7 @@ async def test_on_dev_authorized_joins(make_application, mocker):
 
     await asyncio.sleep(0.1)
 
-    app.handle_join.assert_called_once_with(nwk, ieee, 0x0000)
+    app.handle_join.assert_called_once_with(nwk, ieee, parent_nwk=None)
 
     await app.shutdown()
 
@@ -342,9 +346,13 @@ async def test_announcement_at_new_address_restarts_interview(
 
 
 @pytest.mark.asyncio
-async def test_announcement_for_initialized_device_is_handled(
+async def test_secured_rejoin_for_initialized_device_is_handled(
         make_application, mocker):
-    """An initialized device rejoining still has to reach zigpy."""
+    """A rejoin at the same address still has to reach zigpy.
+
+    `_should_handle_join` filters this case out of the announcement and the
+    authorization, so `DevUpdateInd` is the signal that has to carry it.
+    """
     app, zboss_server = make_application(server_cls=BaseZbossDevice)
     await app.startup(auto_form=False)
 
@@ -355,13 +363,15 @@ async def test_announcement_for_initialized_device_is_handled(
     mocker.patch.object(app, "handle_join", wraps=app.handle_join)
 
     await zboss_server.send(
-        c.ZDO.DevAnnceInd.Ind(NWK=nwk, IEEE=ieee, MacCap=t.uint8_t(0x8E))
+        c.ZDO.DevUpdateInd.Ind(
+            IEEE=ieee,
+            Nwk=nwk,
+            Status=t.DeviceUpdateStatus.secured_rejoin,
+        )
     )
 
     await asyncio.sleep(0.1)
 
-    app.handle_join.assert_called_once_with(
-        nwk=nwk, ieee=ieee, parent_nwk=None
-    )
+    app.handle_join.assert_called_once_with(nwk, ieee, parent_nwk=None)
 
     await app.shutdown()
