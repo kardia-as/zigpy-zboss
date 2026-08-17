@@ -91,9 +91,9 @@ async def test_probe_successful(make_zboss_server):
         server_cls=BaseServerZBOSS, shorten_delays=False
     )
 
-    # This will work
+    # `_probe_until_ready` has no application yet, so it probes with TSN 0
     ping_rsp = c.NcpConfig.GetZigbeeRole.Rsp(
-        TSN=10,
+        TSN=0,
         StatusCat=t.StatusCategory(1),
         StatusCode=t.StatusCodeGeneric.OK,
         DeviceRole=t.DeviceRole(1),

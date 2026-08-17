@@ -209,7 +209,8 @@ class ZBOSS:
 
         async with self._conditional_blocking_request_lock(request.blocking):
             LOGGER.debug("Sending request: %s", request)
-            response_future = self.wait_for_response(request.Rsp(partial=True))
+            response_future = self.wait_for_response(
+                request.Rsp(partial=True, TSN=request.TSN))
             return await self._send_frags(
                 fragments, response_future, timeout=timeout)
 
