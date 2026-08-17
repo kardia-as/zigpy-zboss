@@ -582,15 +582,23 @@ class ControllerApplication(zigpy.application.ControllerApplication):
         await self._apply_tc_policies()
 
     async def permit_ncp(self, time_s=60):
-        """Permits joins on the coordinator."""
-        await self._api.request(
-            c.ZDO.PermitJoin.Req(
+        """Permits joins on the coordinator.
+
+        `NWK_PERMIT_JOINING` is the local NLME-PERMIT-JOINING.request, which
+        is what opening joins on this node means. The ZDO form is a request
+        aimed at remote devices, and zigpy already broadcasts that separately.
+        """
+        res = await self._api.request(
+            c.NWK.PermitJoin.Req(
                 TSN=self.get_sequence(),
-                DestNWK=t.NWK(0x0000),
                 PermitDuration=t.uint8_t(time_s),
-                TCSignificance=t.uint8_t(0x01),
             )
         )
+        if res.StatusCode != 0:
+            raise DeliveryError(
+                f"Failed to permit joins on the coordinator: {res.StatusCode}",
+                status=res.StatusCode,
+            )
 
     def permit_with_link_key(self, node, link_key, time_s=60):
         """Permit with link key."""

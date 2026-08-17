@@ -36,14 +36,12 @@ async def test_permit_join(mocker, make_application):
     )
 
     permit_join_coordinator = zboss_server.reply_once_to(
-        request=c.ZDO.PermitJoin.Req(
+        request=c.NWK.PermitJoin.Req(
             TSN=123,
-            DestNWK=t.NWK(0x0000),
             PermitDuration=t.uint8_t(10),
-            TCSignificance=t.uint8_t(0x01),
         ),
         responses=[
-            c.ZDO.PermitJoin.Rsp(
+            c.NWK.PermitJoin.Rsp(
                 TSN=123,
                 StatusCat=t.StatusCategory(1),
                 StatusCode=t.StatusCodeGeneric.OK,
@@ -69,15 +67,13 @@ async def test_join_coordinator(make_application):
 
     # Handle us opening joins on the coordinator
     permit_join_coordinator = zboss_server.reply_once_to(
-        request=c.ZDO.PermitJoin.Req(
+        request=c.NWK.PermitJoin.Req(
             TSN=123,
-            DestNWK=t.NWK(0x0000),
             PermitDuration=t.uint8_t(60),
-            TCSignificance=t.uint8_t(0x01),
             partial=True
         ),
         responses=[
-            c.ZDO.PermitJoin.Rsp(
+            c.NWK.PermitJoin.Rsp(
                 TSN=123,
                 StatusCat=t.StatusCategory(1),
                 StatusCode=t.StatusCodeGeneric.OK,
