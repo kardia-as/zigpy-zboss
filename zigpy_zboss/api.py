@@ -142,15 +142,26 @@ class ZBOSS:
 
         XXX: Can be called multiple times in a single event loop step!
         """
-        if not frame.ll_header.flags & t.LLFlags.LastFrag:
+        flags = frame.ll_header.flags
+
+        # A first fragment starts a new packet, so anything still buffered
+        # belongs to a sequence that never completed.
+        if flags & t.LLFlags.FirstFrag:
+            self._rx_fragments = []
+
+        self._rx_fragments.append(frame)
+
+        if not flags & t.LLFlags.LastFrag:
             LOGGER.debug("Received fragment: %s", frame)
-            self._rx_fragments.append(frame)
             return
 
-        if self._rx_fragments:
-            self._rx_fragments.append(frame)
-            frame = Frame.handle_rx_fragmentation(self._rx_fragments)
-            self._rx_fragments = []
+        fragments, self._rx_fragments = self._rx_fragments, []
+
+        try:
+            frame = Frame.handle_rx_fragmentation(fragments)
+        except ValueError:
+            LOGGER.debug("Dropping incomplete packet: %s", fragments)
+            return
 
         if frame.hl_packet.header not in c.COMMANDS_BY_ID:
             LOGGER.debug("Received an unknown frame: %s", frame)

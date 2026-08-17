@@ -4,6 +4,7 @@ import pytest
 import zigpy_zboss.types as t
 from zigpy_zboss.frames import (
     CRC8,
+    CRC16,
     ZBNCP_LL_BODY_SIZE_MAX,
     Frame,
     HLPacket,
@@ -12,13 +13,20 @@ from zigpy_zboss.frames import (
 )
 
 
+def ll_checksum(frame):
+    """Return frame with a valid low level header checksum."""
+    crc = CRC8(frame.ll_header.serialize()[2:6]).digest()
+    frame.ll_header = frame.ll_header.with_crc8(crc)
+    return frame
+
+
 def test_frame_deserialization():
     """Test frame deserialization."""
     ll_signature = t.uint16_t(0xADDE).serialize()
 
-    # Create an HLCommonHeader with specific fields
+    # A packet body is its CRC16 followed by the data
     hl_data = t.Bytes(b"test_data").serialize()
-    hl_packet = hl_data
+    hl_packet = CRC16(hl_data).digest().serialize() + hl_data
 
     ll_size = t.uint16_t(len(hl_packet) + 5).serialize()
     ll_type = t.uint8_t(0x01).serialize()
@@ -83,8 +91,8 @@ def test_ack_flag_deserialization():
     assert frame.hl_packet is None
 
 
-def test_first_frag_flag_deserialization():
-    """Test frame deserialization with FirstFrag flag."""
+def test_first_frag_leaves_common_header_unparsed():
+    """A fragment's data stays opaque until the packet is reassembled."""
     ll_signature = t.uint16_t(0xADDE).serialize()
 
     # Create an HLCommonHeader with specific fields
@@ -117,10 +125,12 @@ def test_first_frag_flag_deserialization():
     assert frame.ll_header.frame_type == 0x01
     assert frame.ll_header.flags == t.LLFlags.FirstFrag
     assert frame.ll_header.crc8 == CRC8(ll_header_without_crc[2:6]).digest()
-    assert frame.hl_packet.header.version == 0x01
-    assert frame.hl_packet.header.control_type == t.ControlType.RSP
-    assert frame.hl_packet.header.id == 0x1234
-    assert frame.hl_packet.data == b"test_data"
+    assert frame.hl_packet.header is None
+    assert frame.hl_packet.data == hl_header.serialize() + b"test_data"
+
+    reassembled = Frame.handle_rx_fragmentation([frame])
+    assert reassembled.hl_packet.header == hl_header
+    assert reassembled.hl_packet.data == b"test_data"
 
 
 def test_handle_tx_fragmentation():
@@ -245,3 +255,27 @@ def test_handle_rx_fragmentation():
     # Verify the reassembled data matches the original data
     reassembled_data = reassembled_frame.hl_packet.data
     assert reassembled_data == large_data
+
+
+def test_rx_fragmentation_round_trip_over_the_wire():
+    """Every fragment carries a body CRC that must not reach the payload."""
+    hl_packet = HLPacket(
+        header=t.HLCommonHeader(
+            version=0x01, type=t.ControlType.RSP, id=0x1234
+        ),
+        data=t.Bytes(b"a" * (ZBNCP_LL_BODY_SIZE_MAX * 2 + 50)),
+    )
+    frame = Frame(ll_header=LLHeader(), hl_packet=hl_packet)
+
+    wire = b"".join(
+        ll_checksum(frag).serialize()
+        for frag in frame.handle_tx_fragmentation()
+    )
+
+    fragments = []
+    while wire:
+        fragment, wire = Frame.deserialize(wire)
+        fragments.append(fragment)
+
+    assert len(fragments) > 1
+    assert Frame.handle_rx_fragmentation(fragments).hl_packet == hl_packet
