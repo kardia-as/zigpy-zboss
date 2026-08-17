@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 import zigpy.types as z_types
 import zigpy.zdo.types as zdo_t
-from zigpy.const import APS_REPLY_TIMEOUT_EXTENDED
 
 import zigpy_zboss.commands as c
 import zigpy_zboss.types as t
@@ -14,6 +13,9 @@ from ..conftest import BaseZbossDevice
 
 REMOTE_IEEE = t.EUI64.convert("00:11:22:33:44:55:66:77")
 REMOTE_NWK = 0x1234
+
+# NCP spec 3.4.2.1, "ZDO ... Request: 5s, 12s for sleepy ZED"
+SLEEPY_ZED_ZDO_TIMEOUT = 12
 
 
 @pytest.mark.asyncio
@@ -174,12 +176,13 @@ async def test_ieee_addr_req_failure(make_application):
 
 
 @pytest.mark.asyncio
-async def test_zdo_ncp_timeout_does_not_preempt_zigpy(make_application):
-    """The NCP timeout must outlast the longest deadline zigpy will use.
+async def test_zdo_request_timeout_covers_sleepy_zed(make_application):
+    """A unicast ZDO request must allow the NCP its documented window.
 
-    A ZDO command is only answered once the on-air transaction resolves, so
-    capping it at the NCP default made zigpy's extended window unreachable
-    and turned every request into three.
+    NCP spec 3.4.2.1 processes a unicast ZDO request within 5s, or 12s for a
+    sleepy ZED, excluding host-NCP transport. Below that the host gives up on
+    devices the NCP would still have answered for; far above it, one dead
+    device holds the blocking-request lock for no reason.
     """
     app, zboss_server = make_application(server_cls=BaseZbossDevice)
     await app.startup(auto_form=False)
@@ -213,6 +216,6 @@ async def test_zdo_ncp_timeout_does_not_preempt_zigpy(make_application):
     )
 
     timeout = app._api.request.mock_calls[0].kwargs["timeout"]
-    assert timeout >= APS_REPLY_TIMEOUT_EXTENDED
+    assert SLEEPY_ZED_ZDO_TIMEOUT <= timeout < 2 * SLEEPY_ZED_ZDO_TIMEOUT
 
     await app.shutdown()

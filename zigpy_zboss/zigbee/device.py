@@ -13,11 +13,11 @@ from zigpy_zboss import commands as c
 
 LOGGER = logging.getLogger(__name__)
 
-# A ZDO command is only answered once the on-air transaction resolves,
-# which takes the NCP up to a minute for an unreachable device. zigpy
-# cancels its own requests long before this, so it is only a backstop
-# for paths that impose no deadline of their own, such as broadcasts.
-ZDO_TIMEOUT = 70
+# NCP spec 3.4.2.1: every unicast ZDO request is processed within 5s, or 12s
+# for a sleepy ZED, excluding host-NCP transport overhead. Scans instead
+# depend on the scan duration and channel list.
+ZDO_TIMEOUT = 15
+ZDO_SCAN_TIMEOUT = 70
 
 
 class ZbossZDO(ZigpyZDO):
@@ -32,12 +32,7 @@ class ZbossZDO(ZigpyZDO):
     """
 
     async def Mgmt_NWK_Update_req(self, nwkUpdate):
-        """Issue a ZDO Mgmt_NWK_Update (energy scan / channel change).
-
-        Kept as an override: an energy scan can take longer than zigpy's APS
-        reply timeout, so it must not go through `Device.request`. It is only
-        ever issued on the coordinator, which quirks never replace.
-        """
+        """Issue a ZDO Mgmt_NWK_Update (energy scan / channel change)."""
         res = await self._device._application._api.request(
             c.ZDO.MgmtNwkUpdate.Req(
                 TSN=self._device._application.get_sequence(),
@@ -46,7 +41,8 @@ class ZbossZDO(ZigpyZDO):
                 ScanCount=nwkUpdate.ScanCount or 0,
                 MgrAddr=self._device.nwk,
                 DstNWK=t.NWK(0x0000),
-            )
+            ),
+            timeout=ZDO_SCAN_TIMEOUT,
         )
         if res.StatusCode != 0:
             raise zigpy.exceptions.DeliveryError(
