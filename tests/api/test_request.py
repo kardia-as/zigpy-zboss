@@ -129,8 +129,8 @@ async def test_zboss_unknown_frame(connected_zboss, caplog):
     caplog.set_level(logging.DEBUG)
     zboss.frame_received(frame)
 
-    # Unknown frames are logged in their entirety but an error is not thrown
-    assert repr(frame) in caplog.text
+    # Unknown packets are logged in their entirety but an error is not thrown
+    assert repr(hl_packet) in caplog.text
 
 
 @pytest.mark.asyncio

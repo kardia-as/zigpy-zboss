@@ -127,13 +127,23 @@ class HLPacket:
         return t.uint16_t(len(self.serialize()))
 
     @classmethod
-    def deserialize(cls, data):
-        """Deserialize frame and sanity checks."""
-        check, data = t.uint16_t.deserialize(data)
+    def from_body(cls, body: bytes) -> "HLPacket":
+        """Return the verified data of a packet body, header left unparsed.
 
-        if not check == CRC16(data).digest():
-            raise InvalidFrame("Crc calculation error.")
+        A body is `Body CRC | Data` (spec 3.2.5). Every fragment carries one,
+        and the common header only spans the reassembled data, so it cannot be
+        read from a single fragment.
+        """
+        checksum, data = t.uint16_t.deserialize(body)
 
+        if checksum != CRC16(data).digest():
+            raise InvalidFrame("Body CRC mismatch.")
+
+        return cls(None, data)
+
+    @classmethod
+    def from_data(cls, data: bytes) -> "HLPacket":
+        """Split reassembled data into its common header and payload."""
         header, payload = t.HLCommonHeader.deserialize(data)
         return cls(header, payload)
 
@@ -175,19 +185,13 @@ class Frame:
                 f"Invalid frame checksum for data {ll_header}: "
                 f"expected 0x{ll_header.crc8:02X}, got 0x{ll_checksum:02X}"
             )
-        flags = ll_header.flags
-
-        if flags & t.LLFlags.isACK:
+        if ll_header.flags & t.LLFlags.isACK:
             return cls(ll_header, None), data
 
         length = ll_header.size - 5
-        payload, data = data[:length], data[length:]
-        if flags & t.LLFlags.FirstFrag:
-            hl_packet = HLPacket.deserialize(payload)
-            return cls(ll_header, hl_packet), data
+        body, data = data[:length], data[length:]
 
-        hl_packet = HLPacket(None, payload)
-        return cls(ll_header, hl_packet), data
+        return cls(ll_header, HLPacket.from_body(body)), data
 
     @classmethod
     def ack(cls, ack_seq, retransmit=False):
@@ -210,20 +214,17 @@ class Frame:
 
     @classmethod
     def handle_rx_fragmentation(cls, fragments):
-        """Return a frame containing merged data from fragments."""
-        data = bytes()
-        for frag in fragments:
-            data += frag.hl_packet.serialize()[2:]
-        # Concatenate new CRC.
-        data = t.uint16_t(CRC16(data).digest()).serialize() + data
+        """Return the single frame described by a sequence of fragments."""
+        hl_packet = HLPacket.from_data(
+            b"".join(frag.hl_packet.serialize()[2:] for frag in fragments)
+        )
         ll_header = (
             LLHeader()
-            .with_signature(Frame.signature)
-            .with_size(len(data) + 5)
+            .with_signature(cls.signature)
+            .with_size(hl_packet.length + 5)
             .with_type(t.TYPE_ZBOSS_NCP_API_HL)
             .with_flags(t.LLFlags.FirstFrag | t.LLFlags.LastFrag)
         )
-        hl_packet = HLPacket.deserialize(data)
         return cls(ll_header, hl_packet)
 
     def serialize(self) -> bytes:

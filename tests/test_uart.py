@@ -6,7 +6,7 @@ import zigpy_zboss.config as conf
 import zigpy_zboss.types as t
 from zigpy_zboss import uart as zboss_uart
 from zigpy_zboss.checksum import CRC8
-from zigpy_zboss.frames import Frame
+from zigpy_zboss.frames import Frame, LLHeader
 
 
 @pytest.fixture
@@ -29,6 +29,13 @@ def ll_checksum(frame):
     crc = CRC8(frame.ll_header.serialize()[2:6]).digest()
     frame.ll_header = frame.ll_header.with_crc8(crc)
     return frame
+
+
+def assert_received_once(zboss, frame_bytes):
+    """Assert one frame reached the API and that it round-trips to bytes."""
+    zboss.frame_received.assert_called_once()
+    (frame,), _ = zboss.frame_received.call_args
+    assert frame.serialize() == frame_bytes
 
 
 @pytest.fixture
@@ -87,7 +94,63 @@ def test_uart_rx_basic(connected_uart):
 
     uart.data_received(test_frame_bytes)
 
-    zboss.frame_received.assert_called_once_with(test_frame)
+    assert_received_once(zboss, test_frame_bytes)
+
+
+def test_uart_rx_short_first_fragment_is_accepted(connected_uart):
+    """A first fragment need not be big enough to hold the common header.
+
+    Answering `ReadNVRAM(ZB_NVRAM_APS_SECURE_DATA)` the NCP sends a first
+    fragment carrying a single data byte. That is legal: the header only spans
+    the reassembled data, so the fragment is passed up like any other.
+    """
+    zboss, uart = connected_uart
+
+    uart.data_received(b"\xde\xad\x08\x00\x06\x44\x74\x00\x00\x00")
+
+    assert not uart._buffer
+    zboss.frame_received.assert_called_once()
+    (frame,), _ = zboss.frame_received.call_args
+    assert frame.hl_packet.data == b"\x00"
+
+
+def test_uart_rx_unparseable_body_does_not_deafen(connected_uart):
+    """A body that cannot be parsed at all must not jam the buffer.
+
+    Leaving those bytes in place would make every later read fail on them, so
+    no response would ever be decoded again.
+    """
+    zboss, uart = connected_uart
+
+    ll_header = (
+        LLHeader()
+        .with_signature(Frame.signature)
+        .with_size(6)
+        .with_type(t.TYPE_ZBOSS_NCP_API_HL)
+        .with_flags(t.LLFlags.FirstFrag)
+    )
+    ll_header = ll_header.with_crc8(
+        CRC8(ll_header.serialize()[2:6]).digest()
+    )
+
+    uart.data_received(ll_header.serialize() + b"\x00")
+
+    assert not uart._buffer
+    assert zboss.frame_received.call_count == 0
+    assert uart._transport.write.called
+
+    good_bytes = ll_checksum(
+        c.NcpConfig.GetZigbeeRole.Rsp(
+            TSN=10,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=t.StatusCodeGeneric.OK,
+            DeviceRole=t.DeviceRole(1),
+        ).to_frame()
+    ).serialize()
+
+    uart.data_received(good_bytes)
+
+    assert_received_once(zboss, good_bytes)
 
 
 def test_uart_str_repr(connected_uart):
@@ -117,7 +180,7 @@ def test_uart_rx_byte_by_byte(connected_uart):
     for byte in test_frame_bytes:
         uart.data_received(bytes([byte]))
 
-    zboss.frame_received.assert_called_once_with(test_frame)
+    assert_received_once(zboss, test_frame_bytes)
 
 
 def test_uart_rx_byte_by_byte_garbage(connected_uart):
@@ -149,7 +212,7 @@ def test_uart_rx_byte_by_byte_garbage(connected_uart):
     for byte in data:
         uart.data_received(bytes([byte]))
 
-    zboss.frame_received.assert_called_once_with(test_frame)
+    assert_received_once(zboss, test_frame_bytes)
 
 
 def test_uart_rx_big_garbage(connected_uart):
@@ -180,7 +243,7 @@ def test_uart_rx_big_garbage(connected_uart):
     # The frame should be parsed identically regardless of framing
     uart.data_received(data)
 
-    zboss.frame_received.assert_called_once_with(test_frame)
+    assert_received_once(zboss, test_frame_bytes)
 
 
 def test_uart_rx_corrupted_fcs(connected_uart):
@@ -232,7 +295,7 @@ def test_uart_rx_sof_stress(connected_uart):
     )
 
     # We should see the valid frame exactly once
-    zboss.frame_received.assert_called_once_with(test_frame)
+    assert_received_once(zboss, test_frame_bytes)
 
 
 def test_uart_frame_received_error(connected_uart, mocker):
