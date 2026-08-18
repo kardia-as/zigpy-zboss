@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 import zigpy.types as z_types
 import zigpy.zdo.types as zdo_t
+from zigpy.device import APS_REPLY_TIMEOUT_EXTENDED
 
 import zigpy_zboss.commands as c
 import zigpy_zboss.types as t
@@ -217,5 +218,56 @@ async def test_zdo_request_timeout_covers_sleepy_zed(make_application):
 
     timeout = app._api.request.mock_calls[0].kwargs["timeout"]
     assert SLEEPY_ZED_ZDO_TIMEOUT <= timeout < 2 * SLEEPY_ZED_ZDO_TIMEOUT
+
+    await app.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_extended_timeout_outlasts_zigpy(make_application):
+    """A packet flagged for an extended timeout must outlast zigpy's own.
+
+    zigpy raises the flag for end devices and for devices it has not
+    interviewed yet, and waits `APS_REPLY_TIMEOUT_EXTENDED` for the answer.
+    Giving up first drops the listener while the answer is still on its way,
+    and since every retry carries the same flag, retrying cannot recover it.
+    """
+    app, zboss_server = make_application(server_cls=BaseZbossDevice)
+    await app.startup(auto_form=False)
+    app.add_initialized_device(ieee=REMOTE_IEEE, nwk=REMOTE_NWK)
+
+    app._api.request = AsyncMock(
+        return_value=c.ZDO.MgtLeave.Rsp(
+            TSN=1,
+            StatusCat=t.StatusCategory(1),
+            StatusCode=t.StatusCodeGeneric.OK,
+        )
+    )
+
+    packet = z_types.ZigbeePacket(
+        src=z_types.AddrModeAddress(
+            addr_mode=z_types.AddrMode.NWK, address=0x0000
+        ),
+        src_ep=0,
+        dst=z_types.AddrModeAddress(
+            addr_mode=z_types.AddrMode.NWK, address=REMOTE_NWK
+        ),
+        dst_ep=0,
+        tsn=1,
+        profile_id=0,
+        cluster_id=zdo_t.ZDOCmd.Mgmt_Leave_req,
+        data=z_types.SerializableBytes(
+            b"\x01" + REMOTE_IEEE.serialize() + b"\x00"
+        ),
+        extended_timeout=True,
+    )
+
+    await app.send_packet(packet)
+    extended = app._api.request.mock_calls[0].kwargs["timeout"]
+
+    await app.send_packet(packet.replace(extended_timeout=False))
+    default = app._api.request.mock_calls[1].kwargs["timeout"]
+
+    assert extended > APS_REPLY_TIMEOUT_EXTENDED
+    assert extended > default
 
     await app.shutdown()

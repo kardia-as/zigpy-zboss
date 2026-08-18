@@ -13,11 +13,13 @@ from zigpy_zboss import commands as c
 
 LOGGER = logging.getLogger(__name__)
 
-# NCP spec 3.4.2.1: every unicast ZDO request is processed within 5s, or 12s
-# for a sleepy ZED, excluding host-NCP transport overhead. Scans instead
-# depend on the scan duration and channel list.
+# NCP spec 3.4.2.1: says every unicast ZDO request is processed within 5s,
+# or 12s for a sleepy ZED, excluding host-NCP transport overhead. But in
+# practice, ZDO Node_Desc_req timeout is not raised before 60s.
+# Scans instead depend on the scan duration and channel list.
 ZDO_TIMEOUT = 15
 ZDO_SCAN_TIMEOUT = 70
+ZDO_TIMEOUT_EXTENDED = 62
 
 
 class ZbossZDO(ZigpyZDO):
@@ -112,6 +114,11 @@ class ZbossZDO(ZigpyZDO):
     def _next_tsn(self) -> int:
         """Return the next NCP transmission sequence number."""
         return self._device._application.get_sequence()
+
+    @staticmethod
+    def _timeout(packet: t.ZigbeePacket) -> int:
+        """Return how long to wait for the NCP to answer a ZDO request."""
+        return ZDO_TIMEOUT_EXTENDED if packet.extended_timeout else ZDO_TIMEOUT
 
     def _target_nwk(self, packet: t.ZigbeePacket) -> t.NWK:
         """Return the NWK address a ZDO packet is addressed to."""
@@ -223,7 +230,7 @@ class ZbossZDO(ZigpyZDO):
                 DstAddr=dst_addr,
                 DstEndpoint=dst_ep,
             ),
-            timeout=ZDO_TIMEOUT,
+            timeout=self._timeout(packet),
         )
         self._send_zdo_rsp(packet, zdo_hdr, res.StatusCode)
 
@@ -247,7 +254,7 @@ class ZbossZDO(ZigpyZDO):
                 DstAddr=dst_addr,
                 DstEndpoint=dst_ep,
             ),
-            timeout=ZDO_TIMEOUT,
+            timeout=self._timeout(packet),
         )
         self._send_zdo_rsp(packet, zdo_hdr, res.StatusCode)
 
@@ -260,7 +267,7 @@ class ZbossZDO(ZigpyZDO):
         (nwk,) = zdo_args
         res = await self._api.request(
             c.ZDO.NodeDescReq.Req(TSN=self._next_tsn(), NwkAddr=nwk),
-            timeout=ZDO_TIMEOUT,
+            timeout=self._timeout(packet),
         )
         node_desc = None if res.StatusCode else res.NodeDesc
 
@@ -275,7 +282,7 @@ class ZbossZDO(ZigpyZDO):
         (nwk,) = zdo_args
         res = await self._api.request(
             c.ZDO.ActiveEpReq.Req(TSN=self._next_tsn(), NwkAddr=nwk),
-            timeout=ZDO_TIMEOUT,
+            timeout=self._timeout(packet),
         )
         # Active_EP_rsp has no optional endpoint list, so it cannot be omitted
         endpoints = [] if res.StatusCode else res.ActiveEpList
@@ -293,7 +300,7 @@ class ZbossZDO(ZigpyZDO):
             c.ZDO.SimpleDescriptorReq.Req(
                 TSN=self._next_tsn(), NwkAddr=nwk, Endpoint=endpoint
             ),
-            timeout=ZDO_TIMEOUT,
+            timeout=self._timeout(packet),
         )
 
         if res.StatusCode:
@@ -323,7 +330,7 @@ class ZbossZDO(ZigpyZDO):
                 DestNWK=self._target_nwk(packet),
                 Index=start_index,
             ),
-            timeout=ZDO_TIMEOUT,
+            timeout=self._timeout(packet),
         )
         neighbors = None if res.StatusCode else res.Neighbors
 
@@ -343,7 +350,7 @@ class ZbossZDO(ZigpyZDO):
                 IEEE=t.EUI64(ieee),
                 Flags=t.uint8_t(options),
             ),
-            timeout=ZDO_TIMEOUT,
+            timeout=self._timeout(packet),
         )
         self._send_zdo_rsp(packet, zdo_hdr, res.StatusCode)
 
@@ -368,7 +375,7 @@ class ZbossZDO(ZigpyZDO):
                 PermitDuration=t.uint8_t(duration),
                 TCSignificance=t.uint8_t(tc_significance),
             ),
-            timeout=ZDO_TIMEOUT,
+            timeout=self._timeout(packet),
         )
 
         if is_unicast:
@@ -389,7 +396,7 @@ class ZbossZDO(ZigpyZDO):
                 RequestType=req_type,
                 StartIndex=index,
                 ),
-            timeout=ZDO_TIMEOUT,
+            timeout=self._timeout(packet),
         )
 
         if res.StatusCode:
