@@ -214,15 +214,14 @@ class ZBOSS:
             raise RuntimeError(
                 "Coordinator is disconnected, cannot send request")
 
-        LOGGER.debug("Sending request: %s", request)
-
         frame = request.to_frame()
         # If the frame is too long, it needs fragmentation.
         fragments = frame.handle_tx_fragmentation()
 
-        response_future = self.wait_for_response(request.Rsp(partial=True))
-
         async with self._conditional_blocking_request_lock(request.blocking):
+            LOGGER.debug("Sending request: %s", request)
+            response_future = self.wait_for_response(
+                request.Rsp(partial=True, TSN=request.TSN))
             return await self._send_frags(
                 fragments, response_future, timeout=timeout)
 

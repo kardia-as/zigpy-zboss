@@ -516,7 +516,7 @@ async def test_send_security_and_packet_source_route(make_application, mocker):
             Payload=[116, 101, 115, 116, 32, 100, 97, 116, 97]),
         responses=[
             c.APS.DataReq.Rsp(
-                TSN=1,
+                TSN=222,
                 StatusCat=t.StatusCategory(4),
                 StatusCode=t.StatusCodeGeneric.OK,
                 DstAddr=t.EUI64.convert("00:00:00:00:00:00:aa:bb"),

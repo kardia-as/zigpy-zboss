@@ -54,7 +54,7 @@ async def test_zboss_request_kwargs(connected_zboss):
 
     # Valid format, valid name
     ping_rsp = c.NcpConfig.GetModuleVersion.Rsp(
-            TSN=10,
+            TSN=1,
             StatusCat=t.StatusCategory(1),
             StatusCode=t.StatusCodeGeneric.OK,
             FWVersion=1,
@@ -99,7 +99,7 @@ async def test_zboss_req_rsp(connected_zboss):
 
     # This will work
     ping_rsp = c.NcpConfig.GetModuleVersion.Rsp(
-        TSN=10,
+        TSN=1,
         StatusCat=t.StatusCategory(1),
         StatusCode=t.StatusCodeGeneric.OK,
         FWVersion=1,
